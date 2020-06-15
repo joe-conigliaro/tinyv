@@ -13,9 +13,8 @@ Fun. I wanted to see if I could make v compiler which is a simple as possible an
 Research. I'm really passionate about v and the comminuity, my main focus is to make the v compiler better. The rapid influx of developers to the project at such an early stage (v2 compiler, now the main one) when a lot of core functionality was unfinished has has led to some fixes/workarounds in different places which can be constraining. Taking what I have learned, and with a fresh drawing board I find it easier to come up with simpler solutions which can then be migrated into the main compiler.
 
 ## Status
-* Scanner / Lexer - Working (~98%)
-* Parser - Working (~60%)
-* Generation
-       - x64 (not started)
-       - C (not started)
-
+1. Scanner / Lexer - Working (~98%)
+2. Parser - Working (~60%)
+3. Generation
+   - x64 (not started)
+   - C (not started)
