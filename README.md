@@ -1,7 +1,7 @@
 # tinyv
 V compiler... but tinier
 
-## What is this
+## What this is / is not
 * It is not intended to be a replacement, substitution, or competitor for the main v compiler.
 * It is not intended to support all the features of the main v compiler. Somwhere in the high 90% of features. 
 * A research project to discover ways to improve the main v compiler.
