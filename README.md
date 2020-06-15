@@ -14,8 +14,8 @@ Research. I'm really passionate about v and the comminuity, my main focus is to 
 
 ## Status
 * Scanner / Lexer - Working (~98%)
-* Parseri - Working (~60%)
+* Parser - Working (~60%)
 * Generation
-x64 (not started)
-C (not started)
+-x64 (not started)
+-C (not started)
 
