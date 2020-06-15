@@ -1,9 +1,11 @@
 # tinyv
 V compiler... but tinier
 
+A simplistic compiler for the V language: https://github.com/vlang/v
+
 ## What this is / is not
 * It **is not** intended to be a replacement, substitution, or competitor for the main v compiler.
-* It **is not** intended to support all the features of the main v compile (idealy high 90% of features).
+* It **is not** intended to support all the features of the main v compiler (idealy high 90% of features).
 * It **is** a research project to discover ways to improve the main v compiler.
 * It **is** intended to be a functioning v compiler.
 * It **is** going to remain simple.
