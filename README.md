@@ -13,13 +13,13 @@ A simplistic compiler for the V language: https://github.com/vlang/v
 
 ## Motivation
 #### Fun.
-I wanted to see if I could make v compiler which is a simple as possible and with less lines of code.
+I want to make a v compiler which is as simple as possible and with minimal lines of code (no frills).
 The thing I love about v is its simplicity and the simplicity of the compiler, as more features are added and more edge cases are created the complexity of the compiler increases.
 My goal is not to support all of the features of the main compiler, but a compromise beween simplicity and feature support. I would like to acheive high 90% feature support while keeping the codebase as simple as possible.
 #### Research.
-I'm really passionate about v and the comminuity, my main focus is to make the v compiler better.
-The rapid influx of developers to the project at such an early stage (referring to the v2 compiler, now the main one) when a lot of core functionality was unfinished has has led to some fixes/workarounds which are not ideal.
-Without any existing constraints, and using what I have learned I am able to easily test ideas & simplifications which can then be migrated into the main compiler.
+I'm really passionate about the v project and it's community, my main focus is to make the v compiler better.
+There was a rapid influx of developers and updates to the v project at an early stage of the compiler (v2 - now main) when a lot of the core functionality was still being designed, which lead to some workarounds and confusion.
+Without any existing constraints, and using what I have learned I am able to easily test new ideas & simplifications which could end up being migrated into the main compiler.
 
 ## Status
 1. Scanner / Lexer - Working (~98%)
