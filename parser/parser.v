@@ -44,22 +44,16 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		}
 		.key_import {
 			p.next()
-			if p.tok == .name {
-				// p.next()
-				println('import: $p.scanner.lit')
-				p.next()
-			}
+			mod := p.name()
+			println('import: $mod')
 			return ast.Import{
 
 			}
 		}
 		.key_module {
-			p.expect(.key_module)
-			if p.tok == .name {
-				// p.next()
-				println('module: $p.scanner.lit')
-				p.next()
-			}
+			p.next()
+			mod := p.name()
+			println('module: $mod')
 			return ast.Module{
 
 			}
@@ -178,8 +172,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	mut lhs := ast.Expr{}
 	match p.tok {
 		.chartoken {
-			value := p.scanner.lit
-			p.next()
+			value := p.lit()
 			lhs = ast.CharLiteral{
 				value: value
 			}
@@ -261,6 +254,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					p.next()
 				}
 				println('HERE')
+				// init len etc
 				if p.tok == .lcbr {
 					p.next()
 					// TODO:
@@ -292,8 +286,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			if is_mut {
 				p.next()
 			}
-			name := p.scanner.lit
-			p.next()
+			name := p.name()
 			// TODO: parse type for cast
 			println('NAME: $name')
 			// cast
@@ -328,16 +321,14 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 		}
 		.number {
-			value := p.scanner.lit
+			value := p.lit()
 			println('NUMBER: $value')
-			p.next()
 			lhs = ast.NumberLiteral{
 				value: value
 			}
 		}
 		.string {
-			value := p.scanner.lit
-			p.next()
+			value := p.lit()
 			lhs = ast.StringLiteral{
 				value: value
 			}
@@ -442,6 +433,18 @@ pub fn (mut p Parser) expect(tok token.Token) {
 	p.next()
 }
 
+pub fn (mut p Parser) name() string {
+	name := p.scanner.lit
+	p.expect(.name)
+	return name
+}
+
+pub fn (mut p Parser) lit() string {
+	lit := p.scanner.lit
+	p.next()
+	return lit
+}
+
 // pub fn (mut p Parser) peek(pos int) scanner.Token {
 // 	return scanner.
 // }
@@ -482,8 +485,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	p.next()
 	p.expect(.lpar)
 	for {
-		name := p.scanner.lit
-		p.expect(.name)
+		name := p.name()
 		println('const: $name')
 		p.expect(.assign)
 		// p.next()
@@ -509,16 +511,14 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		if p.tok == .key_mut {
 			p.next()
 		}
-		receiver := p.scanner.lit
-		p.expect(.name)
+		receiver := p.name()
+		// TODO:
 		// receiver_type := p.parse_type()
-		receiver_type := p.scanner.lit
-		p.next()
+		receiver_type := p.lit()
 		p.expect(.rpar)
 	}
-	name := p.scanner.lit
+	name := p.name()
 	println('FN: $name')
-	p.next()
 
 	p.fn_args()
 
@@ -562,15 +562,13 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 
 pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	p.next()
-	name := p.scanner.lit
-	p.expect(.name)
+	name := p.name()
 	println('enum: $name')
 	p.expect(.lcbr)
 	// fields
 	for p.tok != .rcbr {
-		field := p.scanner.lit
-		p.expect(.name)
-		println('field: $field')
+		field_name := p.name()
+		println('field: $field_name')
 	}
 	p.expect(.rcbr)
 	return ast.EnumDecl{
@@ -579,8 +577,7 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	p.next()
-	name := p.scanner.lit
-	p.expect(.name)
+	name := p.name()
 	println('struct: $name')
 	p.expect(.lcbr)
 	// fields
@@ -590,9 +587,8 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
-		field := p.scanner.lit
-		p.expect(.name)
-		println('field: $field')
+		field_name := p.name()
+		println('field: $field_name')
 		// typ := p.scanner.lit
 		// p.expect(.name)
 		typ := p.parse_type()
@@ -611,8 +607,7 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
-	name := p.scanner.lit
-	p.expect(.name)
+	name := p.name()
 	// sum type
 	if p.tok == .eq {
 		p.next()
