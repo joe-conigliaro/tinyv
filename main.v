@@ -18,7 +18,7 @@ fn main() {
 		panic('error reading $file')
 	}
 	s := scanner.new_scanner(text)
-    t0 := time.ticks()
+	t0 := time.ticks()
 	for {
 		kind := s.scan()
 		// kind, lit, pos := s.scan()
@@ -30,7 +30,7 @@ fn main() {
 	// s.scan_all()
 	t1 := time.ticks()
 	scan_time := t1 - t0
-    println('scan time: ${scan_time}ms')
+	println('scan time: ${scan_time}ms')
 
 
 	// vs := vscanner.new_scanner(text, .parse_comments)
