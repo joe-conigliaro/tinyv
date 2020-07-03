@@ -3,7 +3,7 @@ V compiler... but tinier
 
 A simplistic compiler for the V language: https://github.com/vlang/v
 
-*Please no PR's for code, thanks. This is an experiment, things may change drastically.*
+*Please ***no PR's for code***, thanks. This is an experiment, things may change drastically.*
 
 ## What this is / is not
 * It **is not** intended to be a replacement, substitution, or competitor for the main V compiler.
