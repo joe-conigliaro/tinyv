@@ -253,11 +253,19 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					// typ := p.parse_type()
 					p.next()
 				}
-				println('HERE')
-				// init len etc
+				// init
+				mut init_exprs := map[string]ast.Expr{}
 				if p.tok == .lcbr {
 					p.next()
-					// TODO:
+					allowed_init_keys := ['cap', 'init', 'len']
+					for p.tok != .rcbr {
+						key := p.name()
+						if key !in allowed_init_keys {
+							p.error('expecting one of ' + allowed_init_keys.join(', '))
+						}
+						p.expect(.colon)
+						init_exprs[key] = p.expr(.lowest)
+					}
 					p.expect(.rcbr)
 				}
 				lhs = ast.ArrayInit{
