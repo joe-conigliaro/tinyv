@@ -21,19 +21,12 @@ pub fn new_scanner(text string) &Scanner {
 	}
 }
 
-pub struct Token{
-	kind token.Token
-	lit string
-	line_nr int
-	pos int
-}
-
 // NOTE: scan/scan0 was split in case i choose to cache all tokens / peek
 pub fn (mut s Scanner) scan() token.Token {
 	s.whitespace()
 	start_pos := s.pos
 	tok := s.scan0()
-	// s.tokens << Token{
+	// s.tokens << token.Token{
 	// 	kind: tok,
 	// 	lit: s.lit,
 	// 	line_nr: s.line_nr

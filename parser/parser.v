@@ -396,7 +396,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// println('PRATT LOOP: $p.tok - $p.scanner.line_nr')
 		lbp := p.tok.left_binding_power()
 		if lbp < min_lbp {
-			println('breaking precedense')
+			println('breaking precedence')
 			break
 		}
 		// p.expr(lbp)
