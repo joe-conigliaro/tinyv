@@ -34,9 +34,25 @@ pub fn (mut p Parser) parse_type() types.Type {
 		elem_type := p.parse_type()
 		return types.Type{}
 	}
+	if p.tok == .key_fn {
+		return p.parse_fn_type()
+	}
 
 	typ := p.scanner.lit
 	p.expect(.name)
 
+	return types.Type{}
+}
+
+
+pub fn (mut p Parser) parse_fn_type() types.Type {
+	p.next()
+	if p.tok == .lpar {
+		p.fn_args()
+	}
+	if p.tok in [.amp, .lsbr, .name, .question] {
+		// return type
+		p.parse_type()
+	}
 	return types.Type{}
 }

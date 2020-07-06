@@ -661,9 +661,6 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 		if p.tok !in [.comma, .rpar] {
 			p.parse_type()
 		}
-		//if p.tok == .name {
-		//	p.expect(.name) // type
-		//}
 		if p.tok == .comma {
 			// p.expect(.comma)
 			p.next()
@@ -736,23 +733,13 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
-	// sum type
+	// sum type (otherwise alias)
 	if p.tok == .eq {
 		p.next()
 	}
-	// fn type TODO: move to parse_type (become part of alias)
-	else if p.tok == .key_fn {
-		p.next()
-		// p.fn_decl(false)
-		p.fn_args()
-	}
-	// alias
-	// else {
-	// 	alias_type := p.parse_type()
-	// }
-	p.next() // return type
+	p.parse_type()
 
-	p.log('TYPE: $name')
+	p.log('ast.TypeDecl: $name')
 	return ast.TypeDecl{}
 }
 
