@@ -8,7 +8,7 @@ pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
 	| ParExpr | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Block | ComptimeIf | ConstDecl | EnumDecl | ExprStmt
 	| FlowControl | FnDecl | For | GlobalDecl | Import | Module | Return
-	| StructDecl | TypeDecl
+	| StructDecl | TypeDecl | Unsafe
 
 pub struct ArrayInit {
 pub:
@@ -89,7 +89,7 @@ pub struct If {
 
 pub struct IfGuard {
 	cond     Expr
-	or_block []Stmt
+	or_stmts []Stmt
 }
 
 pub struct Infix {
@@ -162,5 +162,9 @@ pub struct StructInit {
 
 pub struct TypeDecl {
 	
+}
+
+pub struct Unsafe {
+	stmts []Stmt
 }
 

@@ -182,6 +182,13 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 
 			}
 		}
+		.key_unsafe {
+			p.log('ast.Unsafe')
+			p.next()
+			return ast.Unsafe{
+				stmts: p.block()
+			}
+		}
 		else {
 			p.log('HRMMM: $p.tok')
 			expr := p.expr(.lowest)
@@ -381,7 +388,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					p.next()
 					lhs = ast.IfGuard{
 						cond: lhs
-						or_block: p.block()
+						or_stmts: p.block()
 					}
 					//p.log('OR BLOCK')
 				}
