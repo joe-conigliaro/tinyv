@@ -48,14 +48,13 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			p.next()
 			// TODO: do we parse as string with loop to handle dots
 			// or as selector expr ? 
-			//p.log('import:')
-			//mod := p.expr(.lowest)
+			// mod := p.expr(.lowest)
 			mut mod := p.name()
 			for p.tok == .dot {
 				p.next()
 				mod += '.' + p.name()
 			}
-			//p.log('import: $mod')
+			p.log('ast.Import: $mod')
 			return ast.Import{
 
 			}
@@ -63,7 +62,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_module {
 			p.next()
 			mod := p.name()
-			p.log('module: $mod')
+			p.log('ast.Module: $mod')
 			return ast.Module{
 
 			}
@@ -102,6 +101,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			// [attribute]
 			p.next()
 			name := p.name()
+			p.log('ast.Module: $name')
 			p.expect(.rsbr)
 			return ast.Attribute{name: name}
 		}
@@ -399,9 +399,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	}
 
 	for {
+		// excluded from binding power check they run either way
 		// index
 		if p.tok == .lsbr {
-			// lhs = p.expr(.lowest)
 			p.next()
 			p.log('ast.Index: $p.scanner.lit')
 			p.expr(.lowest)
@@ -409,7 +409,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				lhs: lhs
 			}
 			p.expect(.rsbr)
-			// TODO: tweak binding powers.. see if can loop without continue
+			// continue to allows `Index[1]Selector` with no regard to binding power 
 			continue
 		}
 		// Selector
@@ -420,6 +420,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				lhs: lhs
 				rhs: p.expr(.lowest)
 			}
+			// continue to allow `Selector[1]` with no regard to binding power 
 			continue
 		}
 		// range
@@ -431,10 +432,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				end: p.expr(.lowest)
 			}
 		}
-		// expr list muti assign / return
+		// Expr list  / Tuple ( muti assign / return )
+		// TODO: consider if this is the method I want to use
+		// or just use list() where needed eg. assign
 		else if p.tok == .comma {
 			p.next()
-			p.log('ast.ExprList')
 			mut exprs := []ast.Expr{}
 			exprs << lhs
 			for {
@@ -447,13 +449,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			lhs = ast.List{
 				exprs: exprs
 			}
-			p.log('LIST: $exprs.len - $p.scanner.line_nr')
+			p.log('ast.ExprList: $exprs.len - $p.scanner.line_nr')
 		}
 
-		// pratt
+		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
 		if lbp < min_lbp {
-			p.log('breaking precedence')
+			p.log('breaking precedence: $p.tok ($lbp < $min_lbp)')
 			break
 		}
 		// p.expr(lbp)
@@ -515,9 +517,7 @@ pub fn (mut p Parser) lit() string {
 	return lit
 }
 
-// pub fn (mut p Parser) peek(pos int) scanner.Token {
-// 	return scanner.
-// }
+// pub fn (mut p Parser) peek(pos int) scanner.Token {}
 
 pub fn (p &Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}

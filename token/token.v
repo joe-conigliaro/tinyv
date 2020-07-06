@@ -95,7 +95,7 @@ pub enum Token {
 	plus_assign // +=
 	minus_assign // -=
 	div_assign
-	mult_assign
+	mul_assign
 	xor_assign
 	mod_assign
 	or_assign
@@ -192,9 +192,11 @@ pub fn (t Token) left_binding_power() BindingPower {
 		.eq, .ne, .lt, .le, .gt, .ge {
 			return .three
 		}
+		// `&&`
 		.and {
 			return .two
 		}
+		// `||`
 		.logical_or {
 			return .one
 		}
@@ -227,7 +229,7 @@ pub fn (tok Token) is_assignment() bool {
 		.plus_assign, // +=
 		.minus_assign, // -=
 		.div_assign,
-		.mult_assign,
+		.mul_assign,
 		.xor_assign,
 		.mod_assign,
 		.or_assign,

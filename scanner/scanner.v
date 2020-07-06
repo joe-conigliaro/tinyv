@@ -4,8 +4,6 @@ import token
 
 pub struct Scanner {
 	text   string
-// mut:
-	// tokens []token.Token
 pub mut:
 	last_nl_pos int
 	line_nr int
@@ -17,26 +15,11 @@ pub fn new_scanner(text string) &Scanner {
 	return &Scanner{
 		line_nr: 1
 		text: text
-		// tokens: tokens
 	}
 }
 
-// NOTE: scan/scan0 was split in case i choose to cache all tokens / peek
 pub fn (mut s Scanner) scan() token.Token {
 	s.whitespace()
-	// start_pos := s.pos
-	tok := s.scan0()
-	// s.tokens << token.Token{
-	// 	kind: tok,
-	// 	lit: s.lit,
-	// 	line_nr: s.line_nr
-	// 	pos: start_pos
-	// }
-	return tok
-}
-
-pub fn (mut s Scanner) scan0() token.Token {
-	// s.whitespace()
 	// if s.pos >= s.text.len-1 {
 	if s.pos == s.text.len {
 		s.lit = ''
@@ -176,7 +159,7 @@ pub fn (mut s Scanner) scan0() token.Token {
 		`*` {
 			if s.text[s.pos] == `=` {
 				s.pos++
-				return .mult_assign
+				return .mul_assign
 			}
 			return .mul
 		}
