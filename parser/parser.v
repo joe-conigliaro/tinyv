@@ -31,8 +31,6 @@ pub fn (mut p Parser) parse() {
 }
 
 pub fn (mut p Parser) top_stmt() ast.Stmt {
-	// p.next()
-	for {
 	match p.tok {
 		.key_const {
 			return p.const_decl(false)
@@ -103,14 +101,13 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.lsbr {
 			// [attribute]
 			p.next()
-			p.expect(.name)
+			name := p.name()
 			p.expect(.rsbr)
-			continue
+			return ast.Attribute{name: name}
 		}
 		else {
 			panic('X: $p.tok')
 		}
-	}
 	}
 	p.error('unknown top stmt')
 	panic('')

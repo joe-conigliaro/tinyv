@@ -6,9 +6,9 @@ import token
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
 	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
 	| ParExpr | Prefix | Range | Selector | StringLiteral | StructInit
-pub type Stmt =  Assign | Block | ComptimeIf | ConstDecl | EnumDecl | ExprStmt
-	| FlowControl | FnDecl | For | GlobalDecl | Import | Module | Return
-	| StructDecl | TypeDecl | Unsafe
+pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
+	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
+	| Return | StructDecl | TypeDecl | Unsafe
 
 pub struct ArrayInit {
 pub:
@@ -20,6 +20,11 @@ pub:
 	op  token.Token
 	lhs []Expr
 	rhs []Expr
+}
+
+pub struct Attribute {
+pub:
+	name string
 }
 
 pub struct Block {
