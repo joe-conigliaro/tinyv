@@ -48,8 +48,16 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		}
 		.key_import {
 			p.next()
-			mod := p.name()
-			p.log('import: $mod')
+			// TODO: do we parse as string with loop to handle dots
+			// or as selector expr ? 
+			//p.log('import:')
+			//mod := p.expr(.lowest)
+			mut mod := p.name()
+			for p.tok == .dot {
+				p.next()
+				mod += '.' + p.name()
+			}
+			//p.log('import: $mod')
 			return ast.Import{
 
 			}
@@ -376,11 +384,12 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// cast
 			if p.tok == .lpar {
 				p.log('ast.Cast')
-				p.next()
-				expr := p.expr(.lowest)
-				p.expect(.rpar)
+				//p.next()
+				//expr := p.expr(.lowest)
+				p.fn_call_args()
+				//p.expect(.rpar)
 				lhs = ast.Cast{
-					expr: expr
+					//expr: expr
 					// typ: // TODO
 				}
 				if p.tok == .key_or {
@@ -548,6 +557,13 @@ pub fn (mut p Parser) expect(tok token.Token) {
 	p.next()
 }
 
+pub fn (mut p Parser) ident() /*ast.Ident*/ {
+	is_mut := p.tok == .key_mut
+	if is_mut { p.next() }
+	//name := p.name()
+	p.name()
+}
+
 pub fn (mut p Parser) name() string {
 	name := p.scanner.lit
 	p.expect(.name)
@@ -664,6 +680,8 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 	p.expect(.lpar)
 	for p.tok != .rpar {
+		is_mut := p.tok == .key_mut
+		if is_mut { p.next() }
 		p.expect(.name) // arg
 		if p.tok !in [.comma, .rpar] {
 			p.parse_type()
@@ -679,6 +697,20 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 
 pub fn (mut p Parser) fn_call() ast.Call {
 	return ast.Call{}
+}
+
+
+pub fn (mut p Parser) fn_call_args() /* []ast.Arg */ {
+	p.expect(.lpar)
+	for p.tok != .rpar {
+		is_mut := p.tok == .key_mut
+		if is_mut { p.next() }
+		p.expr(.lowest)
+		if p.tok == .comma {
+			p.next()
+		}
+	}
+	p.expect(.rpar)
 }
 
 pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
@@ -751,7 +783,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 }
 
 pub fn (mut p Parser) log(msg string) {
-	println(msg)
+	//println(msg)
 }
 
 pub fn (mut p Parser) error(msg string) {
