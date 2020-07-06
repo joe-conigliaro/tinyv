@@ -7,8 +7,8 @@ pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
 	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
 	| ParExpr | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Block | ComptimeIf | ConstDecl | EnumDecl | ExprStmt
-	| FlowControl | FnDecl | For | Import | Module | Return | StructDecl
-	| TypeDecl
+	| FlowControl | FnDecl | For | GlobalDecl | Import | Module | Return
+	| StructDecl | TypeDecl
 
 pub struct ArrayInit {
 pub:
@@ -71,6 +71,10 @@ pub struct For {
 	init Stmt
 	cond Expr
 	inc  Stmt
+}
+
+pub struct GlobalDecl {
+	
 }
 
 pub struct Ident {

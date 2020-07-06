@@ -43,6 +43,9 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_fn {
 			return p.fn_decl(false)
 		}
+		.key_global {
+			return p.global_decl(false)
+		}
 		.key_import {
 			p.next()
 			mod := p.name()
@@ -70,6 +73,9 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				}
 				.key_fn {
 					return p.fn_decl(true)
+				}
+				.key_global {
+					return p.global_decl(true)
 				}
 				.key_struct {
 					return p.struct_decl(true)
@@ -248,6 +254,14 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		.key_none {
 			p.next()
 			return ast.None{}
+		}
+		.key_sizeof {
+			p.next()
+			p.expect(.lpar)
+			p.expr(.lowest)
+			p.expect(.rpar)
+			// TODO
+			//lhs = ast.SizeOf {}
 		}
 		.key_true, .key_false {
 			val := if p.tok == .key_true { true } else { false }
@@ -680,6 +694,13 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	p.expect(.rcbr)
 	return ast.EnumDecl{
 	}
+}
+
+pub fn (mut p Parser) global_decl(is_public bool) ast.GlobalDecl {
+	p.next()
+	name := p.name()
+	typ := p.parse_type()
+	return ast.GlobalDecl{}
 }
 
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
