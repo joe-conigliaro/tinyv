@@ -113,6 +113,17 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		// 	p.next()
 		// 	return ast.Assign {}
 		// }
+		.dollar {
+			p.next()
+			p.expect(.key_if)
+			p.log('ast.ComptimeIf')
+			cond := p.expr(.lowest)
+			if p.tok == .question {
+				p.next()
+			}
+			block := p.block()
+			return ast.ComptimeIf{}
+		}
 		.key_break, .key_continue {
 			op := p.tok
 			p.next()
@@ -122,7 +133,16 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			in_init := p.in_init
 			p.in_init = true
-			p.expr(.lowest)
+			init := p.stmt()
+			if p.tok == .semicolon {
+				p.next()
+			}
+			cond := p.expr(.lowest)
+			if p.tok == .semicolon {
+				p.next()
+			}
+			inc := p.stmt()
+			//p.expr(.lowest)
 			p.in_init = in_init
 			p.block()
 			return ast.For{}
@@ -225,6 +245,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// 	p.next()
 		// 	p.expr(.lowest)
 		// }
+		.key_none {
+			p.next()
+			return ast.None{}
+		}
 		.key_true, .key_false {
 			val := if p.tok == .key_true { true } else { false }
 			p.next()
@@ -583,8 +607,8 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		}
 		receiver := p.name()
 		// TODO:
-		// receiver_type := p.parse_type()
-		receiver_type := p.lit()
+		receiver_type := p.parse_type()
+		//receiver_type := p.lit()
 		p.expect(.rpar)
 	}
 	name := p.name()
@@ -620,9 +644,12 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 	p.expect(.lpar)
 	for p.tok != .rpar {
 		p.expect(.name) // arg
-		if p.tok == .name {
-			p.expect(.name) // type
+		if p.tok !in [.comma, .rpar] {
+			p.parse_type()
 		}
+		//if p.tok == .name {
+		//	p.expect(.name) // type
+		//}
 		if p.tok == .comma {
 			// p.expect(.comma)
 			p.next()
@@ -709,7 +736,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 }
 
 pub fn (mut p Parser) log(msg string) {
-	//println(msg)
+	println(msg)
 }
 
 pub fn (mut p Parser) error(msg string) {

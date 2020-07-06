@@ -3,11 +3,12 @@ module ast
 import token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident | If
-	| IfGuard | Index | Infix | List | Match | NumberLiteral | ParExpr | Prefix
-	| Range | Selector | StringLiteral | StructInit
-pub type Stmt =  Assign | Block | ConstDecl | EnumDecl | ExprStmt | FlowControl | FnDecl
-	| For | Import | Module | Return | StructDecl | TypeDecl
+pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
+	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
+	| ParExpr | Prefix | Range | Selector | StringLiteral | StructInit
+pub type Stmt =  Assign | Block | ComptimeIf | ConstDecl | EnumDecl | ExprStmt
+	| FlowControl | FnDecl | For | Import | Module | Return | StructDecl
+	| TypeDecl
 
 pub struct ArrayInit {
 pub:
@@ -42,6 +43,10 @@ pub:
 	value string
 }
 
+pub struct ComptimeIf {
+
+}
+
 pub struct ConstDecl {
 	
 }
@@ -63,7 +68,9 @@ pub struct FlowControl {
 }
 
 pub struct For {
-	
+	init Stmt
+	cond Expr
+	inc  Stmt
 }
 
 pub struct Ident {
@@ -104,6 +111,10 @@ pub struct Match {
 pub struct Module {
 pub:
 	name string
+}
+
+pub struct None {
+
 }
 
 pub struct NumberLiteral {

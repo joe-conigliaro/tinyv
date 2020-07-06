@@ -239,16 +239,17 @@ pub fn (mut s Scanner) scan0() token.Token {
 			}
 			return .gt
 		}
-		`#` { return .hash }
-		`,` { return .comma }
 		// `@` { return .at }
-		`;` { return .semicolon }
+		`,` { return .comma }
+		`$` { return .dollar }
+		`#` { return .hash }
 		`{` { return .lcbr }
 		`}` { return .rcbr }
 		`(` { return .lpar }
 		`)` { return .rpar }
 		`[` { return .lsbr }
 		`]` { return .rsbr }
+		`;` { return .semicolon }
 		`?` { return .question }
 		else { return .unknown }
 	}

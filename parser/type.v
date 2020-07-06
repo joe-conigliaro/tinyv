@@ -4,6 +4,11 @@ import types
 
 // TODO:
 pub fn (mut p Parser) parse_type() types.Type {
+	// optional
+	is_optional := p.tok == .question
+	if is_optional {
+		p.next()
+	}
 	// pointer
 	mut ptr_count := 0
 	for p.tok == .amp {
