@@ -11,15 +11,22 @@ fn main() {
 	// text := 'a := 1*2'
 	// text := 'for i,x in chars { println(a)\nx := 100\n g++\ny := @ }'
 
-	// file := '/home/kastro/dev/src/v/vlib/builtin/string.v'
-	// file := '/home/kastro/dev/src/v/vlib/regex/regex.v'
 	files := [
 		//'/home/kastro/dev/src/hv/syntax.v'
+		'/home/kastro/dev/src/v/vlib/builtin/int.v',
+		'/home/kastro/dev/src/v/vlib/builtin/string.v',
+		'/home/kastro/dev/src/v/vlib/regex/regex.v',
+		'/home/kastro/dev/src/v/vlib/crypto/aes/block_generic.v'
+	]
+	/*
+	files := [
+		//'/mnt/storage/homes/kastro/dev/hv/syntax.v'
 		'/mnt/storage/homes/kastro/dev/v/vlib/builtin/int.v',
 		'/mnt/storage/homes/kastro/dev/v/vlib/builtin/string.v',
 		'/mnt/storage/homes/kastro/dev/v/vlib/regex/regex.v',
 		'/mnt/storage/homes/kastro/dev/v/vlib/crypto/aes/block_generic.v'
 	]
+	*/
 	total0 := time.ticks()
 	for file in files {
 		mut text := os.read_file(file) or {

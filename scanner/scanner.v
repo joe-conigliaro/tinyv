@@ -24,7 +24,7 @@ pub fn new_scanner(text string) &Scanner {
 // NOTE: scan/scan0 was split in case i choose to cache all tokens / peek
 pub fn (mut s Scanner) scan() token.Token {
 	s.whitespace()
-	start_pos := s.pos
+	// start_pos := s.pos
 	tok := s.scan0()
 	// s.tokens << token.Token{
 	// 	kind: tok,
@@ -48,18 +48,21 @@ pub fn (mut s Scanner) scan0() token.Token {
 	// s.lit = ''
 	c := s.text[s.pos]
 	start_pos := s.pos
-	// comments OR / OR /=
+	// comment OR `/=` OR `/`
 	if c == `/` {
+		// comment
 		if s.text[s.pos+1] in [`/`, `*`] {
 			s.comment()
 			s.lit = s.text[start_pos..s.pos]
 			return .comment
 		}
 		s.pos++
+		// `:=`
 		if s.text[s.pos] == `=` {
 			s.pos++
 			return .div_assign
 		}
+		// `/`
 		return .div
 	}
 	// number
