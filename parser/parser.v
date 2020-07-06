@@ -379,7 +379,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 			name := p.name()
 			// TODO: parse type for cast
-			p.log('NAME: $name')
+			p.log('NAME: $name - $p.tok ($p.scanner.lit)')
 			// TODO: call as well as cast (currently all parsed as cast :D)
 			// cast
 			if p.tok == .lpar {
@@ -522,10 +522,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// 	break
 		// }
 		// p.next()
-		
 		if p.tok.is_infix() {
 			p.next()
-			lhs =p.expr(p.tok.left_binding_power())
+			lhs = p.expr(p.tok.left_binding_power())
 		}
 		else if p.tok.is_postfix() {
 			p.next()

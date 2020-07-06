@@ -48,11 +48,19 @@ pub fn (mut s Scanner) scan0() token.Token {
 	// s.lit = ''
 	c := s.text[s.pos]
 	start_pos := s.pos
-	// comments
+	// comments OR / OR /=
 	if c == `/` {
-		s.comment()
-		s.lit = s.text[start_pos..s.pos]
-		return .comment
+		if s.text[s.pos+1] in [`/`, `*`] {
+			s.comment()
+			s.lit = s.text[start_pos..s.pos]
+			return .comment
+		}
+		s.pos++
+		if s.text[s.pos] == `=` {
+			s.pos++
+			return .div_assign
+		}
+		return .div
 	}
 	// number
 	else if c >= `0` && c <= `9` {
@@ -169,6 +177,7 @@ pub fn (mut s Scanner) scan0() token.Token {
 			}
 			return .mul
 		}
+		/*
 		`/` {
 			if s.text[s.pos] == `=` {
 				s.pos++
@@ -176,6 +185,7 @@ pub fn (mut s Scanner) scan0() token.Token {
 			}
 			return .div
 		}
+		*/
 		`^` {
 			if s.text[s.pos] == `=` {
 				s.pos++
