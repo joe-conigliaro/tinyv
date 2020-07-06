@@ -219,3 +219,20 @@ pub fn (tok Token) is_infix() bool {
 pub fn (tok Token) is_postfix() bool {
 	return tok in [.inc, .dec]
 }
+
+pub fn (tok Token) is_assignment() bool {
+	return tok in [
+		.assign, // =
+		.decl_assign, // :=
+		.plus_assign, // +=
+		.minus_assign, // -=
+		.div_assign,
+		.mult_assign,
+		.xor_assign,
+		.mod_assign,
+		.or_assign,
+		.and_assign,
+		.right_shift_assign,
+		.left_shift_assign
+	]
+}

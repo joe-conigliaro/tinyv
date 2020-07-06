@@ -123,7 +123,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		// .key_if {}
 		.name, .key_mut {
 			lhs := p.expr_list()
-			if p.tok in [.assign, .decl_assign, .plus_assign, .minus_assign] {
+			if p.tok.is_assignment() {
 				op := p.tok
 				p.next()
 				return ast.Assign{op: op, lhs: lhs, rhs: p.expr_list()}
@@ -187,13 +187,19 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// }
 		.key_if {
 			println('START IF')
-			p.next()
-			p.expr(.lowest)
-			p.expect(.lcbr)
-			for p.tok != .rcbr {
-				p.stmt()
+			for p.tok in [.key_if, .key_else] {
+				p.next()
+				if p.tok == .key_if {
+					p.next()
+				}
+				p.expr(.lowest)
+				p.block()
+				//p.expect(.lcbr)
+				//for p.tok != .rcbr {
+				//	p.stmt()
+				//}
+				//p.expect(.rcbr)
 			}
-			p.expect(.rcbr)
 			lhs = ast.If{}
 			println('END IF')
 		}
@@ -358,11 +364,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		if p.tok == .lsbr {
 			// lhs = p.expr(.lowest)
 			p.next()
+			println('ast.IndexExpr: $p.scanner.lit')
 			p.expr(.lowest)
 			lhs = ast.Index{
 				lhs: lhs
 			}
 			p.expect(.rsbr)
+			continue
 		}
 		// Selector
 		else if p.tok == .dot {
@@ -373,6 +381,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				lhs: lhs
 				rhs: rhs
 			}
+			continue
 		}
 		// expr list muti assign / return
 		else if p.tok == .comma {
