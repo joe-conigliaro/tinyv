@@ -258,21 +258,21 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				if p.tok == .name && p.scanner.line_nr == line_nr {
 					// typ := p.parse_type()
 					p.next()
-				}
-				// init
-				mut init_exprs := map[string]ast.Expr{}
-				if p.tok == .lcbr {
-					p.next()
-					allowed_init_keys := ['cap', 'init', 'len']
-					for p.tok != .rcbr {
-						key := p.name()
-						if key !in allowed_init_keys {
-							p.error('expecting one of ' + allowed_init_keys.join(', '))
+					// init
+					mut init_exprs := map[string]ast.Expr{}
+					if p.tok == .lcbr {
+						p.next()
+						allowed_init_keys := ['cap', 'init', 'len']
+						for p.tok != .rcbr {
+							key := p.name()
+							if key !in allowed_init_keys {
+								p.error('expecting one of ' + allowed_init_keys.join(', '))
+							}
+							p.expect(.colon)
+							init_exprs[key] = p.expr(.lowest)
 						}
-						p.expect(.colon)
-						init_exprs[key] = p.expr(.lowest)
+						p.expect(.rcbr)
 					}
-					p.expect(.rcbr)
 				}
 				lhs = ast.ArrayInit{
 					exprs: exprs
@@ -382,6 +382,15 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				rhs: rhs
 			}
 			continue
+		}
+		// range
+		else if p.tok == .dotdot {
+			p.next()
+			println('ast.Range')
+			lhs = ast.Range{
+				start: lhs
+				end: p.expr(.lowest)
+			}
 		}
 		// expr list muti assign / return
 		else if p.tok == .comma {
@@ -523,7 +532,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	// method
 	if p.tok == .lpar {
 		p.next()
-		// TODO: use parse_ident & parse_type
+		// TODO: use parse_ident & type
 		// receiver := p.ident() ?
 		if p.tok == .key_mut {
 			p.next()
@@ -552,7 +561,8 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	}
 
 	if p.tok != .lcbr {
-		p.expect(.name) // return type
+		//p.expect(.name) // return type
+		p.parse_type()
 	}
 
 	stmts := p.block()
@@ -586,6 +596,10 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	for p.tok != .rcbr {
 		field_name := p.name()
 		println('field: $field_name')
+		if p.tok == .assign {
+			p.next()
+			default_val := p.expr(.lowest)
+		}
 	}
 	p.expect(.rcbr)
 	return ast.EnumDecl{

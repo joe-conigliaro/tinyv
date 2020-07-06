@@ -4,8 +4,8 @@ import token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | CharLiteral | Ident | If | Index
-	| Infix | List | Match | NumberLiteral | ParExpr | Prefix | Selector | StringLiteral
-	| StructInit
+	| Infix | List | Match | NumberLiteral | ParExpr | Prefix | Range | Selector
+	| StringLiteral | StructInit
 pub type Stmt =  Assign | Block | ConstDecl | EnumDecl | ExprStmt | FlowControl | FnDecl
 	| For | Import | Module | Return | StructDecl | TypeDecl
 
@@ -108,6 +108,11 @@ pub struct ParExpr {
 
 pub struct Prefix {
 
+}
+
+pub struct Range {
+	start Expr
+	end   Expr
 }
 
 pub struct Return {
