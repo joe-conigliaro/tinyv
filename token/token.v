@@ -42,7 +42,7 @@ const (
 		'pub': Token.key_pub,
 		'in': Token.key_in,
 		'atomic': Token.key_atomic,
-		'or': Token.key_orelse,
+		'or': Token.key_or,
 		'__global': Token.key_global,
 		'union': Token.key_union,
 		'static': Token.key_static,
@@ -159,7 +159,7 @@ pub enum Token {
 	key_true
 	key_type
 	key_typeof
-	key_orelse
+	key_or
 	key_union
 	key_pub
 	key_static

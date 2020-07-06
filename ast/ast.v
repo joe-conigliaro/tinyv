@@ -3,9 +3,9 @@ module ast
 import token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | BoolLiteral | Cast | CharLiteral | Ident | If | Index
-	| Infix | List | Match | NumberLiteral | ParExpr | Prefix | Range | Selector
-	| StringLiteral | StructInit
+pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident | If
+	| IfGuard | Index | Infix | List | Match | NumberLiteral | ParExpr | Prefix
+	| Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Block | ConstDecl | EnumDecl | ExprStmt | FlowControl | FnDecl
 	| For | Import | Module | Return | StructDecl | TypeDecl
 
@@ -31,6 +31,10 @@ pub struct BoolLiteral {
 
 pub struct Cast {
 	expr Expr
+}
+
+pub struct Call {
+	lhs Expr
 }
 
 pub struct CharLiteral {
@@ -70,6 +74,11 @@ pub:
 
 pub struct If {
 
+}
+
+pub struct IfGuard {
+	cond     Expr
+	or_block []Stmt
 }
 
 pub struct Infix {
