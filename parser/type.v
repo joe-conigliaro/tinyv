@@ -25,7 +25,7 @@ pub fn (mut p Parser) parse_type() types.Type {
 		return types.Type{}
 	}
 	// array
-	if p.tok == .lsbr {
+	else if p.tok == .lsbr {
 		p.next()
 		if p.tok == .number {
 			p.next()
@@ -34,12 +34,24 @@ pub fn (mut p Parser) parse_type() types.Type {
 		elem_type := p.parse_type()
 		return types.Type{}
 	}
-	if p.tok == .key_fn {
+	// Tuple (multi return)
+	else if p.tok == .lpar {
+		p.next()
+		mut mr_types := []types.Type{}
+		for p.tok != .rpar {
+			mr_types << p.parse_type()
+			if p.tok == .comma {
+				p.next()
+			}
+		}
+		p.expect(.rpar)
+		return types.Type{}
+	}
+	else if p.tok == .key_fn {
 		return p.parse_fn_type()
 	}
 
-	typ := p.scanner.lit
-	p.expect(.name)
+	typ := p.name()
 
 	return types.Type{}
 }
