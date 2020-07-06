@@ -101,7 +101,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			// [attribute]
 			p.next()
 			name := p.name()
-			p.log('ast.Module: $name')
+			p.log('ast.Attribute: $name')
 			p.expect(.rsbr)
 			return ast.Attribute{name: name}
 		}
