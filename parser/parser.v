@@ -333,33 +333,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				p.next()
 			}
 			name := p.name()
-			// TODO: parse type for cast
 			p.log('NAME: $name - $p.tok ($p.scanner.lit)')
-			// TODO: call as well as cast (currently all parsed as cast :D)
-			// cast
-			if p.tok == .lpar {
-				p.log('ast.Cast')
-				//p.next()
-				//expr := p.expr(.lowest)
-				p.fn_call_args()
-				//p.expect(.rpar)
-				lhs = ast.Cast{
-					//expr: expr
-					// typ: // TODO
-				}
-				if p.tok == .key_or {
-					p.log('ast.IfGuard')
-					p.next()
-					lhs = ast.IfGuard{
-						cond: lhs
-						or_stmts: p.block()
-					}
-				}
-			}
 			// struct init
 			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
 			// currently using in_init for if/for/map initialization
-			else if p.tok == .lcbr && !p.in_init {
+			if p.tok == .lcbr && !p.in_init {
 				p.next()
 				mut fields := []ast.FieldInit{}
 				for p.tok != .rcbr {
@@ -417,6 +395,27 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	}
 
 	for {
+		// TODO: workout what comes next
+		// TODO: call as well as cast (currently all parsed as cast :D)
+		if p.tok == .lpar {
+			p.log('ast.Cast or Call: ${typeof(lhs)}')
+			//p.next()
+			//expr := p.expr(.lowest)
+			p.fn_call_args()
+			//p.expect(.rpar)
+			lhs = ast.Cast{
+				//expr: expr
+				// typ: // TODO
+			}
+			if p.tok == .key_or {
+				p.log('ast.IfGuard')
+				p.next()
+				lhs = ast.IfGuard{
+					cond: lhs
+					or_stmts: p.block()
+				}
+			}
+		}
 		// excluded from binding power check they run either way
 		// index
 		if p.tok == .lsbr {

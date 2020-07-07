@@ -10,10 +10,11 @@ const(
 	v_dir = '/home/kastro/dev/src/v'
 	// v_dir = '/mnt/storage/homes/kastro/dev/v'
 	files = [
-		'vlib/builtin/int.v',
-		'vlib/builtin/string.v',
-		'vlib/regex/regex.v',
-		'vlib/crypto/aes/block_generic.v'
+		'$v_dir/vlib/builtin/int.v',
+		'$v_dir/vlib/builtin/string.v',
+		'$v_dir/vlib/regex/regex.v',
+		'$v_dir/vlib/crypto/aes/block_generic.v'
+		'tests/syntax.v'
 	]
 )
 
@@ -27,7 +28,7 @@ fn main() {
 
 pub fn scan_files() {
 	for file in files {
-		mut text := os.read_file('$v_dir/$file') or {
+		mut text := os.read_file('$file') or {
 			panic('error reading $file')
 		}
 		s := scanner.new_scanner(text)
@@ -49,7 +50,7 @@ pub fn scan_files() {
 
 // pub fn scan_files_v2() {
 // 	for file in files {
-// 		mut text := os.read_file('$v_dir/$file') or {
+// 		mut text := os.read_file('$file') or {
 // 			panic('error reading $file')
 // 		}
 // 		vs := vscanner.new_scanner(text, .parse_comments)
@@ -70,7 +71,7 @@ pub fn scan_files() {
 pub fn parse_files() {
 	for file in files {
 		pt0 := time.ticks()
-		mut p := parser.new_parser('$v_dir/$file')
+		mut p := parser.new_parser('$file')
 		p.parse()
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
