@@ -59,7 +59,9 @@ pub struct ConstDecl {
 }
 
 pub struct EnumDecl {
-	
+	is_public bool
+	name      string
+	fields    []FieldDecl
 }
 
 pub struct ExprStmt {
@@ -67,10 +69,11 @@ pub struct ExprStmt {
 }
 
 pub struct FieldDecl {
-	name    string
-	typ     types.Type
-	default Expr
+	name  string
+	typ   types.Type
+	value Expr
 }
+
 pub struct FieldInit {
 	name  string
 	value Expr
@@ -83,8 +86,8 @@ pub struct File {
 
 pub struct FnDecl {
 	is_public bool
-	name  string
-	stmts []Stmt
+	name      string
+	stmts     []Stmt
 }
 
 pub struct FlowControl {
@@ -98,7 +101,9 @@ pub struct For {
 }
 
 pub struct GlobalDecl {
-	
+	name  string
+	typ   types.Type
+	value Expr
 }
 
 pub struct Ident {
@@ -111,7 +116,7 @@ pub:
 pub enum IdentKind {
 	unresolved
 	constant
-	functiom
+	function
 	global
 	mod
 	variable
@@ -188,7 +193,9 @@ pub struct StringLiteral {
 }
 
 pub struct StructDecl {
-	fields []FieldDecl
+	is_public bool
+	name      string
+	fields    []FieldDecl
 }
 
 pub struct StructInit {
@@ -196,7 +203,9 @@ pub struct StructInit {
 }
 
 pub struct TypeDecl {
-	
+	is_public bool
+	name      string
+	typ       types.Type
 }
 
 pub struct Unsafe {

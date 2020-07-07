@@ -47,7 +47,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.fn_decl(false)
 		}
 		.key_global {
-			return p.global_decl(false)
+			return p.global_decl()
 		}
 		.key_import {
 			p.next()
@@ -83,9 +83,6 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				}
 				.key_fn {
 					return p.fn_decl(true)
-				}
-				.key_global {
-					return p.global_decl(true)
 				}
 				.key_struct {
 					return p.struct_decl(true)
@@ -276,7 +273,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// []int{}
 			// TODO: restructure in parts (type->init) ?? no
 			if p.tok == .name && p.scanner.line_nr == line_nr {
-				// typ := p.parse_type()
+				// typ := p.typ()
 				p.next()
 				// init
 				mut init_exprs := map[string]ast.Expr{}
@@ -585,7 +582,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 			p.next()
 		}
 		receiver := p.name()
-		receiver_type := p.parse_type()
+		receiver_type := p.typ()
 		p.expect(.rpar)
 	}
 	name := p.name()
@@ -593,7 +590,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	p.fn_args()
 
 	if p.tok != .lcbr {
-		p.parse_type() // return type
+		p.typ() // return type
 	}
 
 	p.log('ast.FnDecl: $name')
@@ -611,7 +608,7 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 		if is_mut { p.next() }
 		p.expect(.name) // arg
 		if p.tok !in [.comma, .rpar] {
-			p.parse_type()
+			p.typ()
 		}
 		if p.tok == .comma {
 			p.next()
@@ -642,35 +639,52 @@ pub fn (mut p Parser) fn_call_args() /* []ast.Arg */ {
 pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	p.next()
 	name := p.name()
-	p.log('enum: $name')
+	p.log('ast.EnumDecl: $name')
 	p.expect(.lcbr)
-	// fields
+	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		field_name := p.name()
-		p.log('field: $field_name')
+		mut value := ast.Expr{}
 		if p.tok == .assign {
 			p.next()
-			default_val := p.expr(.lowest)
+			value = p.expr(.lowest)
+		}
+		fields << ast.FieldDecl{
+			name: field_name
+			value: value
 		}
 	}
 	p.expect(.rcbr)
 	return ast.EnumDecl{
+		is_public: is_public
+		name: name
+		fields: fields
 	}
 }
 
-pub fn (mut p Parser) global_decl(is_public bool) ast.GlobalDecl {
+pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 	p.next()
 	name := p.name()
-	typ := p.parse_type()
-	return ast.GlobalDecl{}
+	typ := p.typ()
+	mut value := ast.Expr{}
+	if p.tok == .assign {
+		p.next()
+		value = p.expr(.lowest)
+	}
+	return ast.GlobalDecl{
+		name: name
+		typ: typ
+		value: value
+	}
 }
 
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	p.next()
 	name := p.name()
-	p.log('struct: $name')
+	p.log('ast.StructDecl: $name')
 	p.expect(.lcbr)
 	// fields
+	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		is_pub := p.tok == .key_pub
 		if is_pub { p.next() }
@@ -678,17 +692,24 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
 		field_name := p.name()
-		p.log('field: $field_name')
-		typ := p.parse_type()
+		typ := p.typ()
 		// default field value
+		mut value := ast.Expr{}
 		if p.tok == .assign {
 			p.next()
-			default_val := p.expr(.lowest)
+			value = p.expr(.lowest)
+		}
+		fields << ast.FieldDecl{
+			name: field_name
+			typ: typ
+			value: value
 		}
 	}
 	p.next()
 	return ast.StructDecl{
-
+		is_public: is_public
+		name: name
+		fields: fields
 	}
 }
 
@@ -699,10 +720,13 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	if p.tok == .eq {
 		p.next()
 	}
-	p.parse_type()
-
+	typ := p.typ()
 	p.log('ast.TypeDecl: $name')
-	return ast.TypeDecl{}
+	return ast.TypeDecl{
+		is_public: is_public
+		name: name
+		typ: typ
+	}
 }
 
 pub fn (mut p Parser) log(msg string) {

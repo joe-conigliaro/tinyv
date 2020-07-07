@@ -3,7 +3,7 @@ module parser
 import types
 
 // TODO:
-pub fn (mut p Parser) parse_type() types.Type {
+pub fn (mut p Parser) typ() types.Type {
 	// optional
 	is_optional := p.tok == .question
 	if is_optional {
@@ -19,9 +19,9 @@ pub fn (mut p Parser) parse_type() types.Type {
 	if p.tok == .name && p.scanner.lit == 'map' {
 		p.next()
 		p.expect(.lsbr)
-		key_type := p.parse_type()
+		key_type := p.typ()
 		p.expect(.rsbr)
-		val_type := p.parse_type()
+		val_type := p.typ()
 		return types.Type{}
 	}
 	// array
@@ -31,7 +31,7 @@ pub fn (mut p Parser) parse_type() types.Type {
 			p.next()
 		}
 		p.expect(.rsbr)
-		elem_type := p.parse_type()
+		elem_type := p.typ()
 		return types.Type{}
 	}
 	// Tuple (multi return)
@@ -39,7 +39,7 @@ pub fn (mut p Parser) parse_type() types.Type {
 		p.next()
 		mut mr_types := []types.Type{}
 		for p.tok != .rpar {
-			mr_types << p.parse_type()
+			mr_types << p.typ()
 			if p.tok == .comma {
 				p.next()
 			}
@@ -64,7 +64,7 @@ pub fn (mut p Parser) parse_fn_type() types.Type {
 	}
 	if p.tok in [.amp, .lsbr, .name, .question] {
 		// return type
-		p.parse_type()
+		p.typ()
 	}
 	return types.Type{}
 }
