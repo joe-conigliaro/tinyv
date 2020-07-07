@@ -54,7 +54,8 @@ pub struct ComptimeIf {
 }
 
 pub struct ConstDecl {
-	
+	is_public bool
+	fields    []FieldInit
 }
 
 pub struct EnumDecl {
@@ -75,8 +76,15 @@ pub struct FieldInit {
 	value Expr
 }
 
+pub struct File {
+	path  string
+	stmts []Stmt
+}
+
 pub struct FnDecl {
-	
+	is_public bool
+	name  string
+	stmts []Stmt
 }
 
 pub struct FlowControl {

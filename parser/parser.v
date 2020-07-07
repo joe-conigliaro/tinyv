@@ -23,10 +23,15 @@ pub fn new_parser(file string) Parser {
 	}
 }
 
-pub fn (mut p Parser) parse() {
+pub fn (mut p Parser) parse() ast.File {
 	p.next()
+	mut top_stmts := []ast.Stmt{}
 	for p.tok != .eof {
-		p.top_stmt()
+		top_stmts << p.top_stmt()
+	}
+	return ast.File{
+		path: p.file_path
+		stmts: top_stmts
 	}
 }
 
@@ -548,19 +553,24 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	p.next()
 	p.expect(.lpar)
+	mut fields := []ast.FieldInit{}
 	for {
 		name := p.name()
 		p.log('const: $name')
 		p.expect(.assign)
-		p.expr(.lowest)
+		value := p.expr(.lowest)
+		fields << ast.FieldInit{
+			name:  name
+			value: value
+		}
 		if p.tok == .rpar {
 			break
 		}
 	}
 	p.expect(.rpar)
-
 	return ast.ConstDecl{
-		
+		is_public: is_public
+		fields: fields
 	}
 }
 
@@ -579,7 +589,6 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.expect(.rpar)
 	}
 	name := p.name()
-	p.log('FN: $name')
 
 	p.fn_args()
 
@@ -587,10 +596,11 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.parse_type() // return type
 	}
 
-	stmts := p.block()
-
+	p.log('ast.FnDecl: $name')
 	return ast.FnDecl{
-
+		is_public: is_public
+		name: name
+		stmts: p.block()
 	}
 }
 
