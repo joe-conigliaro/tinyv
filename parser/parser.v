@@ -349,21 +349,27 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// currently using in_init for if/for/map initialization
 			else if p.tok == .lcbr && !p.in_init {
 				p.next()
+				mut fields := []ast.FieldInit{}
 				for p.tok != .rcbr {
-					//field_name := p.name()
 					// could be name or init without field name
-					p.expr(.lowest)
-					// has value
+					mut field_name := ''
+					mut value := p.expr(.lowest)
+					// name / value
 					if p.tok == .colon {
+						field_name = (value as ast.Ident).name
 						p.next()
-						val := p.expr(.lowest)
+						value = p.expr(.lowest)
 					}
 					if p.tok == .comma {
 						p.next()
 					}
+					fields << ast.FieldInit{
+						name: field_name
+						value: value
+					}
 				}
 				p.expect(.rcbr)
-				lhs = ast.StructInit{}
+				lhs = ast.StructInit{fields: fields}
 			}
 			// ident
 			else {

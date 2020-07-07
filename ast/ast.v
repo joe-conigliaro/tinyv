@@ -1,6 +1,7 @@
 module ast
 
 import token
+import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
@@ -62,6 +63,16 @@ pub struct EnumDecl {
 
 pub struct ExprStmt {
 	
+}
+
+pub struct FieldDecl {
+	name    string
+	typ     types.Type
+	default Expr
+}
+pub struct FieldInit {
+	name  string
+	value Expr
 }
 
 pub struct FnDecl {
@@ -169,11 +180,11 @@ pub struct StringLiteral {
 }
 
 pub struct StructDecl {
-	
+	fields []FieldDecl
 }
 
 pub struct StructInit {
-	
+	fields []FieldInit
 }
 
 pub struct TypeDecl {
