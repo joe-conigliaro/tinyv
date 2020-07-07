@@ -51,25 +51,31 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		}
 		.key_import {
 			p.next()
-			// TODO: do we parse as string with loop to handle dots
-			// or as selector expr ? 
+			// NOTE: we can also use SelectorExpr if we like
 			// mod := p.expr(.lowest)
-			mut mod := p.name()
+			mut name := p.name()
+			mut alias := name
 			for p.tok == .dot {
 				p.next()
-				mod += '.' + p.name()
+				alias = p.name()
+				name += '.$alias'
 			}
-			p.log('ast.Import: $mod')
+			if p.tok == .key_as {
+				p.next()
+				alias = p.name()
+			}
+			p.log('ast.Import: $name as $alias')
 			return ast.Import{
-
+				name: name
+				alias: alias
 			}
 		}
 		.key_module {
 			p.next()
-			mod := p.name()
-			p.log('ast.Module: $mod')
+			name := p.name()
+			p.log('ast.Module: $name')
 			return ast.Module{
-
+				name: name
 			}
 		}
 		.key_pub {
@@ -146,10 +152,14 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			if p.tok == .semicolon {
 				p.next()
 			}
-			inc := p.stmt()
+			post := p.stmt()
 			p.in_init = in_init
 			p.block()
-			return ast.For{}
+			return ast.For{
+				init: init
+				cond: cond
+				post: post
+			}
 		}
 		.name, .key_mut {
 			lhs := p.expr_list()
@@ -167,7 +177,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				p.log('## RETURN IS LIST')
 			}
 			return ast.Return{
-
+				expr: expr
 			}
 		}
 		.key_unsafe {
@@ -178,17 +188,19 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
-			p.log('HRMMM: $p.tok')
 			expr := p.expr(.lowest)
 			if p.tok in [.assign, .decl_assign] {
-				p.next()
-				return ast.Assign{}
+				panic('What the? $p.tok')
 			}
-			return ast.ExprStmt{}
+			// if p.tok in [.assign, .decl_assign] {
+			// 	p.next()
+			// 	return ast.Assign{}
+			// }
+			return ast.ExprStmt{
+				expr: expr
+			}
 		}
 	}
-
-	// TODO
 	p.error('unknown stmt: $p.tok')
 	panic('')
 }
@@ -239,22 +251,20 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			//lhs = ast.SizeOf {}
 		}
 		.key_true, .key_false {
-			val := if p.tok == .key_true { true } else { false }
+			value := if p.tok == .key_true { true } else { false }
 			p.next()
 			return ast.BoolLiteral{
-				val: val
+				value: value
 			}
 		}
 		.lpar {
-			// ParExpr
+			// Paren
 			p.next()
-			p.log('PAREXPR:')
-			p.expr(.lowest)
-			// TODO
-			p.expect(.rpar)
-			lhs = ast.ParExpr{
-
+			p.log('ast.Paren:')
+			lhs = ast.Paren{
+				expr: p.expr(.lowest)
 			}
+			p.expect(.rpar)
 		}
 		.lsbr {
 			p.next()
@@ -383,7 +393,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		.number {
 			value := p.lit()
-			p.log('NUMBER: $value')
+			p.log('ast.NumberLiteral: $value')
 			lhs = ast.NumberLiteral{
 				value: value
 			}
@@ -533,6 +543,7 @@ pub fn (p &Parser) block() []ast.Stmt {
 	return stmts
 }
 
+// TODO: best way to handle (list or []Expr)?
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	expr := p.expr(.lowest)
 	match expr {

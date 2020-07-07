@@ -6,7 +6,7 @@ import types
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
 	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
-	| ParExpr | Prefix | Range | Selector | StringLiteral | StructInit
+	| Paren | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
 	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
 	| Return | StructDecl | TypeDecl | Unsafe
@@ -33,7 +33,7 @@ pub struct Block {
 }
 
 pub struct BoolLiteral {
-	val bool
+	value bool
 }
 
 pub struct Cast {
@@ -65,7 +65,7 @@ pub struct EnumDecl {
 }
 
 pub struct ExprStmt {
-	
+	expr Expr
 }
 
 pub struct FieldDecl {
@@ -95,9 +95,9 @@ pub struct FlowControl {
 }
 
 pub struct For {
-	init Stmt
-	cond Expr
-	inc  Stmt
+	init Stmt // initialization
+	cond Expr // condition
+	post Stmt // post iteration (afterthought)
 }
 
 pub struct GlobalDecl {
@@ -142,7 +142,8 @@ pub:
 }
 
 pub struct Import {
-
+	name  string
+	alias string
 }
 
 pub struct Index {
@@ -166,8 +167,8 @@ pub:
 	value string
 }
 
-pub struct ParExpr {
-
+pub struct Paren {
+	expr Expr
 }
 
 pub struct Prefix {
@@ -180,7 +181,8 @@ pub struct Range {
 }
 
 pub struct Return {
-
+	// TODO: do we use []Expr or Expr and List
+	expr Expr
 }
 
 pub struct Selector {
