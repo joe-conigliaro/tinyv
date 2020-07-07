@@ -85,8 +85,19 @@ pub struct GlobalDecl {
 pub struct Ident {
 pub:
 	name   string
+	kind   IdentKind
 	is_mut bool
 }
+
+pub enum IdentKind {
+	unresolved
+	constant
+	functiom
+	global
+	mod
+	variable
+}
+
 
 pub struct If {
 

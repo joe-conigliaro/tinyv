@@ -345,8 +345,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				}
 			}
 			// struct init
-			// TODO: replace capital check with type check OR with inside stmt init check (`for cond {` OR `if cond {`)
-			//else if p.tok == .lcbr && name[0].is_capital() {
+			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
+			// currently using in_init for if/for/map initialization
 			else if p.tok == .lcbr && !p.in_init {
 				p.next()
 				for p.tok != .rcbr {
@@ -496,13 +496,6 @@ pub fn (mut p Parser) expect(tok token.Token) {
 		p.error('unexpected token. expecting `$tok`, got `$p.tok`')
 	}
 	p.next()
-}
-
-pub fn (mut p Parser) ident() /*ast.Ident*/ {
-	is_mut := p.tok == .key_mut
-	if is_mut { p.next() }
-	//name := p.name()
-	p.name()
 }
 
 pub fn (mut p Parser) name() string {
