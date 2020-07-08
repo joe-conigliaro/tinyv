@@ -6,10 +6,17 @@ import types
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
 	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
-	| Paren | Prefix | Range | Selector | StringLiteral | StructInit
+	| Paren | Postfix | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
 	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
 	| Return | StructDecl | TypeDecl | Unsafe
+
+pub struct Arg {
+pub:
+	name   string
+	expr   Expr
+	is_mut bool
+}
 
 pub struct ArrayInit {
 pub:
@@ -41,7 +48,9 @@ pub struct Cast {
 }
 
 pub struct Call {
-	lhs Expr
+	lhs  Expr
+	args []Arg
+	// args []Expr // NOTE: see call_args()
 }
 
 pub struct CharLiteral {
@@ -133,7 +142,9 @@ pub struct IfGuard {
 }
 
 pub struct Infix {
-
+	op  token.Token
+	lhs Expr
+	rhs Expr
 }
 
 pub struct List {
@@ -171,8 +182,14 @@ pub struct Paren {
 	expr Expr
 }
 
-pub struct Prefix {
+pub struct Postfix {
+	op   token.Token
+	expr Expr
+}
 
+pub struct Prefix {
+	op   token.Token
+	expr Expr
 }
 
 pub struct Range {

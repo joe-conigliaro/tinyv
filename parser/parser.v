@@ -387,26 +387,26 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		else {
 			if p.tok.is_prefix() {
+				op := p.tok
 				p.next()
-				p.expr(.lowest)
-				return ast.Prefix{}
+				return ast.Prefix{
+					op: op
+					expr: p.expr(.lowest)
+				}
 			}
 		}
 	}
 
 	for {
-		// TODO: workout what comes next
-		// TODO: call as well as cast (currently all parsed as cast :D)
 		if p.tok == .lpar {
 			p.log('ast.Cast or Call: ${typeof(lhs)}')
-			//p.next()
-			//expr := p.expr(.lowest)
-			p.fn_call_args()
-			//p.expect(.rpar)
-			lhs = ast.Cast{
-				//expr: expr
-				// typ: // TODO
+			args := p.call_args()
+			// lhs = ast.Cast{
+			lhs = ast.Call{
+				lhs: lhs
+				args: args
 			}
+			// TODO: later decide if its a cast
 			if p.tok == .key_or {
 				p.log('ast.IfGuard')
 				p.next()
@@ -454,8 +454,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// or just use list() where needed eg. assign
 		else if p.tok == .comma {
 			p.next()
-			mut exprs := []ast.Expr{}
-			exprs << lhs
+			mut exprs := [lhs]
 			for {
 				exprs << p.expr(.lowest)
 				if p.tok != .comma {
@@ -483,12 +482,21 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// }
 		// p.next()
 		if p.tok.is_infix() {
+			op := p.tok
 			p.next()
-			lhs = p.expr(p.tok.left_binding_power())
+			lhs = ast.Infix{
+				op: op
+				lhs: lhs
+				rhs: p.expr(p.tok.left_binding_power())
+			}
 		}
 		else if p.tok.is_postfix() {
+			op := p.tok
 			p.next()
-			lhs = p.expr(p.tok.left_binding_power())
+			lhs = ast.Postfix{
+				op: op
+				expr: lhs
+			}
 		}
 		else {
 			// return lhs
@@ -542,7 +550,8 @@ pub fn (p &Parser) block() []ast.Stmt {
 	return stmts
 }
 
-// TODO: best way to handle (list or []Expr)?
+// NOTE: currently we can get a comma separated exprs directly with p.expr()
+// TODO: decide if i keep this or explicitly parse expr list everywhere needed
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	expr := p.expr(.lowest)
 	match expr {
@@ -628,22 +637,32 @@ pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
 }
 
 
-pub fn (mut p Parser) fn_call() ast.Call {
-	return ast.Call{}
+pub fn (mut p Parser) call() ast.Call {
+	return ast.Call{
+		
+	}
 }
 
 
-pub fn (mut p Parser) fn_call_args() /* []ast.Arg */ {
+pub fn (mut p Parser) call_args() []ast.Arg {
 	p.expect(.lpar)
+	mut args := []ast.Arg{}
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
-		p.expr(.lowest)
+		args << ast.Arg{
+			expr: p.expr(.lowest)
+			is_mut: is_mut
+		}
 		if p.tok == .comma {
 			p.next()
 		}
 	}
+	// NOTE: we could just use expr list and mut is hadled with ident,
+	// but currently mut is requred even for exprs initialized in the arg
+	// args := p.expr_list()
 	p.expect(.rpar)
+	return args
 }
 
 pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
