@@ -36,18 +36,22 @@ pub:
 }
 
 pub struct Block {
+pub:
 	stmts []Stmt
 }
 
 pub struct BoolLiteral {
+pub:
 	value bool
 }
 
 pub struct Cast {
+pub:
 	expr Expr
 }
 
 pub struct Call {
+pub:
 	lhs  Expr
 	args []Arg
 	// args []Expr // NOTE: see call_args()
@@ -63,53 +67,64 @@ pub struct ComptimeIf {
 }
 
 pub struct ConstDecl {
+pub:
 	is_public bool
 	fields    []FieldInit
 }
 
 pub struct EnumDecl {
+pub:
 	is_public bool
 	name      string
 	fields    []FieldDecl
 }
 
 pub struct ExprStmt {
+pub:
 	expr Expr
 }
 
 pub struct FieldDecl {
+pub:
 	name  string
 	typ   types.Type
 	value Expr
 }
 
 pub struct FieldInit {
+pub:
 	name  string
 	value Expr
 }
 
 pub struct File {
+pub:
 	path  string
 	stmts []Stmt
 }
 
 pub struct FnDecl {
+pub:
 	is_public bool
 	name      string
+	args      []Arg
 	stmts     []Stmt
 }
 
 pub struct FlowControl {
+pub:
 	op token.Token
 }
 
 pub struct For {
+pub:
 	init Stmt // initialization
 	cond Expr // condition
 	post Stmt // post iteration (afterthought)
 }
 
 pub struct GlobalDecl {
+pub:
 	name  string
 	typ   types.Type
 	value Expr
@@ -137,11 +152,13 @@ pub struct If {
 }
 
 pub struct IfGuard {
+pub:
 	cond     Expr
 	or_stmts []Stmt
 }
 
 pub struct Infix {
+pub:
 	op  token.Token
 	lhs Expr
 	rhs Expr
@@ -153,11 +170,13 @@ pub:
 }
 
 pub struct Import {
+pub:
 	name  string
 	alias string
 }
 
 pub struct Index {
+pub:
 	lhs Expr
 }
 
@@ -179,55 +198,65 @@ pub:
 }
 
 pub struct Paren {
+pub:
 	expr Expr
 }
 
 pub struct Postfix {
+pub:
 	op   token.Token
 	expr Expr
 }
 
 pub struct Prefix {
+pub:
 	op   token.Token
 	expr Expr
 }
 
 pub struct Range {
+pub:
 	start Expr
 	end   Expr
 }
 
 pub struct Return {
+pub:
 	// TODO: do we use []Expr or Expr and List
 	expr Expr
 }
 
 pub struct Selector {
+pub:
 	lhs Expr
 	rhs Expr
 }
 
 pub struct StringLiteral {
+pub:
 	value string
 }
 
 pub struct StructDecl {
+pub:
 	is_public bool
 	name      string
 	fields    []FieldDecl
 }
 
 pub struct StructInit {
+pub:
 	fields []FieldInit
 }
 
 pub struct TypeDecl {
+pub:
 	is_public bool
 	name      string
 	typ       types.Type
 }
 
 pub struct Unsafe {
+pub:
 	stmts []Stmt
 }
-

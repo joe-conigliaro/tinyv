@@ -4,6 +4,8 @@ import os
 import time
 import scanner
 import parser
+import ast
+import gen.v as gen_v
 // import v.scanner as vscanner
 
 const(
@@ -20,13 +22,17 @@ const(
 
 fn main() {
 	total0 := time.ticks()
-	parse_files()
+	ast_files := parse_files()
 	total1 := time.ticks()
 	total_time := total1 - total0
 	println('total time: ${total_time}ms')
+
+	for file in ast_files {
+		gen_v.gen(file)
+	}
 }
 
-pub fn scan_files() {
+fn scan_files() {
 	for file in files {
 		mut text := os.read_file('$file') or {
 			panic('error reading $file')
@@ -68,13 +74,15 @@ pub fn scan_files() {
 // 	}
 // }
 
-pub fn parse_files() {
+fn parse_files() []ast.File {
+	mut ast_files := []ast.File{}
 	for file in files {
 		pt0 := time.ticks()
 		mut p := parser.new_parser('$file')
-		p.parse()
+		ast_files << p.parse()
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
 		println('scan & parse time for $file: ${parse_time}ms')
 	}
+	return ast_files
 }

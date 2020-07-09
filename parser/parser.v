@@ -605,13 +605,10 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.expect(.rpar)
 	}
 	name := p.name()
-
 	p.fn_args()
-
 	if p.tok != .lcbr {
 		p.typ() // return type
 	}
-
 	p.log('ast.FnDecl: $name')
 	return ast.FnDecl{
 		is_public: is_public
@@ -620,20 +617,27 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	}
 }
 
-pub fn (mut p Parser) fn_args() /* []ast.Arg */ {
+pub fn (mut p Parser) fn_args() []ast.Arg {
 	p.expect(.lpar)
+	mut args := []ast.Arg{}
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
-		p.expect(.name) // arg
+		name := p.name()
 		if p.tok !in [.comma, .rpar] {
 			p.typ()
 		}
 		if p.tok == .comma {
 			p.next()
 		}
+		args << ast.Arg{
+			name: name
+			// typ: 
+			is_mut: is_mut
+		}
 	}
 	p.expect(.rpar)
+	return args
 }
 
 
