@@ -134,6 +134,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 	}
+	// g.writeln('')
 }
 
 fn (g &Gen) expr(expr ast.Expr) {
@@ -148,7 +149,18 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.Cast {}
-		ast.Call {}
+		ast.Call {
+			g.expr(expr.lhs)
+			g.write('(')
+			for i, arg in expr.args {
+				if arg.is_mut {
+					g.write('mut ')
+				}
+				g.expr(arg.expr)
+				if i < expr.args.len-1 { g.write(', ') }
+			}
+			g.write(')')
+		}
 		ast.CharLiteral {
 			g.write('`$expr.value`')
 		}
@@ -158,16 +170,31 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 			g.write(expr.name)
 		}
-		ast.If {}
+		ast.If {
+			// for branch in stmt.branches {
+			// 	g.write('if ')
+			// 	g.expr(expr.cond)
+			// 	g.writeln(' {')
+			// 	g.stmts(expr.stmts)
+			// 	g.writeln('}')
+			// }
+		}
 		ast.IfGuard {}
-		ast.Index {}
-		ast.Infix {}
+		ast.Index {
+			g.expr(expr.lhs)
+			g.write('[')
+			g.expr(expr.expr)
+			g.write(']')
+		}
+		ast.Infix {
+			g.expr(expr.lhs)
+			g.write(' $expr.op ')
+			g.expr(expr.rhs)
+		}
 		ast.List {
 			for i, x in expr.exprs {
 				g.expr(x)
-				if i < expr.exprs.len-1 {
-					g.write(', ')
-				}
+				if i < expr.exprs.len-1 { g.write(', ') }
 			}
 		}
 		ast.Match {}
@@ -191,7 +218,11 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write('..')
 			g.expr(expr.end)
 		}
-		ast.Selector {}
+		ast.Selector {
+			g.expr(expr.lhs)
+			g.write('.')
+			g.expr(expr.rhs)
+		}
 		ast.StringLiteral {
 			g.write("'$expr.value'")
 		}

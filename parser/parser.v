@@ -218,6 +218,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		.key_if {
 			p.log('START IF')
+			mut branches := []ast.Branch{}
 			for p.tok in [.key_if, .key_else] {
 				p.next()
 				if p.tok == .key_if {
@@ -225,17 +226,22 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				}
 				in_init := p.in_init
 				p.in_init = true
-				p.expr(.lowest)
+				cond := p.expr(.lowest)
 				p.in_init = in_init
 				if p.tok == .key_or {
 					panic('GOT OR')
 				}
-				p.block()
+				branches << ast.Branch{
+					cond: cond
+					stmts: p.block()
+				}
 			}
 			if p.tok == .key_or {
 				panic('GOT OR')
 			}
-			lhs = ast.If{}
+			lhs = ast.If{
+				branches: branches
+			}
 			p.log('END IF')
 		}
 		.key_none {
@@ -421,9 +427,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		if p.tok == .lsbr {
 			p.next()
 			p.log('ast.Index: $p.scanner.lit')
-			p.expr(.lowest)
 			lhs = ast.Index{
 				lhs: lhs
+				expr: p.expr(.lowest)
 			}
 			p.expect(.rsbr)
 			// continue to allows `Index[1]Selector` with no regard to binding power 

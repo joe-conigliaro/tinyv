@@ -45,6 +45,12 @@ pub:
 	value bool
 }
 
+pub struct Branch {
+pub:
+	cond  Expr
+	stmts []Stmt
+}
+
 pub struct Cast {
 pub:
 	expr Expr
@@ -149,7 +155,8 @@ pub enum IdentKind {
 
 
 pub struct If {
-
+pub:
+	branches []Branch
 }
 
 pub struct IfGuard {
@@ -178,7 +185,8 @@ pub:
 
 pub struct Index {
 pub:
-	lhs Expr
+	lhs  Expr
+	expr Expr
 }
 
 pub struct Match {
