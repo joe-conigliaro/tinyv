@@ -23,13 +23,10 @@ const(
 fn main() {
 	total0 := time.ticks()
 	ast_files := parse_files()
+	vgen_files(ast_files)
 	total1 := time.ticks()
 	total_time := total1 - total0
 	println('total time: ${total_time}ms')
-
-	for file in ast_files {
-		gen_v.gen(file)
-	}
 }
 
 fn scan_files() {
@@ -85,4 +82,14 @@ fn parse_files() []ast.File {
 		println('scan & parse time for $file: ${parse_time}ms')
 	}
 	return ast_files
+}
+
+fn vgen_files(ast_files []ast.File) {
+	for file in ast_files {
+		gt0 := time.ticks()
+		gen_v.gen(file)
+		gt1 := time.ticks()
+		gen_time := gt1-gt0
+		println('v gen for $file.path: ${gen_time}ms')
+	}
 }

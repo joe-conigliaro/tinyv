@@ -231,9 +231,9 @@ fn (g &Gen) expr(expr ast.Expr) {
 }
 
 fn (g &Gen) write(str string) {
-	print(str)
+	// print(str)
 }
 
 fn (g &Gen) writeln(str string) {
-	println(str)
+	// println(str)
 }
