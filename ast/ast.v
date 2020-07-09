@@ -118,9 +118,10 @@ pub:
 
 pub struct For {
 pub:
-	init Stmt // initialization
-	cond Expr // condition
-	post Stmt // post iteration (afterthought)
+	init  Stmt // initialization
+	cond  Expr // condition
+	post  Stmt // post iteration (afterthought)
+	stmts []Stmt
 }
 
 pub struct GlobalDecl {

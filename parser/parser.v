@@ -154,11 +154,11 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 			post := p.stmt()
 			p.in_init = in_init
-			p.block()
 			return ast.For{
 				init: init
 				cond: cond
 				post: post
+				stmts: p.block()
 			}
 		}
 		.name, .key_mut {

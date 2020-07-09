@@ -67,7 +67,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	// string
 	else if c in [`'`, `"`] {
 		s.string_literal()
-		s.lit = s.text[start_pos..s.pos]
+		s.lit = s.text[start_pos+1..s.pos-1]
 		return .string
 	}
 	// byte (char) `a`
@@ -78,7 +78,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		}
 		s.pos++
 		// s.lit = c.str()
-		s.lit = s.text[start_pos..s.pos]
+		s.lit = s.text[start_pos+1..s.pos-1]
 		return .chartoken
 	}
 	s.lit = ''
