@@ -11,6 +11,14 @@ pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
 	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
 	| Return | StructDecl | TypeDecl | Unsafe
 
+// File (main Ast container)
+pub struct File {
+pub:
+	path  string
+	stmts []Stmt
+}
+
+// Expressions
 pub struct Arg {
 pub:
 	name   string
@@ -21,23 +29,6 @@ pub:
 pub struct ArrayInit {
 pub:
 	exprs []Expr
-}
-
-pub struct Assign {
-pub:
-	op  token.Token
-	lhs []Expr
-	rhs []Expr
-}
-
-pub struct Attribute {
-pub:
-	name string
-}
-
-pub struct Block {
-pub:
-	stmts []Stmt
 }
 
 pub struct BoolLiteral {
@@ -68,28 +59,6 @@ pub:
 	value string
 }
 
-pub struct ComptimeIf {
-
-}
-
-pub struct ConstDecl {
-pub:
-	is_public bool
-	fields    []FieldInit
-}
-
-pub struct EnumDecl {
-pub:
-	is_public bool
-	name      string
-	fields    []FieldDecl
-}
-
-pub struct ExprStmt {
-pub:
-	expr Expr
-}
-
 pub struct FieldDecl {
 pub:
 	name  string
@@ -100,40 +69,6 @@ pub:
 pub struct FieldInit {
 pub:
 	name  string
-	value Expr
-}
-
-pub struct File {
-pub:
-	path  string
-	stmts []Stmt
-}
-
-pub struct FnDecl {
-pub:
-	is_public bool
-	name      string
-	args      []Arg
-	stmts     []Stmt
-}
-
-pub struct FlowControl {
-pub:
-	op token.Token
-}
-
-pub struct For {
-pub:
-	init  Stmt // initialization
-	cond  Expr // condition
-	post  Stmt // post iteration (afterthought)
-	stmts []Stmt
-}
-
-pub struct GlobalDecl {
-pub:
-	name  string
-	typ   types.Type
 	value Expr
 }
 
@@ -152,7 +87,6 @@ pub enum IdentKind {
 	mod
 	variable
 }
-
 
 pub struct If {
 pub:
@@ -177,12 +111,6 @@ pub:
 	exprs []Expr
 }
 
-pub struct Import {
-pub:
-	name  string
-	alias string
-}
-
 pub struct Index {
 pub:
 	lhs  Expr
@@ -192,10 +120,6 @@ pub:
 pub struct Match {
 }
 
-pub struct Module {
-pub:
-	name string
-}
 
 pub struct None {
 
@@ -229,12 +153,6 @@ pub:
 	end   Expr
 }
 
-pub struct Return {
-pub:
-	// TODO: do we use []Expr or Expr and List
-	expr Expr
-}
-
 pub struct Selector {
 pub:
 	lhs Expr
@@ -246,16 +164,101 @@ pub:
 	value string
 }
 
-pub struct StructDecl {
+pub struct StructInit {
+pub:
+	fields []FieldInit
+}
+
+// Statements
+pub struct Assign {
+pub:
+	op  token.Token
+	lhs []Expr
+	rhs []Expr
+}
+
+pub struct Attribute {
+pub:
+	name string
+}
+
+pub struct Block {
+pub:
+	stmts []Stmt
+}
+
+pub struct ComptimeIf {
+
+}
+
+pub struct ConstDecl {
+pub:
+	is_public bool
+	fields    []FieldInit
+}
+
+pub struct EnumDecl {
 pub:
 	is_public bool
 	name      string
 	fields    []FieldDecl
 }
 
-pub struct StructInit {
+pub struct ExprStmt {
 pub:
-	fields []FieldInit
+	expr Expr
+}
+
+pub struct FlowControl {
+pub:
+	op token.Token
+}
+
+pub struct FnDecl {
+pub:
+	is_public bool
+	name      string
+	args      []Arg
+	stmts     []Stmt
+}
+
+pub struct For {
+pub:
+	init  Stmt // initialization
+	cond  Expr // condition
+	post  Stmt // post iteration (afterthought)
+	stmts []Stmt
+}
+
+pub struct GlobalDecl {
+pub:
+	name  string
+	typ   types.Type
+	value Expr
+}
+
+pub struct Import {
+pub:
+	name  string
+	alias string
+}
+
+pub struct Module {
+pub:
+	name string
+}
+
+pub struct Return {
+pub:
+	// TODO: do we use []Expr or Expr and List
+	expr Expr
+}
+
+pub struct StructDecl {
+pub:
+	is_public bool
+	name      string
+	fields    []FieldDecl
 }
 
 pub struct TypeDecl {
@@ -269,3 +272,4 @@ pub struct Unsafe {
 pub:
 	stmts []Stmt
 }
+
