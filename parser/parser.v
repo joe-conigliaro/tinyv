@@ -175,12 +175,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		.key_return {
 			p.log('ast.Return')
 			p.next()
-			expr := p.expr(.lowest)
-			if expr is ast.List {
-				p.log('## RETURN IS LIST')
-			}
 			return ast.Return{
-				expr: expr
+				exprs: p.expr_list()
 			}
 		}
 		.key_unsafe {
@@ -290,12 +286,12 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 			p.expect(.rsbr)
 			// []int{}
+			mut init_exprs := map[string]ast.Expr{}
 			// TODO: restructure in parts (type->init) ?? no
 			if p.tok == .name && p.scanner.line_nr == line_nr {
 				// typ := p.typ()
 				p.next()
 				// init
-				mut init_exprs := map[string]ast.Expr{}
 				if p.tok == .lcbr {
 					p.next()
 					allowed_init_keys := ['cap', 'init', 'len']
@@ -306,17 +302,18 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 						}
 						p.expect(.colon)
 						init_exprs[key] = p.expr(.lowest)
-						println('got here')
-						// TODO: comma being parsed as list
-						// if p.tok == .comma {
-						//	p.next()
-						//}
+						if p.tok == .comma {
+							p.next()
+						}
 					}
 					p.expect(.rcbr)
 				}
 			}
 			lhs = ast.ArrayInit{
 				exprs: exprs
+				init: init_exprs['init']
+				cap: init_exprs['cap']
+				len: init_exprs['len']
 			}
 		}
 		.key_match {
@@ -465,24 +462,6 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				end: p.expr(.lowest)
 			}
 		}
-		// Expr list  / Tuple ( muti assign / return )
-		// TODO: consider if this is the method I want to use
-		// or just use list() where needed eg. assign
-		else if p.tok == .comma {
-			p.next()
-			mut exprs := [lhs]
-			for {
-				exprs << p.expr(.lowest)
-				if p.tok != .comma {
-					break
-				}
-				p.next()
-			}
-			lhs = ast.List{
-				exprs: exprs
-			}
-			p.log('ast.ExprList: $exprs.len - $p.scanner.line_nr')
-		}
 
 		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
@@ -569,11 +548,15 @@ pub fn (p &Parser) block() []ast.Stmt {
 // NOTE: currently we can get a comma separated exprs directly with p.expr()
 // TODO: decide if i keep this or explicitly parse expr list everywhere needed
 pub fn (mut p Parser) expr_list() []ast.Expr {
-	expr := p.expr(.lowest)
-	match expr {
-		ast.List { return it.exprs }
-		else { return [expr] }
+	mut exprs := []ast.Expr{}
+	for {
+		exprs << p.expr(.lowest)
+		if p.tok != .comma {
+			break
+		}
+		p.next()
 	}
+	return exprs
 }
 
 pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {

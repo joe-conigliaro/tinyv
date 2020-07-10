@@ -79,13 +79,16 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 				g.write('pub ')
 			}
 			g.writeln('enum $stmt.name {')
+			g.indent++
 			for field in stmt.fields {
-				g.writeln('\t$field.name #type#')
+				g.write('$field.name #type#')
 				// if field.value != none {
-				// 	g.write(' = ')
-				// 	g.expr(field.value)
+					g.write(' = ')
+					g.expr(field.value)
 				// }
+				g.writeln('')
 			}
+			g.indent--
 			g.writeln('}')
 		}
 		ast.ExprStmt {
@@ -127,9 +130,9 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.GlobalDecl {
 			g.write('global $stmt.name')
-			// if g.expr != none {
-			// 	g.write(' = ')
-			// 	g.expr(g.expr)
+			// if stmt.value != none {
+				g.write(' = ')
+				g.expr(stmt.value)
 			// }
 		}
 		ast.Import {
@@ -144,7 +147,10 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.Return {
 			g.write('return ')
-			g.expr(stmt.expr)
+			for i, x in stmt.exprs {
+				g.expr(x)
+				if i < stmt.exprs.len-1 { g.write(', ') }
+			}
 			g.writeln('')
 		}
 		ast.StructDecl {
@@ -152,13 +158,16 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 				g.write('pub ')
 			}
 			g.writeln('struct $stmt.name {')
+			g.indent++
 			for field in stmt.fields {
-				g.writeln('\t$field.name #type#')
+				g.write('$field.name #type#')
 				// if field.value != none {
 				// 	g.write(' = ')
 				// 	g.expr(field.value)
 				// }
+				g.writeln('')
 			}
+			g.indent--
 			g.writeln('}')
 		}
 		ast.TypeDecl {
@@ -200,7 +209,20 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 			else {
 				g.write('[]#type#{')
-				// TODO: inits, len, cap..
+				// if expr.init != none {
+					g.write('init: ')
+					g.expr(expr.init)
+					g.write(', ')
+				// }
+				// if expr.len != none {
+					g.write('len: ')
+					g.expr(expr.len)
+					g.write(', ')
+				// }
+				// if expr.cap != none {
+					g.write('cap: ')
+					g.expr(expr.cap)
+				// }
 				g.write('}')
 			}
 		}
@@ -266,12 +288,6 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.write(' $expr.op ')
 			g.expr(expr.rhs)
-		}
-		ast.List {
-			for i, x in expr.exprs {
-				g.expr(x)
-				if i < expr.exprs.len-1 { g.write(', ') }
-			}
 		}
 		ast.Match {}
 		ast.None {

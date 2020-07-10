@@ -5,8 +5,8 @@ import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
-	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
-	| Paren | Postfix | Prefix | Range | Selector | StringLiteral | StructInit
+	| If | IfGuard | Index | Infix | Match | None | NumberLiteral | Paren
+	| Postfix | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
 	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
 	| Return | StructDecl | TypeDecl | Unsafe
@@ -29,6 +29,9 @@ pub:
 pub struct ArrayInit {
 pub:
 	exprs []Expr
+	init  Expr
+	cap   Expr
+	len   Expr
 }
 
 pub struct BoolLiteral {
@@ -104,11 +107,6 @@ pub:
 	op  token.Token
 	lhs Expr
 	rhs Expr
-}
-
-pub struct List {
-pub:
-	exprs []Expr
 }
 
 pub struct Index {
@@ -252,8 +250,7 @@ pub:
 
 pub struct Return {
 pub:
-	// TODO: do we use []Expr or Expr and List
-	expr Expr
+	exprs []Expr
 }
 
 pub struct StructDecl {
