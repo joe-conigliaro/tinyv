@@ -33,14 +33,13 @@ fn (g &Gen) gen() {
 }
 
 fn (g &Gen) stmts(stmts []ast.Stmt) {
-	g.indent++
 	for stmt in stmts {
 		g.stmt(stmt)
 	}
-	g.indent--
 }
 
 fn (g &Gen) stmt(stmt ast.Stmt) {
+	g.indent++
 	match stmt {
 		ast.Assign {}
 		ast.Attribute {
@@ -153,6 +152,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 	}
+	g.indent--
 	// g.writeln('')
 }
 
