@@ -3,7 +3,7 @@ module v
 import ast
 
 const(
-	tabs = gen_tabs()
+	tabs = build_tabs()
 )
 
 struct Gen {
@@ -11,9 +11,10 @@ struct Gen {
 mut:
 	indent     int
 	on_newline bool
+	in_init    bool
 }
 
-fn gen_tabs() []string {
+fn build_tabs() []string {
 	mut tabs := []string{len: 10, cap: 10}
 	mut indent := ''
 	for i in 1..10 {
@@ -41,7 +42,18 @@ fn (g &Gen) stmts(stmts []ast.Stmt) {
 fn (g &Gen) stmt(stmt ast.Stmt) {
 	g.indent++
 	match stmt {
-		ast.Assign {}
+		ast.Assign {
+			for i, l in stmt.lhs {
+				g.expr(l)
+				if i < stmt.lhs.len-1 { g.write(', ') }
+			}
+			g.write(' $stmt.op ')
+			for i, r in stmt.rhs {
+				g.expr(r)
+				if i < stmt.lhs.len-1 { g.write(', ') }
+			}
+			if !g.in_init { g.writeln('') }
+		}
 		ast.Attribute {
 			g.writeln('[$stmt.name]')
 		}
@@ -76,7 +88,6 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.ExprStmt {
 			g.expr(stmt.expr)
-			// g.writeln('')
 		}
 		ast.FlowControl {
 			g.writeln(stmt.op.str())
@@ -100,11 +111,14 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.For {
 			g.write('for ')
+			in_init := g.in_init
+			g.in_init = true
 			g.stmt(stmt.init)
 			g.write('; ')
 			g.expr(stmt.cond)
 			g.write('; ')
 			g.stmt(stmt.post)
+			g.in_init = in_init
 			g.writeln(' {')
 			g.stmts(stmt.stmts)
 			g.writeln('}')
@@ -216,7 +230,10 @@ fn (g &Gen) expr(expr ast.Expr) {
 						g.write('if ')
 					// }
 				}
+				in_init := g.in_init
+				g.in_init = true
 				g.expr(branch.cond)
+				g.in_init = in_init
 				g.writeln(' {')
 				g.stmts(branch.stmts)
 				g.writeln('}')
