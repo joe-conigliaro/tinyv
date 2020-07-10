@@ -306,6 +306,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 						}
 						p.expect(.colon)
 						init_exprs[key] = p.expr(.lowest)
+						println('got here')
+						// TODO: comma being parsed as list
+						// if p.tok == .comma {
+						//	p.next()
+						//}
 					}
 					p.expect(.rcbr)
 				}
@@ -416,6 +421,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				args: args
 			}
 			// TODO: later decide if its a cast
+			// TODO: this is not going to work, what was I trying to do?
+			// need to be part of If? or or as part of call?
 			if p.tok == .key_or {
 				p.log('ast.IfGuard')
 				p.next()

@@ -187,7 +187,21 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 
 fn (g &Gen) expr(expr ast.Expr) {
 	match expr {
-		ast.ArrayInit {}
+		ast.ArrayInit {
+			if expr.exprs.len > 0 {
+				g.write('[')
+				for i, x in expr.exprs {
+					g.expr(x)
+					if i < expr.exprs.len-1 { g.write(', ') }
+				}
+				g.write(']')
+			}
+			else {
+				g.write('[]#type#{')
+				// TODO: inits, len, cap..
+				g.write('}')
+			}
+		}
 		ast.BoolLiteral {
 			if expr.value {
 				g.write('true')
@@ -291,7 +305,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write("'$expr.value'")
 		}
 		ast.StructInit {
-			g.writeln('StructInit{')
+			g.writeln('#type#{')
 			for i, field in expr.fields {
 				g.write('\t$field.name: ')
 				g.expr(field.value)
