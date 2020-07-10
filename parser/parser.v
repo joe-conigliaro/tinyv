@@ -4,6 +4,7 @@ import os
 import ast
 import scanner
 import token
+import types
 
 struct Parser {
 	file_path string
@@ -758,15 +759,25 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
 	// sum type (otherwise alias)
+	mut variants := []types.Type{}
 	if p.tok == .eq {
 		p.next()
+		for {
+			variant := p.typ()
+			variants << variant
+			if p.tok != .pipe {
+				break
+			}
+			p.next()
+		}
 	}
-	typ := p.typ()
+	parent_type := p.typ()
 	p.log('ast.TypeDecl: $name')
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name
-		typ: typ
+		parent_type: parent_type
+		variants: variants
 	}
 }
 

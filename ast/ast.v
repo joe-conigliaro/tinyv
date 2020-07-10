@@ -265,9 +265,10 @@ pub:
 
 pub struct TypeDecl {
 pub:
-	is_public bool
-	name      string
-	typ       types.Type
+	is_public   bool
+	name        string
+	parent_type types.Type
+	variants    []types.Type
 }
 
 pub struct Unsafe {

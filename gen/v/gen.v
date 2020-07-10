@@ -53,7 +53,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('const (')
 			for field in stmt.fields {
-				g.write('\t$field.name type')
+				g.write('\t$field.name #type#')
 				g.write(' = ')
 				g.expr(field.value)
 				g.writeln('')
@@ -66,7 +66,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('enum $stmt.name {')
 			for field in stmt.fields {
-				g.writeln('\t$field.name type')
+				g.writeln('\t$field.name #type#')
 				// if field.value != none {
 				// 	g.write(' = ')
 				// 	g.expr(field.value)
@@ -137,7 +137,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('struct $stmt.name {')
 			for field in stmt.fields {
-				g.writeln('\t$field.name type')
+				g.writeln('\t$field.name #type#')
 				// if field.value != none {
 				// 	g.write(' = ')
 				// 	g.expr(field.value)
@@ -145,7 +145,22 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('}')
 		}
-		ast.TypeDecl {}
+		ast.TypeDecl {
+			g.write('type $stmt.name')
+			if stmt.variants.len > 0 {
+				g.write(' =')
+				for i, vairant in stmt.variants {
+					g.write(' #type#')
+					if i < stmt.variants.len-1 {
+						g.write(' |')
+					}
+				}
+			}
+			else {
+				g.write(' #type#')
+			}
+			g.writeln('')
+		}
 		ast.Unsafe {
 			g.writeln('unsafe {')
 			g.stmts(stmt.stmts)
