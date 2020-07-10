@@ -64,12 +64,14 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 				g.write('pub ')
 			}
 			g.writeln('const (')
+			g.indent++
 			for field in stmt.fields {
-				g.write('\t$field.name #type#')
+				g.write(field.name)
 				g.write(' = ')
 				g.expr(field.value)
 				g.writeln('')
 			}
+			g.indent--
 			g.writeln(')')
 		}
 		ast.EnumDecl {
@@ -305,13 +307,18 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write("'$expr.value'")
 		}
 		ast.StructInit {
-			g.writeln('#type#{')
+			if expr.fields.len == 0 {
+				g.write('#type#{')
+			}
+			else {
+				g.writeln('#type#{')
+			}
 			for i, field in expr.fields {
 				g.write('\t$field.name: ')
 				g.expr(field.value)
 				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 			}
-			g.writeln('}')
+			g.write('}')
 		}
 	}
 }
