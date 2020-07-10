@@ -167,6 +167,7 @@ pub:
 pub struct StructInit {
 pub:
 	fields []FieldInit
+	typ    types.Type
 }
 
 // Statements
@@ -239,8 +240,9 @@ pub:
 
 pub struct Import {
 pub:
-	name  string
-	alias string
+	name       string
+	alias      string
+	is_aliased bool
 }
 
 pub struct Module {

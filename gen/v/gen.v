@@ -2,12 +2,29 @@ module v
 
 import ast
 
+const(
+	tabs = gen_tabs()
+)
+
 struct Gen {
-	file ast.File
+	file   ast.File
+mut:
+	indent     int
+	on_newline bool
+}
+
+fn gen_tabs() []string {
+	mut tabs := []string{len: 10, cap: 10}
+	mut indent := ''
+	for i in 1..10 {
+		indent += '\t'
+		tabs[i] = indent
+	}
+	return tabs
 }
 
 pub fn gen(file ast.File) {
-	g := Gen{file: file}
+	g := Gen{file: file, indent: -1}
 	g.gen()
 }
 
@@ -16,9 +33,11 @@ fn (g &Gen) gen() {
 }
 
 fn (g &Gen) stmts(stmts []ast.Stmt) {
+	g.indent++
 	for stmt in stmts {
 		g.stmt(stmt)
 	}
+	g.indent--
 }
 
 fn (g &Gen) stmt(stmt ast.Stmt) {
@@ -57,7 +76,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 		ast.ExprStmt {
-			// g.expr(stmt.expr)
+			g.expr(stmt.expr)
 			// g.writeln('')
 		}
 		ast.FlowControl {
@@ -100,7 +119,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.Import {
 			g.write('import $stmt.name')
-			if stmt.alias.len > 0 {
+			if stmt.is_aliased {
 				g.write(' as $stmt.alias')
 			}
 			g.writeln('')
@@ -171,13 +190,22 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write(expr.name)
 		}
 		ast.If {
-			// for branch in stmt.branches {
-			// 	g.write('if ')
-			// 	g.expr(expr.cond)
-			// 	g.writeln(' {')
-			// 	g.stmts(expr.stmts)
-			// 	g.writeln('}')
-			// }
+			for i, branch in expr.branches {
+				if i == 0 {
+					g.write('if ')
+				}
+				else {
+					g.write('else ')
+					// TODO: if no cond is else
+					// if branch.cond != none {
+						g.write('if ')
+					// }
+				}
+				g.expr(branch.cond)
+				g.writeln(' {')
+				g.stmts(branch.stmts)
+				g.writeln('}')
+			}
 		}
 		ast.IfGuard {}
 		ast.Index {
@@ -204,7 +232,11 @@ fn (g &Gen) expr(expr ast.Expr) {
 		ast.NumberLiteral {
 			g.write(expr.value)
 		}
-		ast.Paren {}
+		ast.Paren {
+			g.write('(')
+			g.expr(expr.expr)
+			g.write(')')
+		}
 		ast.Postfix {
 			g.expr(expr.expr)
 			g.write(expr.op.str())
@@ -226,14 +258,30 @@ fn (g &Gen) expr(expr ast.Expr) {
 		ast.StringLiteral {
 			g.write("'$expr.value'")
 		}
-		ast.StructInit {}
+		ast.StructInit {
+			g.writeln('StructInit{')
+			for i, field in expr.fields {
+				g.write('\t$field.name: ')
+				g.expr(field.value)
+				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
+			}
+			g.writeln('}')
+		}
 	}
 }
 
 fn (g &Gen) write(str string) {
-	// print(str)
+	if g.on_newline {
+		print(tabs[g.indent])
+	}
+	print(str)
+	g.on_newline = false
 }
 
 fn (g &Gen) writeln(str string) {
-	// println(str)
+	if g.on_newline {
+		print(tabs[g.indent])
+	}
+	println(str)
+	g.on_newline = true
 }

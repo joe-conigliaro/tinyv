@@ -60,7 +60,8 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				alias = p.name()
 				name += '.$alias'
 			}
-			if p.tok == .key_as {
+			is_aliased := p.tok == .key_as
+			if is_aliased {
 				p.next()
 				alias = p.name()
 			}
@@ -68,6 +69,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return ast.Import{
 				name: name
 				alias: alias
+				is_aliased: is_aliased
 			}
 		}
 		.key_module {
