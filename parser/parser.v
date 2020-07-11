@@ -188,13 +188,23 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		}
 		else {
 			expr := p.expr(.lowest)
-			if p.tok in [.assign, .decl_assign] {
-				panic('What the? $p.tok')
+			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
+			if p.tok == .comma {
+				p.next()
+				// it's a little extra code, but also a little more
+				// effiecient than using expr_list and creating 2 arrays
+				mut exprs := [expr]
+				for {
+					exprs << p.expr(.lowest)
+					if p.tok != .comma {
+						break
+					}
+					p.next()
+				}
+				return ast.ExprStmt{
+					ast.List{exprs: exprs}
+				}
 			}
-			// if p.tok in [.assign, .decl_assign] {
-			// 	p.next()
-			// 	return ast.Assign{}
-			// }
 			return ast.ExprStmt{
 				expr: expr
 			}
@@ -545,8 +555,6 @@ pub fn (p &Parser) block() []ast.Stmt {
 	return stmts
 }
 
-// NOTE: currently we can get a comma separated exprs directly with p.expr()
-// TODO: decide if i keep this or explicitly parse expr list everywhere needed
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {

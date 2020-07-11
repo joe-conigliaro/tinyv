@@ -289,6 +289,12 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write(' $expr.op ')
 			g.expr(expr.rhs)
 		}
+		ast.List {
+			for i, x in expr.exprs {
+				g.expr(x)
+				if i < expr.exprs.len-1 { g.write(', ') }
+			}
+		}
 		ast.Match {}
 		ast.None {
 			g.write('none')

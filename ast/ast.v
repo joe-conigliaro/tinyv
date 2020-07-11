@@ -5,8 +5,8 @@ import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
-	| If | IfGuard | Index | Infix | Match | None | NumberLiteral | Paren
-	| Postfix | Prefix | Range | Selector | StringLiteral | StructInit
+	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
+	| Paren | Postfix | Prefix | Range | Selector | StringLiteral | StructInit
 pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
 	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
 	| Return | StructDecl | TypeDecl | Unsafe
@@ -160,6 +160,11 @@ pub:
 pub struct StringLiteral {
 pub:
 	value string
+}
+
+pub struct List {
+pub:
+	exprs []Expr
 }
 
 pub struct StructInit {
