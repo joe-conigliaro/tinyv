@@ -1,14 +1,16 @@
 module v
 
 import ast
+import strings
 
 const(
 	tabs = build_tabs()
 )
 
 struct Gen {
-	file   ast.File
 mut:
+	file       ast.File
+	out		   strings.Builder 
 	indent     int
 	on_newline bool
 	in_init    bool
@@ -24,12 +26,22 @@ fn build_tabs() []string {
 	return tabs
 }
 
-pub fn gen(file ast.File) {
-	g := Gen{file: file, indent: -1}
-	g.gen()
+pub fn new_gen() &Gen {
+	gen := &Gen{
+		out: strings.new_builder(1000)
+		indent: -1
+	}
+	return gen
 }
 
-fn (g &Gen) gen() {
+pub fn (g &Gen) gen(file ast.File) {
+	// clear incase we are reusing gen instance
+	if g.out.len > 1 {
+		g.out.go_back_to(0)
+		g.indent = -1
+		g.on_newline = false		
+	}
+	g.file = file
 	g.stmts(g.file.stmts)
 }
 
@@ -347,16 +359,20 @@ fn (g &Gen) expr(expr ast.Expr) {
 
 fn (g &Gen) write(str string) {
 	if g.on_newline {
-		print(tabs[g.indent])
+		g.out.write(tabs[g.indent])
 	}
-	print(str)
+	g.out.write(str)
 	g.on_newline = false
 }
 
 fn (g &Gen) writeln(str string) {
 	if g.on_newline {
-		print(tabs[g.indent])
+		g.out.write(tabs[g.indent])
 	}
-	println(str)
+	g.out.writeln(str)
 	g.on_newline = true
+}
+
+pub fn (g &Gen) print_output() {
+	println(g.out)
 }

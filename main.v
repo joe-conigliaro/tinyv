@@ -18,6 +18,8 @@ const(
 		'$v_dir/vlib/crypto/aes/block_generic.v'
 		'tests/syntax.v'
 	]
+	// when true will print output of gen
+	debug = false
 )
 
 fn main() {
@@ -85,9 +87,13 @@ fn parse_files() []ast.File {
 }
 
 fn vgen_files(ast_files []ast.File) {
+	mut gen := gen_v.new_gen()
 	for file in ast_files {
 		gt0 := time.ticks()
-		gen_v.gen(file)
+		gen.gen(file)
+		if debug {
+			gen.print_output()
+		}
 		gt1 := time.ticks()
 		gen_time := gt1-gt0
 		println('v gen for $file.path: ${gen_time}ms')
