@@ -23,6 +23,7 @@ pub struct Arg {
 pub:
 	name   string
 	expr   Expr
+	typ    types.Type
 	is_mut bool
 }
 
@@ -192,7 +193,9 @@ pub:
 }
 
 pub struct ComptimeIf {
-
+pub:
+	cond  Expr
+	stmts []Stmt
 }
 
 pub struct ConstDecl {
@@ -221,6 +224,7 @@ pub:
 pub struct FnDecl {
 pub:
 	is_public bool
+	is_method bool
 	name      string
 	args      []Arg
 	stmts     []Stmt

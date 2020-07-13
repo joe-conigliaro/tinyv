@@ -16,8 +16,8 @@ mut:
 	in_init   bool // for/if/match eg. `for x in vals {`
 }
 
-pub fn new_parser(prefs &pref.Preferences) Parser {
-	return Parser{
+pub fn new_parser(prefs &pref.Preferences) &Parser {
+	return &Parser{
 		prefs: prefs
 		scanner: scanner.new_scanner(prefs)
 	}
@@ -154,8 +154,11 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			if p.tok == .question {
 				p.next()
 			}
-			block := p.block()
-			return ast.ComptimeIf{}
+			stmts := p.block()
+			return ast.ComptimeIf{
+				cond: cond
+				stmts: stmts
+			}
 		}
 		.key_break, .key_continue {
 			op := p.tok
@@ -624,26 +627,37 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 
 pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	p.next()
+	mut args := []ast.Arg{}
 	// method
+	mut is_method := false
 	if p.tok == .lpar {
+		is_method = true
 		p.next()
 		// TODO: use parse_ident & type
 		// receiver := p.ident() ?
-		if p.tok == .key_mut {
+		is_mut := p.tok == .key_mut
+		if is_mut {
 			p.next()
 		}
-		receiver := p.name()
-		receiver_type := p.typ()
+		// add receiver as arg0
+		args << ast.Arg{
+			name: p.name()
+			typ: p.typ()
+			is_mut: is_mut
+		}
 		p.expect(.rpar)
 	}
 	name := p.name()
-	p.fn_args()
+	args << p.fn_args()
+	// TODO:
+	// mut return_type := types.void
 	if p.tok != .lcbr {
 		p.typ() // return type
 	}
 	p.log('ast.FnDecl: $name')
 	return ast.FnDecl{
 		is_public: is_public
+		is_method: is_method
 		name: name
 		stmts: p.block()
 	}

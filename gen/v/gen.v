@@ -29,12 +29,11 @@ fn build_tabs() []string {
 }
 
 pub fn new_gen(prefs &pref.Preferences) &Gen {
-	gen := &Gen{
+	return &Gen{
 		prefs: prefs
 		out: strings.new_builder(1000)
 		indent: -1
 	}
-	return gen
 }
 
 pub fn (mut g Gen) reset() {
@@ -193,7 +192,8 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.write('type $stmt.name')
 			if stmt.variants.len > 0 {
 				g.write(' =')
-				for i, vairant in stmt.variants {
+				//for i, vairant in stmt.variants {
+				for i, _ in stmt.variants {
 					g.write(' #type#')
 					if i < stmt.variants.len-1 {
 						g.write(' |')

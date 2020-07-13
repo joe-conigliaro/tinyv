@@ -51,7 +51,7 @@ pub fn (mut p Parser) typ() types.Type {
 		return p.parse_fn_type()
 	}
 
-	typ := p.name()
+	name := p.name()
 
 	return types.Type{}
 }
