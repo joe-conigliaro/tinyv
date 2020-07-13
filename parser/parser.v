@@ -205,7 +205,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
-			// any alone exression in a statement list
+			// stand alone exression in a statement list
 			// eg: `if x == 1 {`, `x++`, `break/continue`
 			// also: `mut x := 1`, `a,`b := 1,2`
 			expr := p.expr(.lowest)
