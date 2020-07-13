@@ -76,7 +76,13 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('[$stmt.name]')
 		}
 		ast.Block {}
-		ast.ComptimeIf {}
+		ast.ComptimeIf {
+			g.write('\$if ')
+			g.expr(stmt.cond)
+			g.writeln(' {')
+			g.stmts(stmt.stmts)
+			g.writeln('}')
+		}
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')

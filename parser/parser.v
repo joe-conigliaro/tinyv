@@ -321,7 +321,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 			p.expect(.rsbr)
 			// []int{}
-			mut init_exprs := map[string]ast.Expr{}
+			mut cap, mut init, mut len := ast.Expr{}, ast.Expr{}, ast.Expr{}
 			// TODO: restructure in parts (type->init) ?? no
 			if p.tok == .name && p.scanner.line_nr == line_nr {
 				// typ := p.typ()
@@ -329,14 +329,21 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				// init
 				if p.tok == .lcbr && !p.in_init {
 					p.next()
-					allowed_init_keys := ['cap', 'init', 'len']
 					for p.tok != .rcbr {
 						key := p.name()
-						if key !in allowed_init_keys {
-							p.error('expecting one of ' + allowed_init_keys.join(', '))
-						}
 						p.expect(.colon)
-						init_exprs[key] = p.expr(.lowest)
+						if key == 'cap' {
+							cap = p.expr(.lowest)
+						}
+						else if key == 'init' {
+							init = p.expr(.lowest)
+						}
+						else if key == 'len' {
+							init = p.expr(.lowest)
+						}
+						else {
+							p.error('expecting one of `cap, init, len`')
+						}
 						if p.tok == .comma {
 							p.next()
 						}
@@ -346,9 +353,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 			lhs = ast.ArrayInit{
 				exprs: exprs
-				init: init_exprs['init']
-				cap: init_exprs['cap']
-				len: init_exprs['len']
+				init: init
+				cap: cap
+				len: len
 			}
 		}
 		.key_match {

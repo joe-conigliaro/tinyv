@@ -22,6 +22,7 @@ const(
 	prefs = &pref.Preferences{
 		verbose: false
 	}
+	debug = false
 )
 
 fn main() {
@@ -97,5 +98,8 @@ fn vgen_files(ast_files []ast.File) {
 		gt1 := time.ticks()
 		gen_time := gt1-gt0
 		println('v gen for $file.path: ${gen_time}ms')
+		if debug {
+			gen.print_output()
+		}
 	}
 }
