@@ -197,6 +197,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		.key_return {
 			p.log('ast.Return')
 			p.next()
+			// small optimization, save call/array init
 			if p.tok == .rcbr {
 				return ast.Return{}
 			}
