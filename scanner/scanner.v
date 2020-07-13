@@ -1,8 +1,11 @@
 module scanner
 
 import token
+import pref
 
 pub struct Scanner {
+	prefs  &pref.Preferences
+mut:
 	text   string
 pub mut:
 	last_nl_pos int
@@ -11,11 +14,23 @@ pub mut:
 	lit     string
 }
 
-pub fn new_scanner(text string) &Scanner {
+pub fn new_scanner(prefs &pref.Preferences) &Scanner {
 	return &Scanner{
+		prefs: prefs
 		line_nr: 1
-		text: text
 	}
+}
+
+pub fn (mut s Scanner) set_text(text string) {
+	s.text = text
+}
+
+pub fn (mut s Scanner) reset() {
+	s.text = ''
+	s.last_nl_pos = 0
+	s.line_nr = 1
+	s.pos = 0
+	s.lit = ''
 }
 
 pub fn (mut s Scanner) scan() token.Token {

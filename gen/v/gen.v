@@ -1,6 +1,7 @@
 module v
 
 import ast
+import pref
 import strings
 
 const(
@@ -8,6 +9,7 @@ const(
 )
 
 struct Gen {
+	prefs      &pref.Preferences
 mut:
 	file       ast.File
 	out		   strings.Builder 
@@ -26,20 +28,25 @@ fn build_tabs() []string {
 	return tabs
 }
 
-pub fn new_gen() &Gen {
+pub fn new_gen(prefs &pref.Preferences) &Gen {
 	gen := &Gen{
+		prefs: prefs
 		out: strings.new_builder(1000)
 		indent: -1
 	}
 	return gen
 }
 
+pub fn (mut g Gen) reset() {
+	g.out.go_back_to(0)
+	g.indent = -1
+	g.on_newline = false
+}
+
 pub fn (g &Gen) gen(file ast.File) {
 	// clear incase we are reusing gen instance
 	if g.out.len > 1 {
-		g.out.go_back_to(0)
-		g.indent = -1
-		g.on_newline = false		
+		g.reset()
 	}
 	g.file = file
 	g.stmts(g.file.stmts)

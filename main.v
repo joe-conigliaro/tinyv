@@ -5,12 +5,13 @@ import time
 import scanner
 import parser
 import ast
+import pref
 import gen.v as gen_v
 // import v.scanner as vscanner
 
 const(
-	v_dir = '/home/kastro/dev/src/v'
-	// v_dir = '/mnt/storage/homes/kastro/dev/v'
+	// v_dir = '/home/kastro/dev/src/v'
+	v_dir = '/mnt/storage/homes/kastro/dev/v'
 	files = [
 		'$v_dir/vlib/builtin/int.v',
 		'$v_dir/vlib/builtin/string.v',
@@ -18,8 +19,9 @@ const(
 		'$v_dir/vlib/crypto/aes/block_generic.v'
 		'tests/syntax.v'
 	]
-	// when true will print output of gen
-	debug = false
+	prefs = &pref.Preferences{
+		verbose: false
+	}
 )
 
 fn main() {
@@ -36,7 +38,8 @@ fn scan_files() {
 		mut text := os.read_file('$file') or {
 			panic('error reading $file')
 		}
-		s := scanner.new_scanner(text)
+		s := scanner.new_scanner(prefs)
+		s.set_text(text)
 		t0 := time.ticks()
 		for {
 			kind := s.scan()
@@ -75,10 +78,10 @@ fn scan_files() {
 
 fn parse_files() []ast.File {
 	mut ast_files := []ast.File{}
+	mut p := parser.new_parser(prefs)
 	for file in files {
 		pt0 := time.ticks()
-		mut p := parser.new_parser('$file')
-		ast_files << p.parse()
+		ast_files << p.parse(file)
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
 		println('scan & parse time for $file: ${parse_time}ms')
@@ -87,13 +90,10 @@ fn parse_files() []ast.File {
 }
 
 fn vgen_files(ast_files []ast.File) {
-	mut gen := gen_v.new_gen()
+	mut gen := gen_v.new_gen(prefs)
 	for file in ast_files {
 		gt0 := time.ticks()
 		gen.gen(file)
-		if debug {
-			gen.print_output()
-		}
 		gt1 := time.ticks()
 		gen_time := gt1-gt0
 		println('v gen for $file.path: ${gen_time}ms')

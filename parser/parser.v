@@ -5,26 +5,40 @@ import ast
 import scanner
 import token
 import types
+import pref
 
 struct Parser {
-	file_path string
+	prefs     &pref.Preferences
 mut:
+	file_path string
 	scanner   &scanner.Scanner
 	tok       token.Token
 	in_init   bool // for/if/match eg. `for x in vals {`
 }
 
-pub fn new_parser(file string) Parser {
-	text := os.read_file(file) or {
-		panic('error reading $file')
-	}
+pub fn new_parser(prefs &pref.Preferences) Parser {
 	return Parser{
-		file_path: file,
-		scanner: scanner.new_scanner(text)
+		prefs: prefs
+		scanner: scanner.new_scanner(prefs)
 	}
 }
 
-pub fn (mut p Parser) parse() ast.File {
+pub fn (mut p Parser) reset() {
+	p.scanner.reset()
+	p.tok = .unknown
+}
+
+pub fn (mut p Parser) parse(file_path string) ast.File {
+	// reset if we are reusing parser instance
+	if p.scanner.pos > 0 {
+		p.reset()
+	}
+	p.file_path = file_path
+	text := os.read_file(file_path) or {
+		panic('error reading $file_path')
+	}
+	p.scanner.set_text(text)
+	// start
 	p.next()
 	mut top_stmts := []ast.Stmt{}
 	for p.tok != .eof {
@@ -131,7 +145,12 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			p.expect(.key_if)
 			p.log('ast.ComptimeIf')
+			// we are setting in_init here to maake sure
+			// `$if foo {` is not mistaken for struct init
+			in_init := p.in_init
+			p.in_init = true
 			cond := p.expr(.lowest)
+			p.in_init = in_init
 			if p.tok == .question {
 				p.next()
 			}
@@ -175,6 +194,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		.key_return {
 			p.log('ast.Return')
 			p.next()
+			if p.tok == .rcbr {
+				return ast.Return{}
+			}
 			return ast.Return{
 				exprs: p.expr_list()
 			}
@@ -302,7 +324,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				// typ := p.typ()
 				p.next()
 				// init
-				if p.tok == .lcbr {
+				if p.tok == .lcbr && !p.in_init {
 					p.next()
 					allowed_init_keys := ['cap', 'init', 'len']
 					for p.tok != .rcbr {
@@ -509,6 +531,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 	}
 	p.log('returning: $p.tok')
+	if p.tok == .key_return && p.scanner.line_nr == 1174  {
+		exit(1)
+	}
 	return lhs
 }
 
@@ -546,9 +571,9 @@ pub fn (p &Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
 	for p.tok != .rcbr {
-		// p.log('BLOCK STMT START')
+		p.log('BLOCK STMT START')
 		stmts << p.stmt()
-		// p.log('BLOCK STMT END')
+		p.log('BLOCK STMT END')
 	}
 	p.expect(.rcbr)
 	p.log('END BLOCK')
@@ -649,9 +674,7 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 
 
 pub fn (mut p Parser) call() ast.Call {
-	return ast.Call{
-		
-	}
+	return ast.Call{}
 }
 
 
@@ -780,7 +803,9 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 }
 
 pub fn (mut p Parser) log(msg string) {
-	// println(msg)
+	if p.prefs.verbose {
+		println(msg)
+	}
 }
 
 pub fn (mut p Parser) error(msg string) {
