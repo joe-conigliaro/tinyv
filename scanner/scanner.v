@@ -4,7 +4,7 @@ import token
 import pref
 
 pub struct Scanner {
-	prefs  &pref.Preferences
+	pref   &pref.Preferences
 mut:
 	text   string
 pub mut:
@@ -14,9 +14,9 @@ pub mut:
 	lit     string
 }
 
-pub fn new_scanner(prefs &pref.Preferences) &Scanner {
+pub fn new_scanner(pref &pref.Preferences) &Scanner {
 	return &Scanner{
-		prefs: prefs
+		pref: pref
 		line_nr: 1
 	}
 }
@@ -94,7 +94,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.pos++
 		// s.lit = c.str()
 		s.lit = s.text[start_pos+1..s.pos-1]
-		return .chartoken
+		return .char
 	}
 	s.lit = ''
 	s.pos++

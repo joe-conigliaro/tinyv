@@ -10,8 +10,8 @@ import gen.v as gen_v
 // import v.scanner as vscanner
 
 const(
-	// v_dir = '/home/kastro/dev/src/v'
-	v_dir = '/mnt/storage/homes/kastro/dev/v'
+	v_dir = '/home/kastro/dev/src/v'
+	// v_dir = '/mnt/storage/homes/kastro/dev/v'
 	files = [
 		'$v_dir/vlib/builtin/int.v',
 		'$v_dir/vlib/builtin/string.v',

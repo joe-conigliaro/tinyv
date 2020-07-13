@@ -64,7 +64,7 @@ pub enum Token {
 	number // 123
 	string // 'foo'
 	str_inter // 'name=$user.name'
-	chartoken // `A`
+	char // `A`
 	plus
 	minus
 	mul
@@ -253,7 +253,7 @@ fn build_tokens_str() []string {
 	s[Token.name] = 'name'
 	s[Token.number] = 'number'
 	s[Token.string] = 'string'
-	s[Token.chartoken] = 'char'
+	s[Token.char] = 'char'
 	s[Token.plus] = '+'
 	s[Token.minus] = '-'
 	s[Token.mul] = '*'

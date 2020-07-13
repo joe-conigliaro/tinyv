@@ -8,7 +8,7 @@ import types
 import pref
 
 struct Parser {
-	prefs     &pref.Preferences
+	pref      &pref.Preferences
 mut:
 	file_path string
 	scanner   &scanner.Scanner
@@ -16,10 +16,10 @@ mut:
 	in_init   bool // for/if/match eg. `for x in vals {`
 }
 
-pub fn new_parser(prefs &pref.Preferences) &Parser {
+pub fn new_parser(pref &pref.Preferences) &Parser {
 	return &Parser{
-		prefs: prefs
-		scanner: scanner.new_scanner(prefs)
+		pref: pref
+		scanner: scanner.new_scanner(pref)
 	}
 }
 
@@ -244,10 +244,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	p.log('EXPR: $p.tok - $p.scanner.line_nr')
 	mut lhs := ast.Expr{}
 	match p.tok {
-		.chartoken {
-			value := p.lit()
-			lhs = ast.CharLiteral{
-				value: value
+		.char, .key_true, .key_false, .number, .string {
+			lhs = ast.Literal{
+				kind: p.tok
+				value: p.lit()
 			}
 		}
 		.key_if {
@@ -289,13 +289,6 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			p.expect(.rpar)
 			// TODO
 			//lhs = ast.SizeOf {}
-		}
-		.key_true, .key_false {
-			value := if p.tok == .key_true { true } else { false }
-			p.next()
-			return ast.BoolLiteral{
-				value: value
-			}
 		}
 		.lpar {
 			// Paren
@@ -420,19 +413,6 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					name: name
 					is_mut: is_mut
 				}
-			}
-		}
-		.number {
-			value := p.lit()
-			p.log('ast.NumberLiteral: $value')
-			lhs = ast.NumberLiteral{
-				value: value
-			}
-		}
-		.string {
-			value := p.lit()
-			lhs = ast.StringLiteral{
-				value: value
 			}
 		}
 		.plus_assign{
@@ -824,7 +804,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 }
 
 pub fn (mut p Parser) log(msg string) {
-	if p.prefs.verbose {
+	if p.pref.verbose {
 		println(msg)
 	}
 }

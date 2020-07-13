@@ -251,14 +251,6 @@ fn (g &Gen) expr(expr ast.Expr) {
 				g.write('}')
 			}
 		}
-		ast.BoolLiteral {
-			if expr.value {
-				g.write('true')
-			}
-			else {
-				g.write('false')
-			}
-		}
 		ast.Cast {}
 		ast.Call {
 			g.expr(expr.lhs)
@@ -271,9 +263,6 @@ fn (g &Gen) expr(expr ast.Expr) {
 				if i < expr.args.len-1 { g.write(', ') }
 			}
 			g.write(')')
-		}
-		ast.CharLiteral {
-			g.write('`$expr.value`')
 		}
 		ast.Ident {
 			if expr.is_mut {
@@ -320,12 +309,20 @@ fn (g &Gen) expr(expr ast.Expr) {
 				if i < expr.exprs.len-1 { g.write(', ') }
 			}
 		}
+		ast.Literal {
+			if expr.kind == .char {
+				g.write('`$expr.value`')
+			}
+			if expr.kind == .string {
+				g.write("'$expr.value'")
+			}
+			else {
+				g.write(expr.value)
+			}
+		}
 		ast.Match {}
 		ast.None {
 			g.write('none')
-		}
-		ast.NumberLiteral {
-			g.write(expr.value)
 		}
 		ast.Paren {
 			g.write('(')
@@ -349,9 +346,6 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.write('.')
 			g.expr(expr.rhs)
-		}
-		ast.StringLiteral {
-			g.write("'$expr.value'")
 		}
 		ast.StructInit {
 			if expr.fields.len == 0 {

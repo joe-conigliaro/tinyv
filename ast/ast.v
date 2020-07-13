@@ -4,12 +4,12 @@ import token
 import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | BoolLiteral | Cast | Call | CharLiteral | Ident
-	| If | IfGuard | Index | Infix | List | Match | None | NumberLiteral
-	| Paren | Postfix | Prefix | Range | Selector | StringLiteral | StructInit
-pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl | EnumDecl
-	| ExprStmt | FlowControl | FnDecl | For | GlobalDecl | Import | Module
-	| Return | StructDecl | TypeDecl | Unsafe
+pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
+	| Infix | List | Literal | Match | None | Paren | Postfix | Prefix
+	| Range | Selector | StructInit
+pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl
+	| EnumDecl | ExprStmt | FlowControl | FnDecl | For | GlobalDecl
+	| Import | Module | Return | StructDecl | TypeDecl | Unsafe
 
 // File (main Ast container)
 pub struct File {
@@ -35,11 +35,6 @@ pub:
 	len   Expr
 }
 
-pub struct BoolLiteral {
-pub:
-	value bool
-}
-
 pub struct Branch {
 pub:
 	cond  Expr
@@ -56,11 +51,6 @@ pub:
 	lhs  Expr
 	args []Arg
 	// args []Expr // NOTE: see call_args()
-}
-
-pub struct CharLiteral {
-pub:
-	value string
 }
 
 pub struct FieldDecl {
@@ -116,17 +106,18 @@ pub:
 	expr Expr
 }
 
+pub struct Literal {
+pub:
+	kind  token.Token
+	value string
+}
+
 pub struct Match {
 }
 
 
 pub struct None {
 
-}
-
-pub struct NumberLiteral {
-pub:
-	value string
 }
 
 pub struct Paren {
@@ -156,11 +147,6 @@ pub struct Selector {
 pub:
 	lhs Expr
 	rhs Expr
-}
-
-pub struct StringLiteral {
-pub:
-	value string
 }
 
 pub struct List {
