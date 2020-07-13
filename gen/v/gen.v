@@ -313,7 +313,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 			if expr.kind == .char {
 				g.write('`$expr.value`')
 			}
-			if expr.kind == .string {
+			else if expr.kind == .string {
 				g.write("'$expr.value'")
 			}
 			else {
