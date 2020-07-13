@@ -22,6 +22,7 @@ const(
 	prefs = &pref.Preferences{
 		verbose: false
 	}
+	// debug = true
 	debug = false
 )
 

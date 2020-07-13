@@ -186,14 +186,6 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				stmts: p.block()
 			}
 		}
-		.name, .key_mut {
-			lhs := p.expr_list()
-			if p.tok.is_assignment() {
-				return p.assign(lhs)
-			}
-			//panic('WHY ARE WE HERE: $p.tok - $p.scanner.line_nr')
-			return ast.ExprStmt{}
-		}
 		.key_return {
 			p.log('ast.Return')
 			p.next()
@@ -213,12 +205,15 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
+			// any alone exression in a statement list
+			// eg: `if x == 1 {`, `x++`, `break/continue`
+			// also: `mut x := 1`, `a,`b := 1,2`
 			expr := p.expr(.lowest)
 			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
 			if p.tok == .comma {
 				p.next()
 				// it's a little extra code, but also a little more
-				// effiecient than using expr_list and creating 2 arrays
+				// efficient than using expr_list and creating 2 arrays
 				mut exprs := [expr]
 				for {
 					exprs << p.expr(.lowest)
@@ -227,9 +222,17 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					}
 					p.next()
 				}
+				// doubling up assignment check also for efficiency
+				// to avoid creating array from expr_list each time
+				if p.tok.is_assignment() {
+					return p.assign(exprs)
+				}
 				return ast.ExprStmt{
 					ast.List{exprs: exprs}
 				}
+			}
+			if p.tok.is_assignment() {
+				return p.assign([expr])
 			}
 			return ast.ExprStmt{
 				expr: expr

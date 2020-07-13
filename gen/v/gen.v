@@ -12,7 +12,7 @@ struct Gen {
 	prefs      &pref.Preferences
 mut:
 	file       ast.File
-	out		   strings.Builder 
+	out        strings.Builder 
 	indent     int
 	on_newline bool
 	in_init    bool
@@ -117,6 +117,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.ExprStmt {
 			g.expr(stmt.expr)
+			g.writeln('')
 		}
 		ast.FlowControl {
 			g.writeln(stmt.op.str())
