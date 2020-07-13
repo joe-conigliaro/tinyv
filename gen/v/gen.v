@@ -73,7 +73,9 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			if !g.in_init { g.writeln('') }
 		}
 		ast.Attribute {
-			g.writeln('[$stmt.name]')
+			g.write('[')
+			g.write(stmt.name)
+			g.writeln(']')
 		}
 		ast.Block {}
 		ast.ComptimeIf {
@@ -102,7 +104,9 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			if stmt.is_public {
 				g.write('pub ')
 			}
-			g.writeln('enum $stmt.name {')
+			g.write('enum ')
+			g.write(stmt.name)
+			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {
 				g.write('$field.name #type#')
@@ -128,9 +132,12 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write('fn ')
 			// if stmt.is_method {
-			g.write('${stmt.name}(')
+			g.write(stmt.name)
+			g.write('(')
 			for i,arg in stmt.args {
-				g.write('$arg.name type')
+				g.write(arg.name)
+				g.write(' ')
+				g.write('#type#')
 				if i < stmt.args.len-1 { g.write(',') }
 			}
 			g.write(')')
@@ -154,21 +161,26 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 		ast.GlobalDecl {
-			g.write('global $stmt.name')
+			g.write('global ')
+			g.write(stmt.name)
 			// if stmt.value != none {
 				g.write(' = ')
 				g.expr(stmt.value)
 			// }
+			g.writeln('')
 		}
 		ast.Import {
-			g.write('import $stmt.name')
+			g.write('import ')
+			g.write(stmt.name)
 			if stmt.is_aliased {
-				g.write(' as $stmt.alias')
+				g.write(' as ')
+				g.write(stmt.alias)
 			}
 			g.writeln('')
 		}
 		ast.Module {
-			g.writeln('module $stmt.name')
+			g.write('module ')
+			g.writeln(stmt.name)
 		}
 		ast.Return {
 			g.write('return ')
@@ -182,10 +194,14 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			if stmt.is_public {
 				g.write('pub ')
 			}
-			g.writeln('struct $stmt.name {')
+			g.write('struct ')
+			g.write(stmt.name)
+			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {
-				g.write('$field.name #type#')
+				g.write(field.name)
+				g.write(' ')
+				g.write('#type#')
 				// if field.value != none {
 				// 	g.write(' = ')
 				// 	g.expr(field.value)
@@ -196,7 +212,8 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 		ast.TypeDecl {
-			g.write('type $stmt.name')
+			g.write('type ')
+			g.write(stmt.name)
 			if stmt.variants.len > 0 {
 				g.write(' =')
 				//for i, vairant in stmt.variants {
@@ -301,7 +318,9 @@ fn (g &Gen) expr(expr ast.Expr) {
 		}
 		ast.Infix {
 			g.expr(expr.lhs)
-			g.write(' $expr.op ')
+			g.write(' ')
+			g.write(expr.op.str())
+			g.write(' ')
 			g.expr(expr.rhs)
 		}
 		ast.List {
@@ -312,10 +331,14 @@ fn (g &Gen) expr(expr ast.Expr) {
 		}
 		ast.Literal {
 			if expr.kind == .char {
-				g.write('`$expr.value`')
+				g.write('`')
+				g.write(expr.value)
+				g.write('`')
 			}
 			else if expr.kind == .string {
-				g.write("'$expr.value'")
+				g.write("'")
+				g.write(expr.value)
+				g.write("'")
 			}
 			else {
 				g.write(expr.value)
@@ -323,7 +346,8 @@ fn (g &Gen) expr(expr ast.Expr) {
 		}
 		ast.Match {}
 		ast.Modifier {
-			g.write('$expr.kind ')
+			g.write(expr.kind.str())
+			g.write(' ')
 			g.expr(expr.expr)
 		}
 		ast.None {
@@ -360,7 +384,9 @@ fn (g &Gen) expr(expr ast.Expr) {
 				g.writeln('#type#{')
 			}
 			for i, field in expr.fields {
-				g.write('\t$field.name: ')
+				g.write('\t')
+				g.write(field.name)
+				g.write(': ')
 				g.expr(field.value)
 				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 			}
@@ -369,6 +395,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 	}
 }
 
+[inline]
 fn (g &Gen) write(str string) {
 	if g.on_newline {
 		g.out.write(tabs[g.indent])
@@ -377,6 +404,7 @@ fn (g &Gen) write(str string) {
 	g.on_newline = false
 }
 
+[inline]
 fn (g &Gen) writeln(str string) {
 	if g.on_newline {
 		g.out.write(tabs[g.indent])
