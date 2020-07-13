@@ -5,8 +5,8 @@ import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
-	| Infix | List | Literal | Match | None | Paren | Postfix | Prefix
-	| Range | Selector | StructInit
+	| Infix | List | Literal | Match | Modifier | None | Paren | Postfix
+	| Prefix | Range | Selector | StructInit
 pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl
 	| EnumDecl | ExprStmt | FlowControl | FnDecl | For | GlobalDecl
 	| Import | Module | Return | StructDecl | TypeDecl | Unsafe
@@ -22,7 +22,7 @@ pub:
 pub struct Arg {
 pub:
 	name   string
-	expr   Expr
+	// expr   Expr
 	typ    types.Type
 	is_mut bool
 }
@@ -49,8 +49,8 @@ pub:
 pub struct Call {
 pub:
 	lhs  Expr
-	args []Arg
-	// args []Expr // NOTE: see call_args()
+	// args []Arg
+	args []Expr
 }
 
 pub struct FieldDecl {
@@ -115,6 +115,11 @@ pub:
 pub struct Match {
 }
 
+pub struct Modifier {
+pub:
+	kind token.Token
+	expr Expr
+}
 
 pub struct None {
 

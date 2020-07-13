@@ -161,9 +161,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.key_break, .key_continue {
-			op := p.tok
-			p.next()
-			return ast.FlowControl{op: op}
+			return ast.FlowControl{op: p.tok()}
 		}
 		.key_for {
 			p.next()
@@ -377,11 +375,18 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 
 			return ast.Match{}
 		}
-		.key_mut, .name {
-			is_mut := p.tok == .key_mut
-			if is_mut {
-				p.next()
+		.key_mut, .key_shared {
+			lhs = ast.Modifier {
+				kind: p.tok()
+				expr: p.expr(.lowest)
 			}
+		}
+		.name {
+		// .name, .key_mut {
+			// is_mut := p.tok == .key_mut
+			// if is_mut {
+			// 	p.next()
+			// }
 			name := p.name()
 			p.log('NAME: $name - $p.tok ($p.scanner.lit)')
 			// struct init
@@ -415,7 +420,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			else {
 				lhs = ast.Ident{
 					name: name
-					is_mut: is_mut
+					// is_mut: is_mut
 				}
 			}
 		}
@@ -424,10 +429,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		else {
 			if p.tok.is_prefix() {
-				op := p.tok
-				p.next()
 				return ast.Prefix{
-					op: op
+					op: p.tok()
 					expr: p.expr(.lowest)
 				}
 			}
@@ -503,19 +506,15 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// }
 		// p.next()
 		if p.tok.is_infix() {
-			op := p.tok
-			p.next()
 			lhs = ast.Infix{
-				op: op
+				op: p.tok()
 				lhs: lhs
 				rhs: p.expr(p.tok.left_binding_power())
 			}
 		}
 		else if p.tok.is_postfix() {
-			op := p.tok
-			p.next()
 			lhs = ast.Postfix{
-				op: op
+				op: p.tok()
 				expr: lhs
 			}
 		}
@@ -547,16 +546,28 @@ pub fn (mut p Parser) expect(tok token.Token) {
 	p.next()
 }
 
+// expect name & return lit & go to next token
+[inline]
 pub fn (mut p Parser) name() string {
 	name := p.scanner.lit
 	p.expect(.name)
 	return name
 }
 
+// return lit & go to next token
+[inline]
 pub fn (mut p Parser) lit() string {
 	lit := p.scanner.lit
 	p.next()
 	return lit
+}
+
+// return tok & go to next token
+[inline]
+pub fn (mut p Parser) tok() token.Token {
+	tok := p.tok
+	p.next()
+	return tok
 }
 
 // pub fn (mut p Parser) peek(pos int) scanner.Token {}
@@ -587,9 +598,7 @@ pub fn (mut p Parser) expr_list() []ast.Expr {
 }
 
 pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
-	op := p.tok
-	p.next()
-	return ast.Assign{op: op, lhs: lhs, rhs: p.expr_list()}
+	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
 
 pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
@@ -683,20 +692,21 @@ pub fn (mut p Parser) call() ast.Call {
 }
 
 
-pub fn (mut p Parser) call_args() []ast.Arg {
+pub fn (mut p Parser) call_args() []ast.Expr {
 	p.expect(.lpar)
-	mut args := []ast.Arg{}
-	for p.tok != .rpar {
-		is_mut := p.tok == .key_mut
-		if is_mut { p.next() }
-		args << ast.Arg{
-			expr: p.expr(.lowest)
-			is_mut: is_mut
-		}
-		if p.tok == .comma {
-			p.next()
-		}
-	}
+	// mut args := []ast.Arg{}
+	// for p.tok != .rpar {
+	// 	is_mut := p.tok == .key_mut
+	// 	if is_mut { p.next() }
+	// 	args << ast.Arg{
+	// 		expr: p.expr(.lowest)
+	// 		is_mut: is_mut
+	// 	}
+	// 	if p.tok == .comma {
+	// 		p.next()
+	// 	}
+	// }
+	args := p.expr_list()
 	// NOTE: we could just use expr list and mut is hadled with ident,
 	// but currently mut is requred even for exprs initialized in the arg
 	// args := p.expr_list()

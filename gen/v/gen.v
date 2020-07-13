@@ -257,10 +257,10 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.write('(')
 			for i, arg in expr.args {
-				if arg.is_mut {
-					g.write('mut ')
-				}
-				g.expr(arg.expr)
+				// if arg.is_mut {
+				// 	g.write('mut ')
+				// }
+				g.expr(arg)
 				if i < expr.args.len-1 { g.write(', ') }
 			}
 			g.write(')')
@@ -322,6 +322,10 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.Match {}
+		ast.Modifier {
+			g.write('$expr.kind ')
+			g.expr(expr.expr)
+		}
 		ast.None {
 			g.write('none')
 		}
