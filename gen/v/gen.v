@@ -192,6 +192,10 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('')
 		}
+		ast.Label {
+			g.write(stmt.name)
+			g.writeln(':')
+		}
 		ast.Module {
 			g.write('module ')
 			g.writeln(stmt.name)
@@ -357,6 +361,17 @@ fn (g &Gen) expr(expr ast.Expr) {
 			else {
 				g.write(expr.value)
 			}
+		}
+		ast.MapInit {
+			g.write('{')
+			for i, key in expr.keys {
+				val := expr.vals[i]
+				g.expr(key)
+				g.write(': ')
+				g.expr(val)
+				if i < expr.keys.len-1 { g.write(', ') }
+			}
+			g.write('}')
 		}
 		ast.Match {}
 		ast.Modifier {

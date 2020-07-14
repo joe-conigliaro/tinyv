@@ -98,7 +98,8 @@ fn (mut b Builder) gen_v_files(ast_files []ast.File) {
 }
 
 fn get_module_path(mod string) string {
-	return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', '/')
+	// return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', '/')
+	return '/home/kastro/dev/src/v/vlib/' + mod.replace('.', '/')
 }
 
 // fn scan_files() {

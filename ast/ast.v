@@ -5,11 +5,12 @@ import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
-	| Infix | List | Literal | Match | Modifier | None | Paren | Postfix
-	| Prefix | Range | Selector | StructInit
+	| Infix | List | Literal | MapInit | Match | Modifier | None | Paren
+	| Postfix | Prefix | Range | Selector | StructInit
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
-	| GlobalDecl | Import | Module | Return | StructDecl | TypeDecl | Unsafe
+	| GlobalDecl | Import | Label | Module | Return | StructDecl | TypeDecl
+	| Unsafe
 
 // File (main Ast container)
 pub struct File {
@@ -90,8 +91,8 @@ pub:
 
 pub struct IfGuard {
 pub:
-	cond     Expr
-	or_stmts []Stmt
+	init  Stmt
+	stmts []Stmt
 }
 
 pub struct Infix {
@@ -111,6 +112,12 @@ pub struct Literal {
 pub:
 	kind  token.Token
 	value string
+}
+
+pub struct MapInit {
+pub:
+	keys []Expr
+	vals []Expr
 }
 
 pub struct Match {
@@ -255,6 +262,11 @@ pub:
 	name       string
 	alias      string
 	is_aliased bool
+}
+
+pub struct Label {
+pub:
+	name string
 }
 
 pub struct Module {

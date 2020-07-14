@@ -21,7 +21,7 @@ pub fn (mut p Parser) typ() types.Type {
 		p.next()
 	}
 	// map
-	if p.tok == .name && p.scanner.lit == 'map' {
+	if p.tok == .name && p.lit == 'map' {
 		p.next()
 		p.expect(.lsbr)
 		key_type := p.typ()
@@ -64,11 +64,11 @@ pub fn (mut p Parser) typ() types.Type {
 	mut name := ''
 	for p.tok == .name {
 		name = p.name()
-		if p.tok == .dot {
-			name += '.'
-			p.next()
+		if p.tok != .dot {
+			break
 		}
-		break
+		p.next()
+		name += '.'
 	}
 
 	return types.Type{}

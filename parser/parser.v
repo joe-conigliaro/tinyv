@@ -12,7 +12,10 @@ struct Parser {
 mut:
 	file_path string
 	scanner   &scanner.Scanner
+	tok2      token.Token
 	tok       token.Token
+	lit 	  string
+	line_nr   int
 	in_init   bool // for/if/match eg. `for x in vals {`
 }
 
@@ -26,6 +29,7 @@ pub fn new_parser(pref &pref.Preferences) &Parser {
 pub fn (mut p Parser) reset() {
 	p.scanner.reset()
 	p.tok = .unknown
+	p.tok2 = .unknown
 }
 
 pub fn (mut p Parser) parse(file_path string) ast.File {
@@ -39,6 +43,7 @@ pub fn (mut p Parser) parse(file_path string) ast.File {
 	}
 	p.scanner.set_text(text)
 	// start
+	p.next0()
 	p.next()
 	mut top_stmts := []ast.Stmt{}
 	mut imports := []ast.Import{}
@@ -60,11 +65,11 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.hash {
 			p.next()
-			line_nr := p.scanner.line_nr
+			line_nr := p.line_nr
 			name := p.name()
 			// TODO: handle properly
 			mut value := p.lit()
-			for p.scanner.line_nr == line_nr {
+			for p.line_nr == line_nr {
 				value += p.lit()
 			}
 			return ast.Directive{
@@ -101,6 +106,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				alias = p.name()
 			}
 			// p.log('ast.Import: $name as $alias')
+			println('ast.Import: $name as $alias')
 			return ast.Import{
 				name: name
 				alias: alias
@@ -151,7 +157,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return ast.Attribute{name: name}
 		}
 		else {
-			panic('X: $p.tok')
+			panic('X: $p.tok - $p.tok2 - $p.file_path:$p.line_nr')
 		}
 	}
 	p.error('unknown top stmt')
@@ -159,7 +165,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 }
 
 pub fn (mut p Parser) stmt() ast.Stmt {
-	// p.log('STMT: $p.tok - $p.scanner.line_nr')
+	// p.log('STMT: $p.tok - $p.file_path:$p.line_nr')
 	match p.tok {
 		.dollar {
 			p.next()
@@ -177,12 +183,17 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			stmts := p.block()
 			mut else_stmts := []ast.Stmt{}
 			// TODO:
-			if p.tok == .dollar {
+			// if p.tok == .dollar {
+			// 	p.next()
+			// 	if p.tok == .key_else {
+			// 		p.next()
+			// 		else_stmts = p.block()
+			// 	}
+			// }
+			if p.tok == .dollar && p.tok2 == .key_else {
 				p.next()
-				if p.tok == .key_else {
-					p.next()
-					else_stmts = p.block()
-				}
+				p.next()
+				else_stmts = p.block()
 			}
 			return ast.ComptimeIf{
 				cond: cond
@@ -194,7 +205,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			return ast.Assert{expr: p.expr(.lowest)}
 		}
-		.key_break, .key_continue {
+		.key_break, .key_continue, .key_goto {
 			return ast.FlowControl{op: p.tok()}
 		}
 		.key_defer {
@@ -245,6 +256,15 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			// eg: `if x == 1 {`, `x++`, `break/continue`
 			// also: `mut x := 1`, `a,`b := 1,2`
 			expr := p.expr(.lowest)
+			if p.tok == .colon {
+				if expr !is ast.Ident {
+					p.error('expecting identifier')
+				}
+				p.next()
+				return ast.Label{
+					name: (expr as ast.Ident).name
+				}
+			}
 			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
 			if p.tok == .comma {
 				p.next()
@@ -281,7 +301,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 
 pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	// TODO: fix match so it last expr can be used `x := match {...`
-	// p.log('EXPR: $p.tok - $p.scanner.line_nr')
+	// p.log('EXPR: $p.tok - $p.line_nr')
 	mut lhs := ast.Expr{}
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
@@ -301,6 +321,17 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				in_init := p.in_init
 				p.in_init = true
 				cond := p.expr(.lowest)
+
+				if p.tok.is_assignment() {
+					init := p.assign([cond])
+					stmts := p.block()
+					p.in_init = in_init // make sure to reset as we are returning
+					return ast.IfGuard{
+						init: init
+						stmts: stmts
+					}
+				}
+
 				p.in_init = in_init
 				if p.tok == .key_or {
 					panic('GOT OR')
@@ -341,13 +372,37 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		.lcbr {
 			if !p.in_init {
-				lhs = p.struct_init()
+				// TODO: options struct
+				// lhs = p.struct_init()
+				p.next()
+				if p.tok == .rcbr {
+					p.next()
+					// println('RETURNING EMPTY STRUCT INIT')
+					return ast.StructInit{}
+				}
+				mut keys := []ast.Expr{}
+				mut vals := []ast.Expr{}
+				for p.tok != .rcbr {
+					key := p.expr(.lowest)
+					keys << key
+					p.expect(.colon)
+					val := p.expr(.lowest)
+					vals << val
+					if p.tok == .comma {
+						p.next()
+					}
+				}
+				lhs = ast.MapInit{
+					keys: keys
+					vals: vals
+				}
+				p.expect(.rcbr)
 			}
 		}
 		.lsbr {
 			p.next()
 			// [1,2,3,4]
-			line_nr := p.scanner.line_nr
+			line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
 				// p.log('ARRAY INIT EXPR:')
@@ -361,7 +416,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// []int{}
 			mut cap, mut init, mut len := ast.Expr{}, ast.Expr{}, ast.Expr{}
 			// TODO: restructure in parts (type->init) ?? no
-			if p.tok == .name && p.scanner.line_nr == line_nr {
+			if p.tok == .name && p.line_nr == line_nr {
 				// typ := p.typ()
 				p.next()
 				// init
@@ -479,11 +534,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// TODO: this is not going to work, what was I trying to do?
 			// need to be part of If? or or as part of call?
 			if p.tok == .key_or {
+				// TODO:
 				// p.log('ast.IfGuard')
 				p.next()
+				p.block()
 				lhs = ast.IfGuard{
-					cond: lhs
-					or_stmts: p.block()
+					// cond: lhs
+					// or_stmts: p.block()
 				}
 			}
 		}
@@ -553,19 +610,24 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 	}
 	// p.log('returning: $p.tok')
-	if p.tok == .key_return && p.scanner.line_nr == 1174  {
-		exit(1)
-	}
 	return lhs
 }
 
-pub fn (mut p Parser) next() {
+pub fn (mut p Parser) next0() {
 	for {
-		p.tok = p.scanner.scan()
-		if p.tok != .comment {
+		// p.lit = p.scanner.lit
+		p.tok2 = p.scanner.scan()
+		if p.tok2 != .comment {
 			break
 		}
 	}
+}
+
+pub fn (mut p Parser) next() {
+	p.tok = p.tok2
+	p.lit = p.scanner.lit
+	p.line_nr = p.scanner.line_nr
+	p.next0()
 }
 
 pub fn (mut p Parser) expect(tok token.Token) {
@@ -578,7 +640,7 @@ pub fn (mut p Parser) expect(tok token.Token) {
 // expect name & return lit & go to next token
 [inline]
 pub fn (mut p Parser) name() string {
-	name := p.scanner.lit
+	name := p.lit
 	p.expect(.name)
 	return name
 }
@@ -586,7 +648,7 @@ pub fn (mut p Parser) name() string {
 // return lit & go to next token
 [inline]
 pub fn (mut p Parser) lit() string {
-	lit := p.scanner.lit
+	lit := p.lit
 	p.next()
 	return lit
 }
@@ -656,7 +718,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 
 pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	p.next()
-	line_nr := p.scanner.line_nr
+	line_nr := p.line_nr
 	mut args := []ast.Arg{}
 	// method
 	mut is_method := false
@@ -682,13 +744,24 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.next()
 		name += '.$p.name()'
 	}
+	if p.tok == .lt {
+		p.next()
+		for {
+			p.typ()
+			if p.tok != .comma {
+				break
+			}
+			p.next()
+		}
+		p.expect(.gt)
+	}
 	args << p.fn_args()
 	// TODO:
 	// mut return_type := types.void
-	if p.tok != .lcbr && p.scanner.line_nr == line_nr {
+	if p.tok != .lcbr && p.line_nr == line_nr {
 		p.typ() // return type
 	}
-	// p.log('ast.FnDecl: $name')
+	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
 	mut stmts := if p.tok == .lcbr {
 		p.block()
 	}
@@ -899,7 +972,7 @@ pub fn (mut p Parser) log(msg string) {
 pub fn (mut p Parser) error(msg string) {
 	println('error: $msg')
 	col := p.scanner.pos-p.scanner.last_nl_pos-p.scanner.lit.len
-	println('$p.file_path:$p.scanner.line_nr:$col')
+	println('$p.file_path:$p.line_nr:$col')
 	exit(1)
 }
 
