@@ -29,52 +29,41 @@ pub fn (mut b Builder) build(files []string) {
 fn (mut b Builder) parse_files(files []string) []ast.File {
 	mut ast_files := []ast.File{}
 	mut p := parser.new_parser(b.pref)
+	// parse builtin
+	builtin_files := get_v_files_from_dir(get_module_path('builtin'))
+	for file in builtin_files {
+		pt0 := time.ticks()
+		ast_files << p.parse(file)
+		pt1 := time.ticks()
+		parse_time := pt1 - pt0
+		println('scan & parse time for $file: ${parse_time}ms')
+	}
+	// parse user files
 	for file in files {
 		pt0 := time.ticks()
 		ast_file := p.parse(file)
-		/*
-		for mod in ast_file.imports {
-			if mod.name in b.imports {
-				continue
-			}
-			b.imports << mod.name
-		}
-		*/
 		ast_files << ast_file
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
 		println('scan & parse time for $file: ${parse_time}ms')
 	}
-
+	// parse imports
 	mut imports := []string
 	mut parsed_imports := []string
-	// parse imports
 	for ast_file in ast_files {
 		for mod in ast_file.imports {
 			if mod.name in parsed_imports {
 				continue
 			}
-			bd := os.base_dir(ast_file.path)
-			md1 := '$bd/$mod.name'
-			mod_path := if os.is_dir(md1) {
-				md1
+			relative_dir := os.base_dir(ast_file.path) + os.path_separator + mod.name
+			mod_path := if os.is_dir(relative_dir) {
+				relative_dir
 			}
 			else {
 				get_module_path(mod.name)
 			}
-			// mod_path := get_module_path(mod.name)
-			// println('parsing import: $mod.name ($mod_path)')
-			mod_files := os.ls(mod_path)  or {
-				panic('error getting ls from $mod_path')
-			}
-			// println(mod_files)
-			for file in mod_files {
-				if !file.ends_with('.v') || file.ends_with('.js.v') || file.ends_with('_test.v') {
-					continue
-				}
-				file_path := '$mod_path/${file}'
-				// println('parsing file $file_path for import $mod.name')
-				ast_files << p.parse(file_path)
+			for file in get_v_files_from_dir(mod_path) {
+				ast_files << p.parse(file)
 			}
 			parsed_imports << mod.name
 		}
@@ -100,6 +89,20 @@ fn (mut b Builder) gen_v_files(ast_files []ast.File) {
 fn get_module_path(mod string) string {
 	// return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', '/')
 	return '/home/kastro/dev/src/v/vlib/' + mod.replace('.', '/')
+}
+
+fn get_v_files_from_dir(dir string) []string {
+	mod_files := os.ls(dir)  or {
+		panic('error getting ls from $dir')
+	}
+	mut v_files := []string
+	for file in mod_files {
+		if !file.ends_with('.v') || file.ends_with('.js.v') || file.ends_with('_test.v') {
+			continue
+		}
+		v_files << '$dir/${file}'
+	}
+	return v_files
 }
 
 // fn scan_files() {

@@ -106,7 +106,6 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				alias = p.name()
 			}
 			// p.log('ast.Import: $name as $alias')
-			println('ast.Import: $name as $alias')
 			return ast.Import{
 				name: name
 				alias: alias

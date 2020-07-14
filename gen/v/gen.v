@@ -327,7 +327,15 @@ fn (g &Gen) expr(expr ast.Expr) {
 				g.writeln('}')
 			}
 		}
-		ast.IfGuard {}
+		ast.IfGuard {
+			// TODO: test this method
+			g.writeln('// IfGuard')
+			g.write('if ')
+			g.stmt(expr.init)
+			g.writeln(' {')
+			g.stmts(expr.stmts)
+			g.writeln('}')
+		}
 		ast.Index {
 			g.expr(expr.lhs)
 			g.write('[')

@@ -23,11 +23,15 @@ pub fn (mut p Parser) typ() types.Type {
 	// map
 	if p.tok == .name && p.lit == 'map' {
 		p.next()
-		p.expect(.lsbr)
-		key_type := p.typ()
-		p.expect(.rsbr)
-		val_type := p.typ()
-		return types.Type{}
+		// map[string]string
+		if p.tok == .lsbr {
+			p.expect(.lsbr)
+			key_type := p.typ()
+			p.expect(.rsbr)
+			val_type := p.typ()
+			return types.Type{}
+		}
+		// there is just struct called map in builtin
 	}
 	// array
 	else if p.tok == .lsbr {

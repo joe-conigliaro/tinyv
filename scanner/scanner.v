@@ -385,6 +385,9 @@ fn (mut s Scanner) number() {
 			}
 		}
 	}
+	mut has_decimal := false
+	mut has_exponent := false
+	// TODO: proper impl of fraction / expoent
 	// continue decimal (and also completion of bin/octal)
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
@@ -392,9 +395,20 @@ fn (mut s Scanner) number() {
 			s.pos++
 			continue
 		}
+		// fracton
+		if !has_decimal && c == `.` {
+			has_decimal = true
+			s.pos++
+			continue
+		}
+		// exponent
+		if !has_exponent && c in [`e`, `E`] {
+			has_exponent = true
+			s.pos++
+			continue
+		}
 		break
 	}
-	// TODO: fraction & exponent
 }
 
 [inline]
