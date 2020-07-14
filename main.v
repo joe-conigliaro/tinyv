@@ -22,6 +22,7 @@ const(
 		debug: false
 		// debug: true
 		verbose: false
+		// verbose: true
 	}
 )
 

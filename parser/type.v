@@ -47,6 +47,12 @@ pub fn (mut p Parser) typ() types.Type {
 		p.expect(.rpar)
 		return types.Type{}
 	}
+	// variadic
+	else if p.tok == .ellipsis {
+		p.next()
+		p.typ()
+		return types.Type{}
+	}
 	else if p.tok == .key_fn {
 		return p.parse_fn_type()
 	}

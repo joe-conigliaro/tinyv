@@ -41,11 +41,17 @@ pub fn (mut p Parser) parse(file_path string) ast.File {
 	// start
 	p.next()
 	mut top_stmts := []ast.Stmt{}
+	mut imports := []ast.Import{}
 	for p.tok != .eof {
-		top_stmts << p.top_stmt()
+		stmt := p.top_stmt()
+		if stmt is ast.Import {
+			imports << stmt
+		}
+		top_stmts << stmt
 	}
 	return ast.File{
 		path: p.file_path
+		imports: imports
 		stmts: top_stmts
 	}
 }
@@ -107,7 +113,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_fn {
 					return p.fn_decl(true)
 				}
-				.key_struct {
+				.key_struct, .key_union {
 					return p.struct_decl(true)
 				}
 				.key_type {
@@ -116,7 +122,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				else {}
 			}
 		}
-		.key_struct {
+		.key_struct, .key_union {
 			return p.struct_decl(false)
 		}
 		.key_type {
@@ -159,6 +165,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				cond: cond
 				stmts: stmts
 			}
+		}
+		.key_assert {
+			p.next()
+			return ast.Assert{expr: p.expr(.lowest)}
 		}
 		.key_break, .key_continue {
 			return ast.FlowControl{op: p.tok()}
@@ -301,6 +311,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 			p.expect(.rpar)
 		}
+		.lcbr {
+			if !p.in_init {
+				lhs = p.struct_init()
+			}
+		}
 		.lsbr {
 			p.next()
 			// [1,2,3,4]
@@ -393,28 +408,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
 			// currently using in_init for if/for/map initialization
 			if p.tok == .lcbr && !p.in_init {
-				p.next()
-				mut fields := []ast.FieldInit{}
-				for p.tok != .rcbr {
-					// could be name or init without field name
-					mut field_name := ''
-					mut value := p.expr(.lowest)
-					// name / value
-					if p.tok == .colon {
-						field_name = (value as ast.Ident).name
-						p.next()
-						value = p.expr(.lowest)
-					}
-					if p.tok == .comma {
-						p.next()
-					}
-					fields << ast.FieldInit{
-						name: field_name
-						value: value
-					}
-				}
-				p.expect(.rcbr)
-				lhs = ast.StructInit{fields: fields}
+				// TODO: add type or name (prob type)
+				lhs = p.struct_init()
 			}
 			// ident
 			else {
@@ -757,6 +752,7 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 }
 
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
+	is_union := p.tok == .key_union
 	p.next()
 	name := p.name()
 	// p.log('ast.StructDecl: $name')
@@ -789,6 +785,31 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		name: name
 		fields: fields
 	}
+}
+
+pub fn (mut p Parser) struct_init() ast.StructInit {
+	p.next()
+	mut fields := []ast.FieldInit{}
+	for p.tok != .rcbr {
+		// could be name or init without field name
+		mut field_name := ''
+		mut value := p.expr(.lowest)
+		// name / value
+		if p.tok == .colon {
+			field_name = (value as ast.Ident).name
+			p.next()
+			value = p.expr(.lowest)
+		}
+		if p.tok == .comma {
+			p.next()
+		}
+		fields << ast.FieldInit{
+			name: field_name
+			value: value
+		}
+	}
+	p.expect(.rcbr)
+	return ast.StructInit{fields: fields}
 }
 
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {

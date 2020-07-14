@@ -7,15 +7,16 @@ import types
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| Infix | List | Literal | Match | Modifier | None | Paren | Postfix
 	| Prefix | Range | Selector | StructInit
-pub type Stmt =  Assign | Attribute | Block | ComptimeIf | ConstDecl
+pub type Stmt = Assert | Assign | Attribute | Block | ComptimeIf | ConstDecl
 	| EnumDecl | ExprStmt | FlowControl | FnDecl | For | GlobalDecl
 	| Import | Module | Return | StructDecl | TypeDecl | Unsafe
 
 // File (main Ast container)
 pub struct File {
 pub:
-	path  string
-	stmts []Stmt
+	path    string
+	stmts   []Stmt
+	imports []Import
 }
 
 // Expressions
@@ -166,6 +167,11 @@ pub:
 }
 
 // Statements
+pub struct Assert {
+pub:
+	expr Expr
+}
+
 pub struct Assign {
 pub:
 	op  token.Token

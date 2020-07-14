@@ -60,6 +60,10 @@ fn (g &Gen) stmts(stmts []ast.Stmt) {
 fn (g &Gen) stmt(stmt ast.Stmt) {
 	g.indent++
 	match stmt {
+		ast.Assert {
+			g.write('assert ')
+			g.expr(stmt.expr)
+		}
 		ast.Assign {
 			for i, l in stmt.lhs {
 				g.expr(l)

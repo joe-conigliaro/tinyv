@@ -251,6 +251,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .gt
 		}
 		// `@` { return .at }
+		`~` { return .bit_not }
 		`,` { return .comma }
 		`$` { return .dollar }
 		`#` { return .hash }
@@ -350,6 +351,7 @@ fn (mut s Scanner) number() {
 	if s.text[s.pos] == `0` {
 		s.pos++
 		c := s.text[s.pos]
+		// TODO: fix underscore support
 		// 0b (binary)
 		if c in [`b`, `B`] {
 			s.pos++
@@ -363,7 +365,7 @@ fn (mut s Scanner) number() {
 			s.pos++
 			for {
 				c2 := s.text[s.pos]
-				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) {
+				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) || c2 == `_` {
 					s.pos++
 					continue
 				}
@@ -386,7 +388,7 @@ fn (mut s Scanner) number() {
 	// continue decimal (and also completion of bin/octal)
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
-		if c >= `0` && c <= `9` {
+		if (c >= `0` && c <= `9`) || c == `_` {
 			s.pos++
 			continue
 		}
