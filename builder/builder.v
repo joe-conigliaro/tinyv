@@ -41,8 +41,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	// parse user files
 	for file in files {
 		pt0 := time.ticks()
-		ast_file := p.parse(file)
-		ast_files << ast_file
+		ast_files << p.parse(file)
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
 		println('scan & parse time for $file: ${parse_time}ms')
@@ -63,7 +62,11 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 				get_module_path(mod.name)
 			}
 			for file in get_v_files_from_dir(mod_path) {
+				pt0 := time.ticks()
 				ast_files << p.parse(file)
+				pt1 := time.ticks()
+				parse_time := pt1 - pt0
+				println('scan & parse time for $file: ${parse_time}ms')
 			}
 			parsed_imports << mod.name
 		}
