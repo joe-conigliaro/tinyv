@@ -81,7 +81,6 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.write(stmt.name)
 			g.writeln(']')
 		}
-		ast.Block {}
 		ast.ComptimeIf {
 			g.write('\$if ')
 			g.expr(stmt.cond)
@@ -103,6 +102,17 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.indent--
 			g.writeln(')')
+		}
+		ast.Defer {
+			g.write('defer {')
+			g.stmts(stmt.stmts)
+			g.writeln('}')
+		}
+		ast.Directive {
+			g.write('#')
+			g.write(stmt.name)
+			g.write(' ')
+			g.writeln(stmt.value)
 		}
 		ast.EnumDecl {
 			if stmt.is_public {

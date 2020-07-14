@@ -7,9 +7,9 @@ import types
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| Infix | List | Literal | Match | Modifier | None | Paren | Postfix
 	| Prefix | Range | Selector | StructInit
-pub type Stmt = Assert | Assign | Attribute | Block | ComptimeIf | ConstDecl
-	| EnumDecl | ExprStmt | FlowControl | FnDecl | For | GlobalDecl
-	| Import | Module | Return | StructDecl | TypeDecl | Unsafe
+pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
+	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
+	| GlobalDecl | Import | Module | Return | StructDecl | TypeDecl | Unsafe
 
 // File (main Ast container)
 pub struct File {
@@ -184,21 +184,29 @@ pub:
 	name string
 }
 
-pub struct Block {
-pub:
-	stmts []Stmt
-}
-
 pub struct ComptimeIf {
 pub:
-	cond  Expr
-	stmts []Stmt
+	cond       Expr
+	stmts      []Stmt
+	else_stmts []Stmt
 }
 
 pub struct ConstDecl {
 pub:
 	is_public bool
 	fields    []FieldInit
+}
+
+pub struct Defer {
+pub:
+	stmts []Stmt
+}
+
+// #flag / #include
+pub struct Directive {
+pub:
+	name  string
+	value string
 }
 
 pub struct EnumDecl {

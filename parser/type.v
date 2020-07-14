@@ -11,9 +11,14 @@ pub fn (mut p Parser) typ() types.Type {
 	}
 	// pointer
 	mut ptr_count := 0
-	for p.tok == .amp {
+	for p.tok in [.amp, .and] {
+		if p.tok == .amp {
+			ptr_count++
+		}
+		else {
+			ptr_count+=2
+		}
 		p.next()
-		ptr_count++
 	}
 	// map
 	if p.tok == .name && p.scanner.lit == 'map' {
@@ -56,8 +61,15 @@ pub fn (mut p Parser) typ() types.Type {
 	else if p.tok == .key_fn {
 		return p.parse_fn_type()
 	}
-
-	name := p.name()
+	mut name := ''
+	for p.tok == .name {
+		name = p.name()
+		if p.tok == .dot {
+			name += '.'
+			p.next()
+		}
+		break
+	}
 
 	return types.Type{}
 }

@@ -58,6 +58,20 @@ pub fn (mut p Parser) parse(file_path string) ast.File {
 
 pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
+		.hash {
+			p.next()
+			line_nr := p.scanner.line_nr
+			name := p.name()
+			// TODO: handle properly
+			mut value := p.lit()
+			for p.scanner.line_nr == line_nr {
+				value += p.lit()
+			}
+			return ast.Directive{
+				name: name
+				value: value
+			}
+		}
 		.key_const {
 			return p.const_decl(false)
 		}
@@ -161,9 +175,19 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				p.next()
 			}
 			stmts := p.block()
+			mut else_stmts := []ast.Stmt{}
+			// TODO:
+			if p.tok == .dollar {
+				p.next()
+				if p.tok == .key_else {
+					p.next()
+					else_stmts = p.block()
+				}
+			}
 			return ast.ComptimeIf{
 				cond: cond
 				stmts: stmts
+				else_stmts: stmts
 			}
 		}
 		.key_assert {
@@ -172,6 +196,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		}
 		.key_break, .key_continue {
 			return ast.FlowControl{op: p.tok()}
+		}
+		.key_defer {
+			p.next()
+			return ast.Defer{stmts: p.block()}
 		}
 		.key_for {
 			p.next()
@@ -378,7 +406,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			for p.tok != .rcbr {
 				in_init2 := p.in_init
 				p.in_init = true
-				p.expr(.lowest)
+				for {
+					p.expr(.lowest)
+					if p.tok != .comma {
+						break
+					}
+					p.next()
+				}
 				p.in_init = in_init2
 				p.block()
 				if p.tok == .key_else {
@@ -622,6 +656,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 
 pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	p.next()
+	line_nr := p.scanner.line_nr
 	mut args := []ast.Arg{}
 	// method
 	mut is_method := false
@@ -642,19 +677,29 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		}
 		p.expect(.rpar)
 	}
-	name := p.name()
+	mut name := p.name()
+	for p.tok == .dot {
+		p.next()
+		name += '.$p.name()'
+	}
 	args << p.fn_args()
 	// TODO:
 	// mut return_type := types.void
-	if p.tok != .lcbr {
+	if p.tok != .lcbr && p.scanner.line_nr == line_nr {
 		p.typ() // return type
 	}
 	// p.log('ast.FnDecl: $name')
+	mut stmts := if p.tok == .lcbr {
+		p.block()
+	}
+	else {
+		[]ast.Stmt{}
+	}
 	return ast.FnDecl{
 		is_public: is_public
 		is_method: is_method
 		name: name
-		stmts: p.block()
+		stmts: stmts
 	}
 }
 
@@ -664,7 +709,10 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
-		name := p.name()
+		mut name := 'arg_$args.len'
+		if p.tok == .name {
+			name = p.name()
+		}
 		if p.tok !in [.comma, .rpar] {
 			p.typ()
 		}
@@ -754,7 +802,11 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	is_union := p.tok == .key_union
 	p.next()
-	name := p.name()
+	mut name := p.name()
+	for p.tok == .dot {
+		p.next()
+		name += p.name()
+	}
 	// p.log('ast.StructDecl: $name')
 	p.expect(.lcbr)
 	// fields
