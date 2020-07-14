@@ -26,7 +26,8 @@ Without any existing constraints, and using what I have learned I am able to eas
 
 ## Status
 1. Scanner / Lexer - Working (almost complete)
-2. Parser - Working (incomplete, stub methods & nodes)
+2. Parser - Working (incomplete, not missing very much)
 3. Backends / Generation Stage
+   - V (almost complete) Generates V code from the AST, useful for testing the parser
    - x64 (not started)
    - C (not started)
