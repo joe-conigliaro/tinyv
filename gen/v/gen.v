@@ -330,9 +330,8 @@ fn (g &Gen) expr(expr ast.Expr) {
 		ast.IfGuard {
 			// TODO: test this method
 			g.writeln('// IfGuard')
-			g.write('if ')
 			g.stmt(expr.init)
-			g.writeln(' {')
+			g.writeln(' if {')
 			g.stmts(expr.stmts)
 			g.writeln('}')
 		}
