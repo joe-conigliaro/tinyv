@@ -49,7 +49,8 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	// parse imports
 	mut imports := []string
 	mut parsed_imports := []string
-	for ast_file in ast_files {
+	for afi := 0; afi < ast_files.len ; afi++ {
+		ast_file := ast_files[afi]
 		for mod in ast_file.imports {
 			if mod.name in parsed_imports {
 				continue
