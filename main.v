@@ -1,24 +1,11 @@
 module main
 
 import os
-import time
-import scanner
-import ast
+import os.cmdline
 import pref
 import builder
-// import v.scanner as vscanner
 
 const(
-	v_path = '/home/kastro/dev/src/v'
-	// v_path = '/mnt/storage/homes/kastro/dev/v'
-	files = [
-		// '$v_path/vlib/builtin/int.v',
-		// '$v_path/vlib/builtin/string.v',
-		// '$v_path/vlib/regex/regex.v',
-		// '$v_path/vlib/crypto/aes/block_generic.v'
-		// 'tests/syntax.v'
-		'$v_path/cmd/v/v.v'
-	]
 	pref = &pref.Preferences{
 		debug: false
 		// debug: true
@@ -28,6 +15,9 @@ const(
 )
 
 fn main() {
+	files := cmdline.only_non_options(os.args[1..])
+	if files.len == 0 { eprintln('At least 1 .v file expected') exit(1) }
+	$if debug { eprintln('v files: $files') }
 	b := builder.new_builder(pref)
 	b.build(files)
 }
