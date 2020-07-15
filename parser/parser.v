@@ -285,7 +285,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				p.in_init = true
 				mut cond := p.expr(.lowest)
 				// if guard
-				if p.tok.is_assignment() {
+				// if p.tok.is_assignment() {
+				if p.tok == .decl_assign {
 					cond = ast.IfGuard{
 						stmt: p.assign([cond])
 					}
@@ -305,6 +306,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			lhs = ast.If{
 				branches: branches
 			}
+			// no need to continue
+			return lhs
 			// p.log('END IF')
 		}
 		.key_none {
@@ -343,7 +346,6 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				p.next()
 				if p.tok == .rcbr {
 					p.next()
-					// println('RETURNING EMPTY STRUCT INIT')
 					return ast.StructInit{}
 				}
 				mut keys := []ast.Expr{}
@@ -358,11 +360,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 						p.next()
 					}
 				}
+				p.next()
 				lhs = ast.MapInit{
 					keys: keys
 					vals: vals
 				}
-				p.expect(.rcbr)
 			}
 		}
 		.lsbr {
@@ -371,12 +373,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
-				// p.log('ARRAY INIT EXPR:')
 				exprs << p.expr(.lowest)
 				if p.tok == .comma {
 					p.next()
 				}
-				// p.expect(.comma)
 			}
 			p.expect(.rsbr)
 			// []int{}
@@ -474,9 +474,6 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				}
 			}
 		}
-		.plus_assign{
-			p.error('BOO')
-		}
 		else {
 			if p.tok.is_prefix() {
 				return ast.Prefix{
@@ -504,6 +501,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					expr: lhs
 					stmts: p.block()
 				}
+				// no need to continue
+				return lhs
 			}
 		}
 		// excluded from binding power check they run either way
@@ -592,6 +591,7 @@ pub fn (mut p Parser) next() {
 	p.next0()
 }
 
+[inline]
 pub fn (mut p Parser) expect(tok token.Token) {
 	if tok != p.tok {
 		p.error('unexpected token. expecting `$tok`, got `$p.tok`')
@@ -633,7 +633,7 @@ pub fn (p &Parser) block() []ast.Stmt {
 		stmts << p.stmt()
 		// p.log('BLOCK STMT END')
 	}
-	p.expect(.rcbr)
+	p.next()
 	// p.log('END BLOCK')
 	return stmts
 }
@@ -774,7 +774,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.typ() // return type
 	}
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
-	mut stmts := if p.tok == .lcbr {
+	stmts := if p.tok == .lcbr {
 		p.block()
 	}
 	else {
@@ -810,34 +810,13 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 			is_mut: is_mut
 		}
 	}
-	p.expect(.rpar)
+	p.next()
 	return args
 }
 
-
-pub fn (mut p Parser) call() ast.Call {
-	return ast.Call{}
-}
-
-
 pub fn (mut p Parser) call_args() []ast.Expr {
 	p.expect(.lpar)
-	// mut args := []ast.Arg{}
-	// for p.tok != .rpar {
-	// 	is_mut := p.tok == .key_mut
-	// 	if is_mut { p.next() }
-	// 	args << ast.Arg{
-	// 		expr: p.expr(.lowest)
-	// 		is_mut: is_mut
-	// 	}
-	// 	if p.tok == .comma {
-	// 		p.next()
-	// 	}
-	// }
 	args := p.expr_list()
-	// NOTE: we could just use expr list and mut is hadled with ident,
-	// but currently mut is requred even for exprs initialized in the arg
-	// args := p.expr_list()
 	p.expect(.rpar)
 	return args
 }
@@ -860,7 +839,7 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 			value: value
 		}
 	}
-	p.expect(.rcbr)
+	p.next()
 	return ast.EnumDecl{
 		is_public: is_public
 		name: name
@@ -885,7 +864,8 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 }
 
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
-	is_union := p.tok == .key_union
+	// TODO: union
+	// is_union := p.tok == .key_union
 	p.next()
 	mut name := p.name()
 	for p.tok == .dot {
@@ -953,7 +933,7 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 			value: value
 		}
 	}
-	p.expect(.rcbr)
+	p.next()
 	return ast.StructInit{fields: fields}
 }
 

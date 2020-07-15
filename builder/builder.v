@@ -47,8 +47,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 		println('scan & parse time for $file: ${parse_time}ms')
 	}
 	// parse imports
-	mut imports := []string
-	mut parsed_imports := []string
+	mut parsed_imports := []string{}
 	for afi := 0; afi < ast_files.len ; afi++ {
 		ast_file := ast_files[afi]
 		for mod in ast_file.imports {
@@ -99,12 +98,12 @@ fn get_v_files_from_dir(dir string) []string {
 	mod_files := os.ls(dir)  or {
 		panic('error getting ls from $dir')
 	}
-	mut v_files := []string
+	mut v_files := []string{}
 	for file in mod_files {
 		if !file.ends_with('.v') || file.ends_with('.js.v') || file.ends_with('_test.v') {
 			continue
 		}
-		v_files << '$dir/${file}'
+		v_files << dir + os.path_separator + file
 	}
 	return v_files
 }
