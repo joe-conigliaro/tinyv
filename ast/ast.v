@@ -5,8 +5,8 @@ import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
-	| Infix | List | Literal | MapInit | Match | Modifier | None | Paren
-	| Postfix | Prefix | Range | Selector | StructInit
+	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
+	| Paren | Postfix | Prefix | Range | Selector | StructInit
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
 	| GlobalDecl | Import | Label | Module | Return | StructDecl | TypeDecl
@@ -91,8 +91,7 @@ pub:
 
 pub struct IfGuard {
 pub:
-	init  Stmt
-	stmts []Stmt
+	stmt Stmt
 }
 
 pub struct Infix {
@@ -131,6 +130,12 @@ pub:
 
 pub struct None {
 
+}
+
+pub struct Or {
+pub:
+	expr  Expr
+	stmts []Stmt
 }
 
 pub struct Paren {

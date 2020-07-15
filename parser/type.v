@@ -74,7 +74,6 @@ pub fn (mut p Parser) typ() types.Type {
 		p.next()
 		name += '.'
 	}
-
 	return types.Type{}
 }
 

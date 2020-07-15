@@ -97,7 +97,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				p.next()
 				alias = p.name()
 			}
-			p.log('ast.Import: $name as $alias')
+			// p.log('ast.Import: $name as $alias')
 			return ast.Import{
 				name: name
 				alias: alias
@@ -107,7 +107,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_module {
 			p.next()
 			name := p.name()
-			p.log('ast.Module: $name')
+			// p.log('ast.Module: $name')
 			return ast.Module{
 				name: name
 			}
@@ -143,7 +143,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			// [attribute]
 			p.next()
 			name := p.name()
-			p.log('ast.Attribute: $name')
+			// p.log('ast.Attribute: $name')
 			p.expect(.rsbr)
 			return ast.Attribute{name: name}
 		}
@@ -156,7 +156,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 }
 
 pub fn (mut p Parser) stmt() ast.Stmt {
-	p.log('STMT: $p.tok - $p.file_path:$p.line_nr')
+	// p.log('STMT: $p.tok - $p.file_path:$p.line_nr')
 	match p.tok {
 		.dollar {
 			return p.comptime_if()
@@ -197,7 +197,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.key_return {
-			p.log('ast.Return')
+			// p.log('ast.Return')
 			p.next()
 			// small optimization, save call/array init
 			if p.tok == .rcbr {
@@ -208,7 +208,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.key_unsafe {
-			p.log('ast.Unsafe')
+			// p.log('ast.Unsafe')
 			p.next()
 			return ast.Unsafe{
 				stmts: p.block()
@@ -264,7 +264,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 
 pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	// TODO: fix match so it last expr can be used `x := match {...`
-	p.log('EXPR: $p.tok - $p.line_nr')
+	// p.log('EXPR: $p.tok - $p.line_nr')
 	mut lhs := ast.Expr{}
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
@@ -274,7 +274,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_if {
-			p.log('START IF')
+			// p.log('START IF')
 			mut branches := []ast.Branch{}
 			for p.tok in [.key_if, .key_else] {
 				p.next()
@@ -283,18 +283,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				}
 				in_init := p.in_init
 				p.in_init = true
-				cond := p.expr(.lowest)
-
+				mut cond := p.expr(.lowest)
+				// if guard
 				if p.tok.is_assignment() {
-					init := p.assign([cond])
-					stmts := p.block()
-					p.in_init = in_init // make sure to reset as we are returning
-					return ast.IfGuard{
-						init: init
-						stmts: stmts
+					cond = ast.IfGuard{
+						stmt: p.assign([cond])
 					}
 				}
-
 				p.in_init = in_init
 				if p.tok == .key_or {
 					panic('GOT OR')
@@ -310,7 +305,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			lhs = ast.If{
 				branches: branches
 			}
-			p.log('END IF')
+			// p.log('END IF')
 		}
 		.key_none {
 			p.next()
@@ -324,10 +319,18 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// TODO
 			//lhs = ast.SizeOf {}
 		}
+		.key_typeof {
+			p.next()
+			p.expect(.lpar)
+			p.expr(.lowest)
+			p.expect(.rpar)
+			// TODO
+			//lhs = ast.TypeOf {}
+		}
 		.lpar {
 			// Paren
 			p.next()
-			p.log('ast.Paren:')
+			// p.log('ast.Paren:')
 			lhs = ast.Paren{
 				expr: p.expr(.lowest)
 			}
@@ -368,7 +371,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
-				p.log('ARRAY INIT EXPR:')
+				// p.log('ARRAY INIT EXPR:')
 				exprs << p.expr(.lowest)
 				if p.tok == .comma {
 					p.next()
@@ -455,7 +458,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// 	p.next()
 			// }
 			name := p.name()
-			p.log('NAME: $name - $p.tok ($p.scanner.lit)')
+			// p.log('NAME: $name - $p.tok ($p.scanner.lit)')
 			// struct init
 			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
 			// currently using in_init for if/for/map initialization
@@ -486,24 +489,20 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 
 	for {
 		if p.tok == .lpar {
-			p.log('ast.Cast or Call: ${typeof(lhs)}')
+			// p.log('ast.Cast or Call: ${typeof(lhs)}')
 			args := p.call_args()
 			// lhs = ast.Cast{
 			lhs = ast.Call{
 				lhs: lhs
 				args: args
 			}
-			// TODO: later decide if its a cast
-			// TODO: this is not going to work, what was I trying to do?
-			// need to be part of If? or or as part of call?
+			// TODO: should make this part of call? see which way is more helpful for gen
 			if p.tok == .key_or {
-				// TODO:
-				p.log('ast.IfGuard')
+				// p.log('ast.Or')
 				p.next()
-				p.block()
-				lhs = ast.IfGuard{
-					// cond: lhs
-					// or_stmts: p.block()
+				lhs = ast.Or{
+					expr: lhs
+					stmts: p.block()
 				}
 			}
 		}
@@ -511,7 +510,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// index
 		if p.tok == .lsbr {
 			p.next()
-			p.log('ast.Index: $p.scanner.lit')
+			// p.log('ast.Index: $p.scanner.lit')
 			lhs = ast.Index{
 				lhs: lhs
 				expr: p.expr(.lowest)
@@ -523,7 +522,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// Selector
 		else if p.tok == .dot {
 			p.next()
-			p.log('ast.Selector')
+			// p.log('ast.Selector')
 			lhs = ast.Selector{
 				lhs: lhs
 				rhs: p.expr(.lowest)
@@ -534,7 +533,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// range
 		else if p.tok == .dotdot {
 			p.next()
-			p.log('ast.Range')
+			// p.log('ast.Range')
 			lhs = ast.Range{
 				start: lhs
 				end: p.expr(.lowest)
@@ -544,7 +543,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
 		if lbp < min_lbp {
-			p.log('breaking precedence: $p.tok ($lbp < $min_lbp)')
+			// p.log('breaking precedence: $p.tok ($lbp < $min_lbp)')
 			break
 		}
 		// p.expr(lbp)
@@ -572,7 +571,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			break
 		}
 	}
-	p.log('returning: $p.tok')
+	// p.log('returning: $p.tok')
 	return lhs
 }
 
@@ -630,12 +629,12 @@ pub fn (p &Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
 	for p.tok != .rcbr {
-		p.log('BLOCK STMT START')
+		// p.log('BLOCK STMT START')
 		stmts << p.stmt()
-		p.log('BLOCK STMT END')
+		// p.log('BLOCK STMT END')
 	}
 	p.expect(.rcbr)
-	p.log('END BLOCK')
+	// p.log('END BLOCK')
 	return stmts
 }
 
@@ -658,7 +657,7 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 pub fn (mut p Parser) comptime_if() ast.ComptimeIf {
 	p.next()
 	p.expect(.key_if)
-	p.log('ast.ComptimeIf')
+	// p.log('ast.ComptimeIf')
 	// we are setting in_init here to maake sure
 	// `$if foo {` is not mistaken for struct init
 	in_init := p.in_init
@@ -711,7 +710,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	mut fields := []ast.FieldInit{}
 	for {
 		name := p.name()
-		p.log('const: $name')
+		// p.log('const: $name')
 		p.expect(.assign)
 		value := p.expr(.lowest)
 		fields << ast.FieldInit{
@@ -774,7 +773,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	if p.tok != .lcbr && p.line_nr == line_nr {
 		p.typ() // return type
 	}
-	p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
+	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
 	mut stmts := if p.tok == .lcbr {
 		p.block()
 	}
@@ -846,7 +845,7 @@ pub fn (mut p Parser) call_args() []ast.Expr {
 pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	p.next()
 	name := p.name()
-	p.log('ast.EnumDecl: $name')
+	// p.log('ast.EnumDecl: $name')
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
@@ -893,8 +892,16 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		p.next()
 		name += p.name()
 	}
-	p.log('ast.StructDecl: $name')
-	p.expect(.lcbr)
+	// p.log('ast.StructDecl: $name')
+	// probably C struct decl with no body or {}
+	if p.tok != .lcbr {
+		return ast.StructDecl{
+			is_public: is_public
+			name: name
+		}
+	}
+	p.next()
+	// p.expect(.lcbr)
 	// fields
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
@@ -955,7 +962,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	name := p.name()
 	// sum type (otherwise alias)
 	mut variants := []types.Type{}
-	if p.tok == .eq {
+	if p.tok == .assign {
 		p.next()
 		for {
 			variant := p.typ()
@@ -967,7 +974,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		}
 	}
 	parent_type := p.typ()
-	p.log('ast.TypeDecl: $name')
+	// p.log('ast.TypeDecl: $name')
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name

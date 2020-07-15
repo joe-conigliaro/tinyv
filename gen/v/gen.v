@@ -328,12 +328,8 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.IfGuard {
-			// TODO: test this method
-			g.writeln('// IfGuard')
-			g.stmt(expr.init)
-			g.writeln(' if {')
-			g.stmts(expr.stmts)
-			g.writeln('}')
+			g.write('/* IfGuard */ ')
+			g.stmt(expr.stmt)
 		}
 		ast.Index {
 			g.expr(expr.lhs)
@@ -388,6 +384,12 @@ fn (g &Gen) expr(expr ast.Expr) {
 		}
 		ast.None {
 			g.write('none')
+		}
+		ast.Or {
+			g.expr(expr.expr)
+			g.writeln(' or {')
+			g.stmts(expr.stmts)
+			g.write('}')
 		}
 		ast.Paren {
 			g.write('(')

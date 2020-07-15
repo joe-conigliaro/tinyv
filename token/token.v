@@ -220,7 +220,7 @@ pub fn (tok Token) is_prefix() bool {
 pub fn (tok Token) is_infix() bool {
 	return tok in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in,
 	//
-	.key_as, .ge, .le, .logical_or, .xor, .not_in, .key_is, /*.not_is,*/
+	.key_as, .ge, .le, .logical_or, .xor, .not_in, .key_is, .not_is,
 	//
 	.and, /*.dot,*/ .pipe, .amp, .left_shift, .right_shift]
 }

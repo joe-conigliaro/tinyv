@@ -89,6 +89,10 @@ pub fn (mut s Scanner) scan() token.Token {
 	else if c == `\`` {
 		s.pos++
 		for s.text[s.pos] != c {
+			if s.text[s.pos] == `\\` {
+				s.pos+=2
+				continue
+			}
 			s.pos++
 		}
 		s.pos++
@@ -125,6 +129,10 @@ pub fn (mut s Scanner) scan() token.Token {
 			else if s.text[s.pos..s.pos+2] == 'in' {
 				s.pos+=2
 				return .not_in
+			}
+			else if s.text[s.pos..s.pos+2] == 'is' {
+				s.pos+=2
+				return .not_is
 			}
 			return .not
 		}
@@ -306,6 +314,7 @@ fn(s &Scanner) comment() {
 		}
 		// multi line
 		`*` {
+			mut ml_comment_depth := 1
 			for s.pos < s.text.len {
 				if s.text[s.pos] == `\r` && s.text[s.pos+1] == `\n` {
 					s.last_nl_pos = s.pos
@@ -319,9 +328,16 @@ fn(s &Scanner) comment() {
 					s.pos++
 					continue
 				}
+				if s.text[s.pos]== `/` && s.text[s.pos+1] == `*` {
+					s.pos+=2
+					ml_comment_depth++
+				}
 				if s.text[s.pos]== `*` && s.text[s.pos+1] == `/` {
 					s.pos+=2
-					break
+					ml_comment_depth--
+					if ml_comment_depth == 0 {
+						break
+					}
 				}
 				s.pos++
 			}
