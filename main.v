@@ -9,8 +9,8 @@ const(
 	pref = &pref.Preferences{
 		debug: false
 		// debug: true
-		verbose: false
-		// verbose: true
+		// verbose: false
+		verbose: true
 	}
 )
 
