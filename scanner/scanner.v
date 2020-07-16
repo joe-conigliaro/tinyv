@@ -319,18 +319,15 @@ fn(s &Scanner) comment() {
 					s.last_nl_pos = s.pos
 					s.line_nr++
 					s.pos+=2
-					continue
 				}
 				else if c == `\n` {
 					s.last_nl_pos = s.pos
 					s.line_nr++
 					s.pos++
-					continue
 				}
 				else if c == `/` && c1 == `*` {
 					s.pos+=2
 					ml_comment_depth++
-					continue
 				}
 				else if c == `*` && c1 == `/` {
 					s.pos+=2
@@ -338,9 +335,10 @@ fn(s &Scanner) comment() {
 					if ml_comment_depth == 0 {
 						break
 					}
-					continue
 				}
-				s.pos++
+				else {
+					s.pos++
+				}
 			}
 		}
 		else {}
