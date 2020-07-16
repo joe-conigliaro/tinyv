@@ -247,11 +247,6 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('')
 		}
-		ast.Unsafe {
-			g.writeln('unsafe {')
-			g.stmts(stmt.stmts)
-			g.writeln('}')
-		}
 	}
 	g.indent--
 	// g.writeln('')
@@ -428,6 +423,11 @@ fn (g &Gen) expr(expr ast.Expr) {
 				g.expr(field.value)
 				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 			}
+			g.write('}')
+		}
+		ast.Unsafe {
+			g.writeln('unsafe {')
+			g.stmts(expr.stmts)
 			g.write('}')
 		}
 	}

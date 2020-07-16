@@ -207,13 +207,6 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				exprs: p.expr_list()
 			}
 		}
-		.key_unsafe {
-			// p.log('ast.Unsafe')
-			p.next()
-			return ast.Unsafe{
-				stmts: p.block()
-			}
-		}
 		else {
 			// stand alone exression in a statement list
 			// eg: `if x == 1 {`, `x++`, `break/continue`
@@ -472,6 +465,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					name: name
 					// is_mut: is_mut
 				}
+			}
+		}
+		.key_unsafe {
+			// p.log('ast.Unsafe')
+			p.next()
+			lhs = ast.Unsafe{
+				stmts: p.block()
 			}
 		}
 		else {

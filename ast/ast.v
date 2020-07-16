@@ -6,11 +6,10 @@ import types
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
-	| Paren | Postfix | Prefix | Range | Selector | StructInit
+	| Paren | Postfix | Prefix | Range | Selector | StructInit | Unsafe
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
 	| GlobalDecl | Import | Label | Module | Return | StructDecl | TypeDecl
-	| Unsafe
 
 // File (main Ast container)
 pub struct File {
@@ -178,6 +177,11 @@ pub:
 	typ    types.Type
 }
 
+pub struct Unsafe {
+pub:
+	stmts []Stmt
+}
+
 // Statements
 pub struct Assert {
 pub:
@@ -299,8 +303,4 @@ pub:
 	variants    []types.Type
 }
 
-pub struct Unsafe {
-pub:
-	stmts []Stmt
-}
 
