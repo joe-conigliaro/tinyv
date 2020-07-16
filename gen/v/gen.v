@@ -313,10 +313,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 						g.write('if ')
 					// }
 				}
-				in_init := g.in_init
-				g.in_init = true
-				g.expr(branch.cond)
-				g.in_init = in_init
+				g.expr(branch.cond[0])
 				g.writeln(' {')
 				g.stmts(branch.stmts)
 				g.writeln('}')
@@ -371,7 +368,27 @@ fn (g &Gen) expr(expr ast.Expr) {
 			}
 			g.write('}')
 		}
-		ast.Match {}
+		ast.Match {
+			g.write('match ')
+			g.expr(expr.expr)
+			g.writeln(' {')
+			g.indent++
+			for i, branch in expr.branches {
+				if branch.cond.len > 0 {
+					for j, cond in branch.cond {
+						g.expr(cond)
+						if j < branch.cond.len-1 { g.write(', ') }
+					}
+				}
+				else {
+					g.write('else')
+				}
+				g.writeln(' {')
+				g.stmts(branch.stmts)
+				g.writeln('}')
+			}
+			g.indent--
+		}
 		ast.Modifier {
 			g.write(expr.kind.str())
 			g.write(' ')

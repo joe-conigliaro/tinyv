@@ -38,7 +38,7 @@ pub:
 
 pub struct Branch {
 pub:
-	cond  Expr
+	cond  []Expr
 	stmts []Stmt
 }
 
@@ -119,6 +119,9 @@ pub:
 }
 
 pub struct Match {
+pub:
+	expr     Expr
+	branches []Branch
 }
 
 pub struct Modifier {

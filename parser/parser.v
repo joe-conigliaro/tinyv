@@ -289,7 +289,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					panic('GOT OR')
 				}
 				branches << ast.Branch{
-					cond: cond
+					cond: [cond]
 					stmts: p.block()
 				}
 			}
@@ -412,31 +412,33 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		.key_match {
 			p.next()
-			in_init := p.in_init
+			mut in_init := p.in_init
 			p.in_init = true
-			p.expr(.lowest)
+			expr := p.expr(.lowest)
 			p.in_init = in_init
 			p.expect(.lcbr)
+			mut branches := []ast.Branch{}
 			for p.tok != .rcbr {
-				in_init2 := p.in_init
+				in_init = p.in_init
 				p.in_init = true
-				for {
-					p.expr(.lowest)
-					if p.tok != .comma {
-						break
-					}
-					p.next()
+				cond := p.expr_list()
+				p.in_init = in_init
+				branches << ast.Branch {
+					cond: cond
+					stmts: p.block()
 				}
-				p.in_init = in_init2
-				p.block()
 				if p.tok == .key_else {
 					p.next()
-					p.block()
+					branches << ast.Branch {
+						stmts: p.block()
+					}
 				}
 			}
-			p.expect(.rcbr)
-
-			return ast.Match{}
+			p.next()
+			return ast.Match{
+				expr: expr
+				branches: branches
+			}
 		}
 		.key_mut, .key_shared {
 			lhs = ast.Modifier {

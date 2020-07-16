@@ -6,4 +6,7 @@ fn main() {
 	arr2 := []string{len: 2, cap :2}
 	x := foo[1]()
 	x1 := foo.bar[1]
+	for a, b in list {
+		println(a)
+	}
 }
