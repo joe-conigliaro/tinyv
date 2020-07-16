@@ -48,18 +48,19 @@ pub fn (mut s Scanner) scan() token.Token {
 	start_pos := s.pos
 	// comment OR `/=` OR `/`
 	if c == `/` {
+		c2 := s.text[s.pos+1]
 		// comment
-		if s.text[s.pos+1] in [`/`, `*`] {
+		if c2 in [`/`, `*`] {
 			s.comment()
 			s.lit = s.text[start_pos..s.pos]
 			return .comment
 		}
-		s.pos++
-		// `:=`
-		if s.text[s.pos] == `=` {
-			s.pos++
+		// `/=`
+		else if c2 == `=` {
+			s.pos+=2
 			return .div_assign
 		}
+		s.pos++
 		// `/`
 		return .div
 	}
@@ -88,6 +89,8 @@ pub fn (mut s Scanner) scan() token.Token {
 	// byte (char) `a`
 	else if c == `\`` {
 		s.pos++
+		// NOTE: if there is more than one char still scan it
+		// we can error at a later stage. should we error now?
 		for s.text[s.pos] != c {
 			if s.text[s.pos] == `\\` {
 				s.pos+=2
@@ -96,7 +99,6 @@ pub fn (mut s Scanner) scan() token.Token {
 			s.pos++
 		}
 		s.pos++
-		// s.lit = c.str()
 		s.lit = s.text[start_pos+1..s.pos-1]
 		return .char
 	}
@@ -122,17 +124,21 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .colon
 		}
 		`!` {
-			if s.text[s.pos] == `=` {
+			c2 := s.text[s.pos]
+			if c2 == `=` {
 				s.pos++
 				return .ne
 			}
-			else if s.text[s.pos..s.pos+2] == 'in' {
-				s.pos+=2
-				return .not_in
-			}
-			else if s.text[s.pos..s.pos+2] == 'is' {
-				s.pos+=2
-				return .not_is
+			else if c2 == `i` {
+				c3 := s.text[s.pos+1]
+				if c3 == `n` {
+					s.pos+=2
+					return .not_in
+				}
+				else if c3 == `s` {
+					s.pos+=2
+					return .not_is
+				}
 			}
 			return .not
 		}
@@ -186,15 +192,6 @@ pub fn (mut s Scanner) scan() token.Token {
 			}
 			return .mul
 		}
-		/*
-		`/` {
-			if s.text[s.pos] == `=` {
-				s.pos++
-				return .div_assign
-			}
-			return .div
-		}
-		*/
 		`^` {
 			if s.text[s.pos] == `=` {
 				s.pos++
@@ -316,28 +313,32 @@ fn(s &Scanner) comment() {
 		`*` {
 			mut ml_comment_depth := 1
 			for s.pos < s.text.len {
-				if s.text[s.pos] == `\r` && s.text[s.pos+1] == `\n` {
+				c := s.text[s.pos]
+				c1 := s.text[s.pos+1]
+				if c == `\r` && c1 == `\n` {
 					s.last_nl_pos = s.pos
 					s.line_nr++
 					s.pos+=2
 					continue
 				}
-				else if s.text[s.pos] == `\n` {
+				else if c == `\n` {
 					s.last_nl_pos = s.pos
 					s.line_nr++
 					s.pos++
 					continue
 				}
-				if s.text[s.pos]== `/` && s.text[s.pos+1] == `*` {
+				else if c == `/` && c1 == `*` {
 					s.pos+=2
 					ml_comment_depth++
+					continue
 				}
-				if s.text[s.pos]== `*` && s.text[s.pos+1] == `/` {
+				else if c == `*` && c1 == `/` {
 					s.pos+=2
 					ml_comment_depth--
 					if ml_comment_depth == 0 {
 						break
 					}
+					continue
 				}
 				s.pos++
 			}
@@ -350,12 +351,13 @@ fn (mut s Scanner) string_literal() {
 	c := s.text[s.pos]
 	s.pos++
 	for s.pos < s.text.len {
+		c1 := s.text[s.pos]
 		// skip escape \n | \'
-		if s.text[s.pos] == `\\` {
+		if c1 == `\\` {
 			s.pos+=2
 			continue
 		}
-		if s.text[s.pos] == c {
+		if c1 == c {
 			s.pos++
 			break
 		}
@@ -412,13 +414,13 @@ fn (mut s Scanner) number() {
 			continue
 		}
 		// fracton
-		if !has_decimal && c == `.` {
+		else if !has_decimal && c == `.` {
 			has_decimal = true
 			s.pos++
 			continue
 		}
 		// exponent
-		if !has_exponent && c in [`e`, `E`] {
+		else if !has_exponent && c in [`e`, `E`] {
 			has_exponent = true
 			s.pos++
 			continue
