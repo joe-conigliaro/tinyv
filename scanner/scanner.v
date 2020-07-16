@@ -276,18 +276,20 @@ pub fn (mut s Scanner) scan() token.Token {
 fn (mut s Scanner) whitespace() {
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
-		if c == `\r` && s.text[s.pos+1] == `\n` {
+		if c in [` `, `\t`] {
+			s.pos++
+			continue
+		}
+		else if c == `\n` {
+			s.last_nl_pos = s.pos
+			s.line_nr++
+			s.pos++
+			continue
+		}
+		else if c == `\r` && s.text[s.pos+1] == `\n` {
 			s.last_nl_pos = s.pos
 			s.line_nr++
 			s.pos+=2
-			continue
-		}
-		else if c in [` `, `\t`, `\n`] {
-			if c == `\n` {
-				s.last_nl_pos = s.pos
-				s.line_nr++
-			}
-			s.pos++
 			continue
 		}
 		break
@@ -300,10 +302,11 @@ fn(s &Scanner) comment() {
 		// single line
 		`/` {
 			for s.pos < s.text.len {
-				if s.text[s.pos] == `\r` && s.text[s.pos+2] == `\n` {
+				c := s.text[s.pos]
+				if c == `\n` {
 					break
 				}
-				else if s.text[s.pos] == `\n` {
+				else if c == `\r` && s.text[s.pos+1] == `\n` {
 					break
 				}
 				s.pos++
@@ -314,8 +317,8 @@ fn(s &Scanner) comment() {
 			mut ml_comment_depth := 1
 			for s.pos < s.text.len {
 				c := s.text[s.pos]
-				c1 := s.text[s.pos+1]
-				if c == `\r` && c1 == `\n` {
+				c2 := s.text[s.pos+1]
+				if c == `\r` && c2 == `\n` {
 					s.last_nl_pos = s.pos
 					s.line_nr++
 					s.pos+=2
@@ -325,11 +328,11 @@ fn(s &Scanner) comment() {
 					s.line_nr++
 					s.pos++
 				}
-				else if c == `/` && c1 == `*` {
+				else if c == `/` && c2 == `*` {
 					s.pos+=2
 					ml_comment_depth++
 				}
-				else if c == `*` && c1 == `/` {
+				else if c == `*` && c2 == `/` {
 					s.pos+=2
 					ml_comment_depth--
 					if ml_comment_depth == 0 {
@@ -431,7 +434,7 @@ fn (mut s Scanner) number() {
 fn (mut s Scanner) name() {
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
-		if (c >= `0` && c <= `9`) || (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c == `_` {
+		if  (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || (c >= `0` && c <= `9`) || c == `_` {
 			s.pos++
 			continue
 		}
