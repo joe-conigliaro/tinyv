@@ -6,7 +6,8 @@ import types
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
-	| Paren | Postfix | Prefix | Range | Selector | StructInit | Unsafe
+	| Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
+	| TypeOf | Unsafe
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
 	| GlobalDecl | Import | Label | Module | Return | StructDecl | TypeDecl
@@ -106,6 +107,11 @@ pub:
 	expr Expr
 }
 
+pub struct List {
+pub:
+	exprs []Expr
+}
+
 pub struct Literal {
 pub:
 	kind  token.Token
@@ -169,15 +175,20 @@ pub:
 	rhs Expr
 }
 
-pub struct List {
+pub struct SizeOf {
 pub:
-	exprs []Expr
+	expr Expr
 }
 
 pub struct StructInit {
 pub:
 	fields []FieldInit
 	typ    types.Type
+}
+
+pub struct TypeOf {
+pub:
+	expr Expr
 }
 
 pub struct Unsafe {

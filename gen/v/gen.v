@@ -135,7 +135,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.ExprStmt {
 			g.expr(stmt.expr)
-			g.writeln('')
+			if !g.in_init { g.writeln('') }
 		}
 		ast.FlowControl {
 			g.writeln(stmt.op.str())
@@ -307,6 +307,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 					g.write('if ')
 				}
 				else {
+					g.writeln('')
 					g.write('else ')
 					// TODO: if no cond is else
 					// if branch.cond != none {
@@ -316,7 +317,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 				g.expr(branch.cond[0])
 				g.writeln(' {')
 				g.stmts(branch.stmts)
-				g.writeln('}')
+				g.write('}')
 			}
 		}
 		ast.IfGuard {
@@ -371,9 +372,10 @@ fn (g &Gen) expr(expr ast.Expr) {
 		ast.Match {
 			g.write('match ')
 			g.expr(expr.expr)
-			g.writeln(' {')
+			g.write(' {')
 			g.indent++
 			for i, branch in expr.branches {
+				g.writeln('')
 				if branch.cond.len > 0 {
 					for j, cond in branch.cond {
 						g.expr(cond)
@@ -385,7 +387,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 				}
 				g.writeln(' {')
 				g.stmts(branch.stmts)
-				g.writeln('}')
+				g.write('}')
 			}
 			g.indent--
 		}
@@ -426,6 +428,11 @@ fn (g &Gen) expr(expr ast.Expr) {
 			g.write('.')
 			g.expr(expr.rhs)
 		}
+		ast.SizeOf {
+			g.write('sizeof(')
+			g.expr(expr.expr)
+			g.write(')')
+		}
 		ast.StructInit {
 			if expr.fields.len == 0 {
 				g.write('#type#{')
@@ -441,6 +448,11 @@ fn (g &Gen) expr(expr ast.Expr) {
 				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 			}
 			g.write('}')
+		}
+		ast.TypeOf {
+			g.write('typeof(')
+			g.expr(expr.expr)
+			g.write(')')
 		}
 		ast.Unsafe {
 			g.writeln('unsafe {')

@@ -278,30 +278,23 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				p.in_init = true
 				mut cond := p.expr(.lowest)
 				// if guard
-				// if p.tok.is_assignment() {
+				// if p.tok in [.assign. .decl_assign] {
 				if p.tok == .decl_assign {
 					cond = ast.IfGuard{
 						stmt: p.assign([cond])
 					}
 				}
 				p.in_init = in_init
-				if p.tok == .key_or {
-					panic('GOT OR')
-				}
 				branches << ast.Branch{
 					cond: [cond]
 					stmts: p.block()
 				}
-			}
-			if p.tok == .key_or {
-				panic('GOT OR')
 			}
 			lhs = ast.If{
 				branches: branches
 			}
 			// no need to continue
 			return lhs
-			// p.log('END IF')
 		}
 		.key_none {
 			p.next()
@@ -310,18 +303,16 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		.key_sizeof {
 			p.next()
 			p.expect(.lpar)
-			p.expr(.lowest)
+			expr := p.expr(.lowest)
 			p.expect(.rpar)
-			// TODO
-			//lhs = ast.SizeOf {}
+			lhs = ast.SizeOf{expr: expr}
 		}
 		.key_typeof {
 			p.next()
 			p.expect(.lpar)
-			p.expr(.lowest)
+			expr := p.expr(.lowest)
 			p.expect(.rpar)
-			// TODO
-			//lhs = ast.TypeOf {}
+			lhs = ast.TypeOf{expr: expr}
 		}
 		.lpar {
 			// Paren
