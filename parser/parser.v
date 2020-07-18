@@ -268,12 +268,9 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		.key_if {
 			// p.log('START IF')
+			p.next()
 			mut branches := []ast.Branch{}
-			for p.tok in [.key_if, .key_else] {
-				p.next()
-				if p.tok == .key_if {
-					p.next()
-				}
+			for {
 				in_init := p.in_init
 				p.in_init = true
 				mut cond := p.expr(.lowest)
@@ -288,6 +285,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				branches << ast.Branch{
 					cond: [cond]
 					stmts: p.block()
+				}
+				if p.tok != .key_else {
+					break
+				}
+				p.next()
+				if p.tok == .key_if {
+					p.next()
 				}
 			}
 			lhs = ast.If{
