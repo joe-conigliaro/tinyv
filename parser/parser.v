@@ -22,7 +22,7 @@ mut:
 pub fn new_parser(pref &pref.Preferences) &Parser {
 	return &Parser{
 		pref: pref
-		scanner: scanner.new_scanner(pref)
+		scanner: scanner.new_scanner(pref, false)
 	}
 }
 
@@ -43,7 +43,7 @@ pub fn (mut p Parser) parse(file_path string) ast.File {
 	}
 	p.scanner.set_text(text)
 	// start
-	p.next0()
+	p.tok2 = p.scanner.scan()
 	p.next()
 	mut top_stmts := []ast.Stmt{}
 	mut imports := []ast.Import{}
@@ -577,21 +577,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	return lhs
 }
 
-pub fn (mut p Parser) next0() {
-	for {
-		// p.lit = p.scanner.lit
-		p.tok2 = p.scanner.scan()
-		if p.tok2 != .comment {
-			break
-		}
-	}
-}
-
 pub fn (mut p Parser) next() {
 	p.tok = p.tok2
 	p.lit = p.scanner.lit
 	p.line_nr = p.scanner.line_nr
-	p.next0()
+	p.tok2 = p.scanner.scan()
 }
 
 [inline]

@@ -4,20 +4,22 @@ import token
 import pref
 
 pub struct Scanner {
-	pref   &pref.Preferences
+	pref          &pref.Preferences
+	scan_comments bool
 mut:
-	text   string
+	text          string
 pub mut:
-	last_nl_pos int
-	line_nr int
-	lit     string
-	pos     int
+	last_nl_pos   int
+	line_nr       int
+	lit           string
+	pos           int
 }
 
-pub fn new_scanner(pref &pref.Preferences) &Scanner {
+pub fn new_scanner(pref &pref.Preferences, scan_comments bool) &Scanner {
 	return &Scanner{
 		pref: pref
 		line_nr: 1
+		scan_comments: scan_comments
 	}
 }
 
@@ -34,6 +36,7 @@ pub fn (mut s Scanner) reset() {
 }
 
 pub fn (mut s Scanner) scan() token.Token {
+	start:
 	s.whitespace()
 	// if s.pos >= s.text.len-1 {
 	if s.pos == s.text.len {
@@ -52,6 +55,9 @@ pub fn (mut s Scanner) scan() token.Token {
 		// comment
 		if c2 in [`/`, `*`] {
 			s.comment()
+			if !s.scan_comments {
+				goto start
+			}
 			s.lit = s.text[start_pos..s.pos]
 			return .comment
 		}
