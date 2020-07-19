@@ -203,10 +203,12 @@ pub fn (t Token) left_binding_power() BindingPower {
 	}
 }
 
+[inline]
 pub fn (tok Token) is_prefix() bool {
 	return tok in [.minus, .amp, .mul, .not, .bit_not]
 }
 
+[inline]
 pub fn (tok Token) is_infix() bool {
 	return tok in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in,
 	//
@@ -215,10 +217,12 @@ pub fn (tok Token) is_infix() bool {
 	.and, /*.dot,*/ .pipe, .amp, .left_shift, .right_shift]
 }
 
+[inline]
 pub fn (tok Token) is_postfix() bool {
 	return tok in [.inc, .dec]
 }
 
+[inline]
 pub fn (tok Token) is_assignment() bool {
 	return tok in [
 		.assign, // =

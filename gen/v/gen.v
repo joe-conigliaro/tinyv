@@ -192,6 +192,16 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			}
 			g.writeln('')
 		}
+		ast.InterfaceDecl {
+			if stmt.is_public {
+				g.write('pub ')
+			}
+			g.write('interface ')
+			g.write(stmt.name)
+			// g.writeln(' {')
+			// TODO: methods
+			g.writeln(' { /* TODO */ }')
+		}
 		ast.Label {
 			g.write(stmt.name)
 			g.writeln(':')

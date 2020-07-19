@@ -104,6 +104,9 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				is_aliased: is_aliased
 			}
 		}
+		.key_interface {
+			return p.interface_decl(false)
+		}
 		.key_module {
 			p.next()
 			name := p.name()
@@ -123,6 +126,9 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				}
 				.key_fn {
 					return p.fn_decl(true)
+				}
+				.key_interface {
+					return p.interface_decl(true)
 				}
 				.key_struct, .key_union {
 					return p.struct_decl(true)
@@ -860,6 +866,39 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 	}
 }
 
+pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
+	p.next()
+	mut name := p.name()
+	for p.tok == .dot {
+		p.next()
+		name += p.name()
+	}
+	// empty interface ?
+	if p.tok != .lcbr {
+		return ast.InterfaceDecl{
+			is_public: is_public
+			name: name
+		}
+	}
+	p.next()
+	// mut methods := []
+	for p.tok != .rcbr {
+		line_nr := p.line_nr
+		p.name() // method name
+		p.fn_args()
+		if p.line_nr == line_nr {
+			p.typ() // method return type
+		}
+		// TODO: methods <<
+	}
+	p.next()
+	return ast.InterfaceDecl{
+		is_public: is_public
+		name: name
+		// methods: methods
+	}
+}
+
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	// TODO: union
 	// is_union := p.tok == .key_union
@@ -878,7 +917,6 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		}
 	}
 	p.next()
-	// p.expect(.lcbr)
 	// fields
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {

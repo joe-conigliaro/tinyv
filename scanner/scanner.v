@@ -10,8 +10,8 @@ mut:
 pub mut:
 	last_nl_pos int
 	line_nr int
-	pos     int
 	lit     string
+	pos     int
 }
 
 pub fn new_scanner(pref &pref.Preferences) &Scanner {
@@ -29,8 +29,8 @@ pub fn (mut s Scanner) reset() {
 	s.text = ''
 	s.last_nl_pos = 0
 	s.line_nr = 1
-	s.pos = 0
 	s.lit = ''
+	s.pos = 0
 }
 
 pub fn (mut s Scanner) scan() token.Token {
@@ -352,13 +352,13 @@ fn (mut s Scanner) string_literal() {
 	c := s.text[s.pos]
 	s.pos++
 	for s.pos < s.text.len {
-		c1 := s.text[s.pos]
+		c2 := s.text[s.pos]
 		// skip escape \n | \'
-		if c1 == `\\` {
+		if c2 == `\\` {
 			s.pos+=2
 			continue
 		}
-		if c1 == c {
+		if c2 == c {
 			s.pos++
 			break
 		}

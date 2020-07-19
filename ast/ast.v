@@ -10,7 +10,8 @@ pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| TypeOf | Unsafe
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
-	| GlobalDecl | Import | Label | Module | Return | StructDecl | TypeDecl
+	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
+	| StructDecl | TypeDecl
 
 // File (main Ast container)
 pub struct File {
@@ -285,6 +286,13 @@ pub:
 	name       string
 	alias      string
 	is_aliased bool
+}
+
+pub struct InterfaceDecl {
+pub:
+	is_public bool
+	name      string
+	// methods    []
 }
 
 pub struct Label {
