@@ -17,12 +17,12 @@ mut:
 	// start token info
 	tok2        token.Token // next token (keep scanner 1 tok ahead)
 	tok         token.Token // last token
-	// these are for tok, for tok2 get directly from scanner
+	// the following are for tok, for tok2 get directly from scanner
 	last_nl_pos int
 	line_nr     int
 	lit         string
 	pos         int
-	// end start token info
+	// end token info
 }
 
 pub fn new_parser(pref &pref.Preferences) &Parser {
@@ -1026,7 +1026,7 @@ pub fn (mut p Parser) log(msg string) {
 
 pub fn (mut p Parser) error(msg string) {
 	println('error: $msg')
-	col := p.scanner.pos-p.scanner.last_nl_pos-p.scanner.lit.len
+	col := p.pos-p.last_nl_pos-p.lit.len
 	println('$p.file_path:$p.line_nr:$col')
 	exit(1)
 }
