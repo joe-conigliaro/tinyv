@@ -8,7 +8,7 @@ import pref
 import time
 
 struct Builder {
-	pref   &pref.Preferences
+	pref &pref.Preferences
 }
 
 pub fn new_builder(pref &pref.Preferences) &Builder {
@@ -66,8 +66,8 @@ fn (mut b Builder) gen_v_files(ast_files []ast.File) {
 }
 
 fn get_module_path(mod string) string {
-	// return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', '/')
-	return '/home/kastro/dev/src/v/vlib/' + mod.replace('.', '/')
+	// return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', os.path_separator)
+	return '/home/kastro/dev/src/v/vlib/' + mod.replace('.', os.path_separator)
 }
 
 fn get_v_files_from_dir(dir string) []string {

@@ -15,13 +15,13 @@ mut:
 	scanner     &scanner.Scanner
 	in_init     bool // for/if/match eg. `for x in vals {`
 	// start token info
-	tok2        token.Token // next token (keep scanner 1 tok ahead)
-	tok         token.Token // last token
 	// the following are for tok, for tok2 get directly from scanner
 	last_nl_pos int
 	line_nr     int
 	lit         string
 	pos         int
+	tok         token.Token // last token
+	tok2        token.Token // next token (scanner stays 1 tok ahead)
 	// end token info
 }
 
@@ -1030,4 +1030,3 @@ pub fn (mut p Parser) error(msg string) {
 	println('$p.file_path:$p.line_nr:$col')
 	exit(1)
 }
-

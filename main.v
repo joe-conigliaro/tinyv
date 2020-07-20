@@ -7,10 +7,8 @@ import builder
 
 const(
 	pref = &pref.Preferences{
-		debug: false
 		// debug: true
-		// verbose: false
-		verbose: false
+		// verbose: true
 	}
 )
 
@@ -21,4 +19,3 @@ fn main() {
 	b := builder.new_builder(pref)
 	b.build(files)
 }
-
