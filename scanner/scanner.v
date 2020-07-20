@@ -38,15 +38,10 @@ pub fn (mut s Scanner) reset() {
 pub fn (mut s Scanner) scan() token.Token {
 	start:
 	s.whitespace()
-	// if s.pos >= s.text.len-1 {
 	if s.pos == s.text.len {
 		s.lit = ''
 		return .eof
 	}
-	// defer {
-	// 	s.lit = s.text[start_pos..s.pos]
-	// }
-	// s.lit = ''
 	c := s.text[s.pos]
 	start_pos := s.pos
 	// comment OR `/=` OR `/`
@@ -364,7 +359,11 @@ fn (mut s Scanner) string_literal() {
 			s.pos+=2
 			continue
 		}
-		if c2 == c {
+		// TODO: will probably store replacement positions in scanner
+		// to save work by doing it later in parser, I still dont
+		// think I want to break strings apart in scanner though
+		// else if c2 == `$` {}
+		else if c2 == c {
 			s.pos++
 			break
 		}

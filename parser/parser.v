@@ -10,13 +10,18 @@ import pref
 struct Parser {
 	pref      &pref.Preferences
 mut:
-	file_path string
-	scanner   &scanner.Scanner
-	tok2      token.Token
-	tok       token.Token
-	lit 	  string
-	line_nr   int
-	in_init   bool // for/if/match eg. `for x in vals {`
+	file_path   string
+	scanner     &scanner.Scanner
+	in_init     bool // for/if/match eg. `for x in vals {`
+	// start token info
+	tok2        token.Token // next token (keep scanner 1 tok ahead)
+	tok         token.Token // last token
+	// these are for tok, for tok2 get directly from scanner
+	last_nl_pos int
+	line_nr     int
+	lit         string
+	pos         int
+	// end start token info
 }
 
 pub fn new_parser(pref &pref.Preferences) &Parser {
@@ -28,6 +33,10 @@ pub fn new_parser(pref &pref.Preferences) &Parser {
 
 pub fn (mut p Parser) reset() {
 	p.scanner.reset()
+	p.last_nl_pos = 0
+	p.line_nr = 0
+	p.lit = ''
+	p.pos = 0
 	p.tok = .unknown
 	p.tok2 = .unknown
 }
@@ -578,9 +587,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 }
 
 pub fn (mut p Parser) next() {
-	p.tok = p.tok2
-	p.lit = p.scanner.lit
+	p.last_nl_pos = p.scanner.last_nl_pos
 	p.line_nr = p.scanner.line_nr
+	p.lit = p.scanner.lit
+	p.pos = p.scanner.pos
+	p.tok = p.tok2
 	p.tok2 = p.scanner.scan()
 }
 
