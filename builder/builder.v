@@ -8,7 +8,7 @@ import pref
 import time
 
 struct Builder {
-	pref &pref.Preferences
+	pref   &pref.Preferences
 }
 
 pub fn new_builder(pref &pref.Preferences) &Builder {
@@ -27,25 +27,12 @@ pub fn (mut b Builder) build(files []string) {
 }
 
 fn (mut b Builder) parse_files(files []string) []ast.File {
+	mut parser := parser.new_parser(b.pref)
 	mut ast_files := []ast.File{}
-	mut p := parser.new_parser(b.pref)
 	// parse builtin
-	builtin_files := get_v_files_from_dir(get_module_path('builtin'))
-	for file in builtin_files {
-		pt0 := time.ticks()
-		ast_files << p.parse(file)
-		pt1 := time.ticks()
-		parse_time := pt1 - pt0
-		println('scan & parse time for $file: ${parse_time}ms')
-	}
+	ast_files << parser.parse_files(get_v_files_from_dir(get_module_path('builtin')))
 	// parse user files
-	for file in files {
-		pt0 := time.ticks()
-		ast_files << p.parse(file)
-		pt1 := time.ticks()
-		parse_time := pt1 - pt0
-		println('scan & parse time for $file: ${parse_time}ms')
-	}
+	ast_files << parser.parse_files(files)
 	// parse imports
 	mut parsed_imports := []string{}
 	for afi := 0; afi < ast_files.len ; afi++ {
@@ -61,28 +48,17 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 			else {
 				get_module_path(mod.name)
 			}
-			for file in get_v_files_from_dir(mod_path) {
-				pt0 := time.ticks()
-				ast_files << p.parse(file)
-				pt1 := time.ticks()
-				parse_time := pt1 - pt0
-				println('scan & parse time for $file: ${parse_time}ms')
-			}
+			ast_files << parser.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
 		}
 	}
-
 	return ast_files
 }
 
 fn (mut b Builder) gen_v_files(ast_files []ast.File) {
 	mut gen := gen_v.new_gen(b.pref)
 	for file in ast_files {
-		gt0 := time.ticks()
 		gen.gen(file)
-		gt1 := time.ticks()
-		gen_time := gt1-gt0
-		println('gen (v) for $file.path: ${gen_time}ms')
 		if b.pref.debug {
 			gen.print_output()
 		}

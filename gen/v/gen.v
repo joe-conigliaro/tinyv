@@ -3,13 +3,14 @@ module v
 import ast
 import pref
 import strings
+import time
 
 const(
 	tabs = build_tabs()
 )
 
 struct Gen {
-	prefs      &pref.Preferences
+	pref       &pref.Preferences
 mut:
 	file       ast.File
 	out        strings.Builder 
@@ -28,9 +29,9 @@ fn build_tabs() []string {
 	return tabs
 }
 
-pub fn new_gen(prefs &pref.Preferences) &Gen {
+pub fn new_gen(pref &pref.Preferences) &Gen {
 	return &Gen{
-		prefs: prefs
+		pref: pref
 		out: strings.new_builder(1000)
 		indent: -1
 	}
@@ -47,8 +48,18 @@ pub fn (g &Gen) gen(file ast.File) {
 	if g.out.len > 1 {
 		g.reset()
 	}
+	if !g.pref.verbose {
+		goto start_no_time
+	}
+	gt0 := time.ticks()
+	start_no_time:
 	g.file = file
 	g.stmts(g.file.stmts)
+	if g.pref.verbose {
+		gt1 := time.ticks()
+		gen_time := gt1-gt0
+		println('gen (v) for $file.path: ${gen_time}ms')
+	}
 }
 
 fn (g &Gen) stmts(stmts []ast.Stmt) {

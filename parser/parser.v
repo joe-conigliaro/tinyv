@@ -6,6 +6,7 @@ import scanner
 import token
 import types
 import pref
+import time
 
 struct Parser {
 	pref      &pref.Preferences
@@ -41,11 +42,24 @@ pub fn (mut p Parser) reset() {
 	p.tok2 = .unknown
 }
 
-pub fn (mut p Parser) parse(file_path string) ast.File {
+pub fn (mut p Parser) parse_files(files []string) []ast.File {
+	mut ast_files := []ast.File{}
+	for file in files {
+		ast_files << p.parse_file(file)
+	}
+	return ast_files
+}
+
+pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	// reset if we are reusing parser instance
 	if p.scanner.pos > 0 {
 		p.reset()
 	}
+	if !p.pref.verbose {
+		goto start_no_time
+	}
+	pt0 := time.ticks()
+	start_no_time:
 	p.file_path = file_path
 	text := os.read_file(file_path) or {
 		panic('error reading $file_path')
@@ -63,8 +77,13 @@ pub fn (mut p Parser) parse(file_path string) ast.File {
 		}
 		top_stmts << stmt
 	}
+	if p.pref.verbose {
+		pt1 := time.ticks()
+		parse_time := pt1 - pt0
+		println('scan & parse time for $file_path: ${parse_time}ms')
+	}
 	return ast.File{
-		path: p.file_path
+		path: file_path
 		imports: imports
 		stmts: top_stmts
 	}
