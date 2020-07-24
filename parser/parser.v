@@ -213,7 +213,25 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			in_init := p.in_init
 			p.in_init = true
-			init := p.stmt()
+			mut init := ast.Stmt{}
+			if p.tok2 in [.comma, .key_in] {
+				mut key := ast.Expr{}
+				mut value := p.expr(.lowest)
+				if p.tok == .comma {
+					p.next()
+					key = value
+					value = p.expr(.lowest)
+				}
+				init = ast.ForIn{
+					key: key
+					value: value
+					expr: p.expr(.lowest)
+				}
+			}
+			else {
+				init = p.stmt()
+			}
+			// init := p.stmt()
 			if p.tok == .semicolon {
 				p.next()
 			}
@@ -605,6 +623,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	return lhs
 }
 
+[inline]
 pub fn (mut p Parser) next() {
 	p.last_nl_pos = p.scanner.last_nl_pos
 	p.line_nr = p.scanner.line_nr
@@ -775,6 +794,12 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		p.expect(.rpar)
 	}
 	mut name := p.name()
+	// TODO: think if we use string or selector/ident
+	// is_c := p.tok == .dot && name == 'C'
+	// if is_c {
+	// 	p.next()
+	// 	name = 
+	// }
 	for p.tok == .dot {
 		p.next()
 		name += '.$p.name()'
