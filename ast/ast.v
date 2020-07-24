@@ -278,8 +278,8 @@ pub:
 // possibly split into its own loop stmt later, work out whats best
 pub struct ForIn {
 pub:
-	key   Expr
-	value Expr
+	key   string
+	value string
 	expr  Expr
 }
 

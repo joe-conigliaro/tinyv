@@ -215,13 +215,13 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.in_init = true
 			mut init := ast.Stmt{}
 			if p.tok2 in [.comma, .key_in] {
-				mut key := ast.Expr{}
-				mut value := p.expr(.lowest)
+				mut key, mut value := '', p.name()
 				if p.tok == .comma {
 					p.next()
 					key = value
-					value = p.expr(.lowest)
+					value = p.name()
 				}
+				p.expect(.key_in)
 				init = ast.ForIn{
 					key: key
 					value: value

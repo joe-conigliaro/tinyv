@@ -186,10 +186,11 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 		ast.ForIn {
-			// TODO: if stmt.key != none...
-			g.expr(stmt.key)
-			g.write(', ')
-			g.expr(stmt.value)
+			if stmt.key.len > 0 {
+				g.write(stmt.key)
+				g.write(', ')
+			}
+			g.write(stmt.value)
 			g.write(' in ')
 			g.expr(stmt.expr)
 		}
