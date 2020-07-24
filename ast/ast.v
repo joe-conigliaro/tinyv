@@ -10,7 +10,7 @@ pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| TypeOf | Unsafe
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
-	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
+	| ForIn | GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
 
 // File (main Ast container)
@@ -274,6 +274,15 @@ pub:
 	stmts []Stmt
 }
 
+// TODO: this will just be used at the initializer for For
+// possibly split into its own loop stmt later, work out whats best
+pub struct ForIn {
+pub:
+	key   Expr
+	value Expr
+	expr  Expr
+}
+
 pub struct GlobalDecl {
 pub:
 	name  string
@@ -325,4 +334,9 @@ pub:
 	variants    []types.Type
 }
 
+// Other
 
+// pub struct Var {
+// pub:
+// 	name string
+// }

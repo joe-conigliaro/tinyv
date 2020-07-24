@@ -185,6 +185,14 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
+		ast.ForIn {
+			// TODO: if stmt.key != none...
+			g.expr(stmt.key)
+			g.write(', ')
+			g.expr(stmt.value)
+			g.write(' in ')
+			g.expr(stmt.expr)
+		}
 		ast.GlobalDecl {
 			g.write('global ')
 			g.write(stmt.name)
