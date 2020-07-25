@@ -1,6 +1,6 @@
 module types
 
-pub type Type = Primitive | Pointer | Enum | Struct
+pub type Type = Primitive | Array | Enum | Map | Pointer | Struct
 
 [flag]
 enum Properties {
@@ -12,12 +12,12 @@ enum Properties {
 }
 
 enum PrimitiveKind {
+	bool_
 	i8_
 	i16_
 	// i32_
 	int_
 	i64_
-	u8_
 	// u8_
 	byte_
 	u16_
@@ -32,14 +32,23 @@ struct Primitive {
 	props Properties
 }
 
-struct Pointer{
+struct Array {
+	elem_type Type
+}
+
+struct Enum {
+	name string
+}
+
+struct Map {
+	key_type   Type
+	value_type Type
+}
+
+struct Pointer {
 	base Type
 }
 
-struct Enum{
-
-}
-
-struct Struct{
-
+struct Struct {
+	name string
 }
