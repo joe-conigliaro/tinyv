@@ -667,7 +667,7 @@ pub fn (mut p Parser) tok() token.Token {
 
 // pub fn (mut p Parser) peek(pos int) scanner.Token {}
 
-pub fn (p &Parser) block() []ast.Stmt {
+pub fn (p mut Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
 	for p.tok != .rcbr {

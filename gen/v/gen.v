@@ -43,7 +43,7 @@ pub fn (mut g Gen) reset() {
 	g.on_newline = false
 }
 
-pub fn (g &Gen) gen(file ast.File) {
+pub fn (mut g Gen) gen(file ast.File) {
 	// clear incase we are reusing gen instance
 	if g.out.len > 1 {
 		g.reset()
@@ -62,13 +62,13 @@ pub fn (g &Gen) gen(file ast.File) {
 	}
 }
 
-fn (g &Gen) stmts(stmts []ast.Stmt) {
+fn (mut g Gen) stmts(stmts []ast.Stmt) {
 	for stmt in stmts {
 		g.stmt(stmt)
 	}
 }
 
-fn (g &Gen) stmt(stmt ast.Stmt) {
+fn (mut g Gen) stmt(stmt ast.Stmt) {
 	g.indent++
 	match stmt {
 		ast.Assert {
@@ -282,7 +282,7 @@ fn (g &Gen) stmt(stmt ast.Stmt) {
 	// g.writeln('')
 }
 
-fn (g &Gen) expr(expr ast.Expr) {
+fn (mut g Gen) expr(expr ast.Expr) {
 	match expr {
 		ast.ArrayInit {
 			if expr.exprs.len > 0 {
@@ -493,7 +493,7 @@ fn (g &Gen) expr(expr ast.Expr) {
 }
 
 [inline]
-fn (g &Gen) write(str string) {
+fn (mut g Gen) write(str string) {
 	if g.on_newline {
 		g.out.write(tabs[g.indent])
 	}
@@ -502,7 +502,7 @@ fn (g &Gen) write(str string) {
 }
 
 [inline]
-fn (g &Gen) writeln(str string) {
+fn (mut g Gen) writeln(str string) {
 	if g.on_newline {
 		g.out.write(tabs[g.indent])
 	}

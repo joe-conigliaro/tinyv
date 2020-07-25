@@ -297,7 +297,7 @@ fn (mut s Scanner) whitespace() {
 	}
 }
 
-fn(s &Scanner) comment() {
+fn(mut s Scanner) comment() {
 	s.pos++
 	match s.text[s.pos] {
 		// single line
