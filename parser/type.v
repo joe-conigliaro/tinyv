@@ -1,37 +1,37 @@
 module parser
 
-import types
+import ast
+// import types
 
 // TODO:
-pub fn (mut p Parser) typ() types.Type {
+pub fn (mut p Parser) typ() ast.Expr {
 	// optional
+	// TODO: handle
 	is_optional := p.tok == .question
 	if is_optional {
 		p.next()
 	}
 	// pointer
-	mut ptr_count := 0
-	for p.tok in [.amp, .and] {
-		if p.tok == .amp {
-			ptr_count++
-		}
-		else {
-			ptr_count+=2
-		}
-		p.next()
+	// mut ptr_count := 0
+	// for p.tok == .amp {
+	// 	ptr_count++
+	// 	p.next()
+	// }
+	if p.tok == .amp {
+		return ast.Prefix{op: p.tok(), expr: p.typ()}
 	}
 	// map
-	if p.tok == .name && p.lit == 'map' {
+	else if p.tok == .name && p.lit == 'map' {
 		p.next()
 		// map[string]string
 		if p.tok == .lsbr {
 			p.expect(.lsbr)
 			key_type := p.typ()
 			p.expect(.rsbr)
-			val_type := p.typ()
-			return types.Type{}
+			return ast.MapType{key_type: key_type, value_type: p.typ()}
 		}
 		// there is just struct called map in builtin
+		return ast.Ident{name: 'map'}
 	}
 	// array
 	else if p.tok == .lsbr {
@@ -40,52 +40,49 @@ pub fn (mut p Parser) typ() types.Type {
 			p.next()
 		}
 		p.expect(.rsbr)
-		elem_type := p.typ()
-		return types.Type{}
+		return ast.ArrayType{elem_type: p.typ()}
 	}
 	// Tuple (multi return)
 	else if p.tok == .lpar {
 		p.next()
-		mut mr_types := []types.Type{}
+		mut types := []ast.Expr{}
 		for p.tok != .rpar {
-			mr_types << p.typ()
+			types << p.typ()
 			if p.tok == .comma {
 				p.next()
 			}
 		}
 		p.expect(.rpar)
-		return types.Type{}
+		return ast.TupleType{types: types}
 	}
 	// variadic
+	// TODO:
 	else if p.tok == .ellipsis {
 		p.next()
-		p.typ()
-		return types.Type{}
+		return p.typ()
 	}
 	else if p.tok == .key_fn {
-		return p.parse_fn_type()
-	}
-	mut name := ''
-	for p.tok == .name {
-		name = p.name()
-		if p.tok != .dot {
-			break
-		}
 		p.next()
-		name += '.'
+		mut args := []ast.Arg{}
+		if p.tok == .lpar {
+			args = p.fn_args()
+		}
+		mut return_type := ast.Expr{}
+		if p.tok in [.amp, .lsbr, .name, .question] {
+			// return type
+			return_type = p.typ()
+		}
+		return ast.FnType{args: args, return_type: return_type}
 	}
-	return types.Type{}
-}
-
-
-pub fn (mut p Parser) parse_fn_type() types.Type {
-	p.next()
-	if p.tok == .lpar {
-		p.fn_args()
+	else if p.tok == .name {
+		ident := p.ident()
+		if p.tok == .dot {
+			p.next()
+			// p.name()
+			return ast.Selector{lhs: ident, rhs: p.ident()}
+		}
+		return ident
 	}
-	if p.tok in [.amp, .lsbr, .name, .question] {
-		// return type
-		p.typ()
-	}
-	return types.Type{}
+	p.error('typ: unknown type')
+	exit(1)
 }

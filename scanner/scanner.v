@@ -72,7 +72,10 @@ pub fn (mut s Scanner) scan() token.Token {
 		return .number
 	}
 	// name
-	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c == `_` {
+	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
+		// we can skip ahead one now since name will just keep reading chars
+		// it dosen't rely on this in any way, unlike number() for example
+		s.pos++
 		s.name()
 		s.lit = s.text[start_pos..s.pos]
 		tok := token.key_tokens[s.lit]
@@ -203,8 +206,13 @@ pub fn (mut s Scanner) scan() token.Token {
 		`&` {
 			c2 := s.text[s.pos]
 			if c2 == `&` {
-				s.pos++
-				return .and
+				// so that we pass &&Type as two .amp instead of .and
+				// but this requires there is a space. we could check
+				// for capital or some other way, this is simplest for now.
+				if s.pos+2 <= s.text.len && s.text[s.pos+2].is_space() {
+					s.pos++
+					return .and
+				}
 			}
 			else if c2 == `=` {
 				s.pos++

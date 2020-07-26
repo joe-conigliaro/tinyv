@@ -4,7 +4,7 @@ import os
 import ast
 import scanner
 import token
-import types
+// import types
 import pref
 import time
 
@@ -818,8 +818,9 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	args << p.fn_args()
 	// TODO:
 	// mut return_type := types.void
+	mut return_type := ast.Expr{}
 	if p.tok != .lcbr && p.line_nr == line_nr {
-		p.typ() // return type
+		return_type = p.typ() // return type
 	}
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
 	stmts := if p.tok == .lcbr {
@@ -833,6 +834,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		is_method: is_method
 		name: name
 		stmts: stmts
+		return_type: return_type
 	}
 }
 
@@ -1021,7 +1023,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
 	// sum type (otherwise alias)
-	mut variants := []types.Type{}
+	mut variants := []ast.Expr{}
 	if p.tok == .assign {
 		p.next()
 		for {
@@ -1041,6 +1043,11 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		parent_type: parent_type
 		variants: variants
 	}
+}
+
+[inline]
+pub fn (mut p Parser) ident() ast.Ident {
+	return ast.Ident{name: p.name()}
 }
 
 pub fn (mut p Parser) log(msg string) {

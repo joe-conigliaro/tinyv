@@ -1,17 +1,17 @@
 module ast
 
 import token
-import types
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
 	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
 	| Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
-	| TypeOf | Unsafe
+	| Type | TypeOf | Unsafe
 pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
 	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
 	| ForIn | GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
+pub type Type = ArrayType | MapType | FnType | TupleType
 
 // File (main Ast container)
 pub struct File {
@@ -25,8 +25,7 @@ pub:
 pub struct Arg {
 pub:
 	name   string
-	// expr   Expr
-	typ    types.Type
+	typ    Expr
 	is_mut bool
 }
 
@@ -59,7 +58,7 @@ pub:
 pub struct FieldDecl {
 pub:
 	name  string
-	typ   types.Type
+	typ   Expr
 	value Expr
 }
 
@@ -184,7 +183,7 @@ pub:
 pub struct StructInit {
 pub:
 	fields []FieldInit
-	typ    types.Type
+	typ    Expr
 }
 
 pub struct TypeOf {
@@ -259,11 +258,12 @@ pub:
 
 pub struct FnDecl {
 pub:
-	is_public bool
-	is_method bool
-	name      string
-	args      []Arg
-	stmts     []Stmt
+	is_public   bool
+	is_method   bool
+	name        string
+	args        []Arg
+	stmts       []Stmt
+	return_type Expr
 }
 
 pub struct For {
@@ -286,7 +286,7 @@ pub:
 pub struct GlobalDecl {
 pub:
 	name  string
-	typ   types.Type
+	typ   Expr
 	value Expr
 }
 
@@ -330,9 +330,33 @@ pub struct TypeDecl {
 pub:
 	is_public   bool
 	name        string
-	parent_type types.Type
-	variants    []types.Type
+	parent_type Expr
+	variants    []Expr
 }
+
+// Type Nodes
+pub struct ArrayType {
+pub:
+	elem_type Expr
+}
+
+pub struct FnType {
+pub:
+	args        []Arg
+	return_type Expr
+}
+
+pub struct MapType {
+pub:
+	key_type   Expr
+	value_type Expr
+}
+
+pub struct TupleType {
+pub:
+	types []Expr
+}
+
 
 // Other
 

@@ -134,7 +134,8 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {
-				g.write('$field.name #type#')
+				g.write('$field.name ')
+				g.expr(field.typ)
 				// if field.value != none {
 					g.write(' = ')
 					g.expr(field.value)
@@ -162,11 +163,12 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			for i,arg in stmt.args {
 				g.write(arg.name)
 				g.write(' ')
-				g.write('#type#')
+				g.expr(arg.typ)
 				if i < stmt.args.len-1 { g.write(',') }
 			}
-			g.write(')')
-			// if stmt.return_type
+			g.write(') ')
+			// TODO: if stmt.return_type
+			g.expr(stmt.return_type)
 			g.writeln(' {')
 			g.stmts(stmt.stmts)
 			g.writeln('}')
@@ -249,7 +251,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			for field in stmt.fields {
 				g.write(field.name)
 				g.write(' ')
-				g.write('#type#')
+				g.expr(field.typ)
 				// if field.value != none {
 				// 	g.write(' = ')
 				// 	g.expr(field.value)
@@ -263,17 +265,18 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write('type ')
 			g.write(stmt.name)
 			if stmt.variants.len > 0 {
-				g.write(' =')
+				g.write(' = ')
 				//for i, vairant in stmt.variants {
-				for i, _ in stmt.variants {
-					g.write(' #type#')
+				for i, variant in stmt.variants {
+					g.expr(variant)
 					if i < stmt.variants.len-1 {
-						g.write(' |')
+						g.write(' | ')
 					}
 				}
 			}
 			else {
-				g.write(' #type#')
+				g.write(' ')
+				g.expr(stmt.parent_type)
 			}
 			g.writeln('')
 		}
@@ -464,11 +467,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(')')
 		}
 		ast.StructInit {
+			g.expr(expr.typ)
 			if expr.fields.len == 0 {
-				g.write('#type#{')
+				g.write('{')
 			}
 			else {
-				g.writeln('#type#{')
+				g.writeln('{')
 			}
 			for i, field in expr.fields {
 				g.write('\t')
@@ -489,6 +493,37 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
+		// Type Nodes
+		ast.ArrayType {
+			g.write('[]')
+			g.expr(expr.elem_type)
+		}
+		ast.FnType {
+			g.write('fn(')
+			for i, arg in expr.args {
+				g.expr(arg.typ)
+				if i < expr.args.len-1 { g.write(', ') }
+			}
+			g.write(')')
+			g.expr(expr.return_type)
+		}
+		ast.MapType {
+			g.write('map[')
+			g.expr(expr.key_type)
+			g.write(']')
+			g.expr(expr.value_type)
+		}
+		ast.TupleType {
+			g.write('(')
+			for i, x in expr.types {
+				g.expr(x)
+				if i < expr.types.len-1 { g.write(', ') } 
+			}
+			g.write(')')
+		}
+		// TODO: v bug since all variants are accounted for
+		// this should not be required?
+		ast.Type {}
 	}
 }
 
