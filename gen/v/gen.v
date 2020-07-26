@@ -407,7 +407,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.write(' {')
 			g.indent++
-			for i, branch in expr.branches {
+			for branch in expr.branches {
 				g.writeln('')
 				if branch.cond.len > 0 {
 					for j, cond in branch.cond {
