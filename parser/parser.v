@@ -1022,6 +1022,7 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
+	mut parent_type := ast.Expr{}
 	// sum type (otherwise alias)
 	mut variants := []ast.Expr{}
 	if p.tok == .assign {
@@ -1035,7 +1036,9 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 			p.next()
 		}
 	}
-	parent_type := p.typ()
+	else {
+		parent_type = p.typ()
+	}
 	// p.log('ast.TypeDecl: $name')
 	return ast.TypeDecl{
 		is_public: is_public

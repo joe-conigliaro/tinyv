@@ -83,6 +83,10 @@ pub fn (mut p Parser) typ() ast.Expr {
 		}
 		return ident
 	}
+	// TODO: :D quick hack to handle just ?
+	if is_optional {
+		return ast.Ident{name: '?'}
+	}
 	p.error('typ: unknown type')
 	exit(1)
 }
