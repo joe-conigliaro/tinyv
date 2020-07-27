@@ -157,7 +157,13 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('pub ')
 			}
 			g.write('fn ')
-			// if stmt.is_method {
+			if stmt.is_method {
+				g.write('(')
+				g.write(stmt.receiver.name)
+				g.write(' ')
+				g.expr(stmt.receiver.typ)
+				g.write(') ')
+			}
 			g.write(stmt.name)
 			g.write('(')
 			for i,arg in stmt.args {

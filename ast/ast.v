@@ -260,6 +260,7 @@ pub struct FnDecl {
 pub:
 	is_public   bool
 	is_method   bool
+	receiver    Arg
 	name        string
 	args        []Arg
 	stmts       []Stmt

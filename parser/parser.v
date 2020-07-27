@@ -776,6 +776,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	mut args := []ast.Arg{}
 	// method
 	mut is_method := false
+	mut receiver := ast.Arg{}
 	if p.tok == .lpar {
 		is_method = true
 		p.next()
@@ -785,8 +786,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		if is_mut {
 			p.next()
 		}
-		// add receiver as arg0
-		args << ast.Arg{
+		receiver = ast.Arg{
 			name: p.name()
 			typ: p.typ()
 			is_mut: is_mut
@@ -832,6 +832,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	return ast.FnDecl{
 		is_public: is_public
 		is_method: is_method
+		receiver: receiver
 		name: name
 		stmts: stmts
 		return_type: return_type

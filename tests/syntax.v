@@ -1,6 +1,6 @@
 module main
 
-fn main() {
+fn fn_a() {
     a, b := 1, 2
 	arr_a := [1,2,3,4]
 	arr_b := []string{len: 2, cap :2}
@@ -15,3 +15,8 @@ fn main() {
 	infix_a := 1 * 2
 	*deref_assign_a = 2
 }
+
+fn (rec &Foo) method_a() {
+	println('hello from method_a')
+}
+
