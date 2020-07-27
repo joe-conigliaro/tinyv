@@ -5,28 +5,27 @@ A simplistic compiler for the V language: https://github.com/vlang/v
 
 *Please ***no PR's for code***, thanks. This is an experiment & may change drastically at any moment.*
 
-## What this is / is not
-* It **is not** intended to be a replacement, substitution, or competitor for the main V compiler.
-* It **is not** intended to support all the features of the main V compiler (idealy high 90% of features).
-* It **is** a research project to discover ways to improve the main V compiler.
-* It **is** intended to be a functioning V compiler.
-* It **is** going to remain simple.
-* It **is** for fun.
+## Foreword
+Although this aims to be a functioning V compiler, it is not intended to be an alternative to the main V compiler, nor will it support all the features the main compiler does.
+
+It was started as a research project to discover ways to simplify & improve the main V compiler.
+
+## Essence
+* Fun
+* Research
+* Simplicity
+* Stability
 
 ## Motivation
-#### Fun.
-I want to make a V compiler which is as simple as possible and with minimal lines of code (no frills).
-The thing I love about V is its simplicity and the simplicity of the compiler, as more features are added and more edge cases are created the complexity of the compiler increases.
+The thing I love about V is the simplicity of the language and the simplicity of the compiler. As more features are added the complexity of the compiler increases, and more edge cases are created.
 
-My goal is not to support all of the features of the main compiler, but a compromise beween simplicity and feature support. I would like to acheive high 90% feature support while keeping the codebase as simple as possible.
-#### Research.
-I'm really passionate about the V project and its community, my main focus is to make the V compiler better.
+I would like to create a V compiler with the fundamental goals of simplicity and stability. Rather than supporting all the features of the main compiler, I may choose to exclude more complicated features, and instead focus on making the supported subset as stable as possible.
 
-Without any existing constraints, and using what I have learned I am able to easily test new ideas & simplifications which could end up being migrated into the main compiler.
+I'm really passionate about the V project and its community. Making the V compiler the best it can be has always been my highest priority. This project allows me to easily test new ideas & simplifications without any existing constraints.
 
 ## Status
 1. Scanner / Lexer - Working (almost complete)
-2. Parser - Working (incomplete, not missing very much)
+2. Parser - Working (almost complete)
 3. Backends / Generation Stage
    - V (almost complete) Generates V code from the AST, useful for testing the parser
    - x64 (not started)
