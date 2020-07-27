@@ -413,10 +413,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.Match {
 			g.write('match ')
 			g.expr(expr.expr)
-			g.write(' {')
+			g.writeln(' {')
 			g.indent++
 			for branch in expr.branches {
-				g.writeln('')
 				if branch.cond.len > 0 {
 					for j, cond in branch.cond {
 						g.expr(cond)
@@ -428,9 +427,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				g.writeln(' {')
 				g.stmts(branch.stmts)
-				g.write('}')
+				g.writeln('}')
 			}
 			g.indent--
+			g.write('}')
 		}
 		ast.Modifier {
 			g.write(expr.kind.str())

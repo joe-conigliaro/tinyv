@@ -73,9 +73,6 @@ pub fn (mut s Scanner) scan() token.Token {
 	}
 	// name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
-		// we can skip ahead one now since name will just keep reading chars
-		// it dosen't rely on this in any way, unlike number() for example
-		s.pos++
 		s.name()
 		s.lit = s.text[start_pos..s.pos]
 		tok := token.key_tokens[s.lit]
@@ -443,8 +440,8 @@ fn (mut s Scanner) number() {
 	}
 }
 
-[inline]
 fn (mut s Scanner) name() {
+	s.pos++
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
 		if  (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || (c >= `0` && c <= `9`) || c == `_` {

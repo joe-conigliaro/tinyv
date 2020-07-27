@@ -1,9 +1,23 @@
 module main
 
+__global global_a string
+
+const (
+	const_a = 1
+	const_b = 'two'
+)
+
+enum EnumA {
+	value_a
+	value_b
+}
+
 struct StructA {
 	field_a int
 	field_b string
 }
+
+type SumTypeA = StructA | int | string
 
 fn fn_a() {
     a, b := 1, 2
@@ -19,6 +33,12 @@ fn fn_a() {
 	// TODO:
 	infix_a := 1 * 2
 	*deref_assign_a = 2
+	sumtype_a := SumTypeA(111)
+	match sumtype_a {
+		StructA { println('StructA') }
+		int { println('int') }
+		string { println('string') }
+	}
 }
 
 fn (rec &Foo) method_a() {
