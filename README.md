@@ -17,11 +17,11 @@ It was started as a research project to discover ways to simplify & improve the 
 * Stability
 
 ## Motivation
-The thing I love about V is the simplicity of the language and the simplicity of the compiler. As more features are added the complexity of the compiler increases, and more edge cases are created.
+The thing I love about V is the simplicity of the language & compiler. As more features are added, the complexity of the compiler increases & more edge cases are created.
 
-I would like to create a V compiler with the fundamental goals of simplicity and stability. Rather than supporting all the features of the main compiler, I may choose to exclude more complicated features, and instead focus on making the supported subset as stable as possible.
+I would like to create a V compiler with the fundamental goals of simplicity & stability. Rather than supporting all the features of the main compiler, I may choose to exclude more complicated features, and instead focus on making the supported subset as stable as possible.
 
-I'm really passionate about the V project and its community. Making the V compiler the best it can be has always been my highest priority. This project allows me to easily test new ideas & simplifications without any existing constraints.
+I'm really passionate about the V project & its community. Making the V compiler the best it can be has always been my highest priority. This project allows me to easily test new ideas & simplifications without any existing constraints.
 
 ## Status
 1. Scanner / Lexer - Working (almost complete)
