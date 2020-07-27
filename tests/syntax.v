@@ -1,5 +1,10 @@
 module main
 
+struct StructA {
+	field_a int
+	field_b string
+}
+
 fn fn_a() {
     a, b := 1, 2
 	arr_a := [1,2,3,4]

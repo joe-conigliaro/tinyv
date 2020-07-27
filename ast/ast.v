@@ -31,6 +31,7 @@ pub:
 
 pub struct ArrayInit {
 pub:
+	typ   Expr
 	exprs []Expr
 	init  Expr
 	cap   Expr

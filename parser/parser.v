@@ -419,12 +419,12 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				}
 			}
 			p.expect(.rsbr)
+			mut typ := ast.Expr{}
 			// []int{}
 			mut cap, mut init, mut len := ast.Expr{}, ast.Expr{}, ast.Expr{}
 			// TODO: restructure in parts (type->init) ?? no
 			if p.tok == .name && p.line_nr == line_nr {
-				// typ := p.typ()
-				p.next()
+				typ = p.typ()
 				// init
 				if p.tok == .lcbr && !p.in_init {
 					p.next()
@@ -447,10 +447,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 							p.next()
 						}
 					}
-					p.expect(.rcbr)
+					p.next()
 				}
 			}
 			lhs = ast.ArrayInit{
+				typ: typ
 				exprs: exprs
 				init: init
 				cap: cap
