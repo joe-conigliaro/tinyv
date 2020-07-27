@@ -170,7 +170,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(arg.name)
 				g.write(' ')
 				g.expr(arg.typ)
-				if i < stmt.args.len-1 { g.write(',') }
+				if i < stmt.args.len-1 { g.write(', ') }
 			}
 			g.write(') ')
 			// TODO: if stmt.return_type

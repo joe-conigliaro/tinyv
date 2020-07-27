@@ -773,7 +773,6 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	p.next()
 	line_nr := p.line_nr
-	mut args := []ast.Arg{}
 	// method
 	mut is_method := false
 	mut receiver := ast.Arg{}
@@ -815,7 +814,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		}
 		p.expect(.gt)
 	}
-	args << p.fn_args()
+	args := p.fn_args()
 	// TODO:
 	// mut return_type := types.void
 	mut return_type := ast.Expr{}
@@ -834,6 +833,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		is_method: is_method
 		receiver: receiver
 		name: name
+		args: args
 		stmts: stmts
 		return_type: return_type
 	}
@@ -849,15 +849,18 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 		if p.tok == .name {
 			name = p.name()
 		}
-		if p.tok !in [.comma, .rpar] {
+		typ := if p.tok !in [.comma, .rpar] {
 			p.typ()
+		}
+		else {
+			ast.Expr{}
 		}
 		if p.tok == .comma {
 			p.next()
 		}
 		args << ast.Arg{
 			name: name
-			// typ: 
+			typ: typ
 			is_mut: is_mut
 		}
 	}
