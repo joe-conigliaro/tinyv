@@ -39,6 +39,13 @@ fn fn_a() {
 		int { println('int') }
 		string { println('string') }
 	}
+	// unsafe_a := unsafe(a++)
+	unsafe_b := unsafe {a++ a++}
+	ubsafe_c := unsafe {
+		a := 1
+		arr_a
+	}
+	call_with_unsafe_arg_a('fo', unsafe {*deref_arg_a})
 }
 
 fn (rec &Foo) method_a() {

@@ -497,6 +497,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(')')
 		}
 		ast.Unsafe {
+			// some sort of fuckery
+			// if expr.stmts.len == 1 && expr.stmts[0] is ast.ExprStmt {
+			// 	g.write('unsafe(')
+			// 	g.expr(expr.stmts[0])
+			// 	g.write(')')
+			// }
 			g.writeln('unsafe {')
 			g.stmts(expr.stmts)
 			g.write('}')
