@@ -2,8 +2,8 @@ module main
 
 import os
 import os.cmdline
-import pref
-import builder
+import tinyv.pref
+import tinyv.builder
 
 const(
 	pref = &pref.Preferences{

@@ -1,7 +1,6 @@
 module parser
 
-import ast
-// import types
+import tinyv.ast
 
 // TODO:
 pub fn (mut p Parser) typ() ast.Expr {

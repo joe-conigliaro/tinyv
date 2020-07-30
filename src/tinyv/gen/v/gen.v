@@ -1,7 +1,7 @@
 module v
 
-import ast
-import pref
+import tinyv.ast
+import tinyv.pref
 import strings
 import time
 

@@ -1,10 +1,10 @@
 module builder
 
 import os
-import ast
-import gen.v as gen_v
-import parser
-import pref
+import tinyv.ast
+import tinyv.gen.v as gen_v
+import tinyv.parser
+import tinyv.pref
 import time
 
 struct Builder {

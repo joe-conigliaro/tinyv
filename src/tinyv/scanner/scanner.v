@@ -1,7 +1,7 @@
 module scanner
 
-import token
-import pref
+import tinyv.token
+import tinyv.pref
 
 pub struct Scanner {
 	pref          &pref.Preferences

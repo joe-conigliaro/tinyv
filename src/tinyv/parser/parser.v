@@ -1,12 +1,11 @@
 module parser
 
 import os
-import ast
-import scanner
-import token
-// import types
-import pref
 import time
+import tinyv.ast
+import tinyv.scanner
+import tinyv.token
+import tinyv.pref
 
 struct Parser {
 	pref      &pref.Preferences

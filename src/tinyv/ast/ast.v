@@ -1,6 +1,6 @@
 module ast
 
-import token
+import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
