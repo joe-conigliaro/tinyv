@@ -1,5 +1,8 @@
 module main
 
+#include <header_a.h>
+#flag -L lib_a
+
 __global global_a string
 
 const (

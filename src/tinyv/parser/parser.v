@@ -14,13 +14,12 @@ mut:
 	scanner     &scanner.Scanner
 	in_init     bool // for/if/match eg. `for x in vals {`
 	// start token info
-	// the following are for tok, for tok2 get directly from scanner
-	last_nl_pos int
+	// the following are for tok, for next_tok get directly from scanner
 	line_nr     int
 	lit         string
 	pos         int
 	tok         token.Token // last token
-	tok2        token.Token // next token (scanner stays 1 tok ahead)
+	next_tok    token.Token // next token (scanner stays 1 tok ahead)
 	// end token info
 }
 
@@ -33,12 +32,11 @@ pub fn new_parser(pref &pref.Preferences) &Parser {
 
 pub fn (mut p Parser) reset() {
 	p.scanner.reset()
-	p.last_nl_pos = 0
 	p.line_nr = 0
 	p.lit = ''
 	p.pos = 0
 	p.tok = .unknown
-	p.tok2 = .unknown
+	p.next_tok = .unknown
 }
 
 pub fn (mut p Parser) parse_files(files []string) []ast.File {
@@ -65,7 +63,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	}
 	p.scanner.set_text(text)
 	// start
-	p.tok2 = p.scanner.scan()
+	p.next_tok = p.scanner.scan()
 	p.next()
 	mut top_stmts := []ast.Stmt{}
 	mut imports := []ast.Import{}
@@ -181,7 +179,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return ast.Attribute{name: name}
 		}
 		else {
-			panic('X: $p.tok - $p.tok2 - $p.file_path:$p.line_nr')
+			panic('X: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
 		}
 	}
 	p.error('unknown top stmt')
@@ -213,7 +211,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			in_init := p.in_init
 			p.in_init = true
 			mut init := ast.Stmt{}
-			if p.tok2 in [.comma, .key_in] {
+			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
 				if p.tok == .comma {
 					p.next()
@@ -309,6 +307,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 	// TODO: fix match so it last expr can be used `x := match {...`
 	// p.log('EXPR: $p.tok - $p.line_nr')
+	line_nr := p.line_nr
 	mut lhs := ast.Expr{}
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
@@ -409,7 +408,7 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		.lsbr {
 			p.next()
 			// [1,2,3,4]
-			line_nr := p.line_nr
+			// line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
 				exprs << p.expr(.lowest)
@@ -602,6 +601,13 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		// }
 		// p.next()
 		if p.tok.is_infix() {
+			// deref assign: `*a = b`
+			if p.tok == .mul && p.line_nr != line_nr {
+				// check that starts at start of line
+				if p.tok == .mul && p.scanner.line_offsets[p.line_nr-1]+1 == p.pos {
+					return lhs
+				}
+			}
 			lhs = ast.Infix{
 				op: p.tok()
 				lhs: lhs
@@ -625,12 +631,11 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 
 [inline]
 pub fn (mut p Parser) next() {
-	p.last_nl_pos = p.scanner.last_nl_pos
-	p.line_nr = p.scanner.line_nr
+	p.line_nr = p.scanner.line_offsets.len
 	p.lit = p.scanner.lit
 	p.pos = p.scanner.pos
-	p.tok = p.tok2
-	p.tok2 = p.scanner.scan()
+	p.tok = p.next_tok
+	p.next_tok = p.scanner.scan()
 }
 
 [inline]
@@ -719,7 +724,7 @@ pub fn (mut p Parser) comptime_if() ast.ComptimeIf {
 	// 		else_stmts = p.block()
 	// 	}
 	// }
-	if p.tok == .dollar && p.tok2 == .key_else {
+	if p.tok == .dollar && p.next_tok == .key_else {
 		p.next()
 		p.next()
 		else_stmts = p.block()
@@ -732,6 +737,7 @@ pub fn (mut p Parser) comptime_if() ast.ComptimeIf {
 }
 
 pub fn (mut p Parser) directive() ast.Directive {
+	// value := p.lit() // if we scan whole line see scanner
 	p.next()
 	line_nr := p.line_nr
 	name := p.name()
@@ -821,7 +827,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	if p.tok != .lcbr && p.line_nr == line_nr {
 		return_type = p.typ() // return type
 	}
-	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok2')
+	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.next_tok')
 	stmts := if p.tok == .lcbr {
 		p.block()
 	}
@@ -1065,7 +1071,8 @@ pub fn (mut p Parser) log(msg string) {
 
 pub fn (mut p Parser) error(msg string) {
 	println('error: $msg')
-	col := p.pos-p.last_nl_pos-p.lit.len
+	// line_nr, col := p.scanner.position(p.pos)
+	col := p.pos-p.scanner.line_offsets[p.line_nr-1]+1
 	println('$p.file_path:$p.line_nr:$col')
 	exit(1)
 }
