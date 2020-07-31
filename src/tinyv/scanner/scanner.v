@@ -9,6 +9,9 @@ pub struct Scanner {
 mut:
 	text          string
 pub mut:
+	// it slows things down a tiny bit appending 
+	// to this but it means the only position we
+	// need to store per token is the offset (pos)
 	line_offsets  []int
 	offset        int
 	pos           int
