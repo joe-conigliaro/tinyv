@@ -311,7 +311,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 	panic('')
 }
 
-pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
+pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// TODO: fix match so it last expr can be used `x := match {...`
 	// p.log('EXPR: $p.tok - $p.line_nr')
 	line_nr := p.line_nr
@@ -535,13 +535,14 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 		}
 		else {
 			if p.tok.is_prefix() {
+				op := p.tok()
 				return ast.Prefix{
-					op: p.tok()
-					expr: p.expr(.lowest)
+					op: op
+					expr: p.expr(op.right_binding_power())
 				}
 			}
 			// TODO: rearrange loop below, need to make error conditions stable (rememeber assign stmt isnt peeking, hence)
-			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot] && !p.tok.is_assignment() {
+			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot] {
 				p.error('expr: unexpected token `$p.tok`')
 			}
 		}
@@ -604,14 +605,14 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 
 		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
-		if lbp < min_lbp {
-			// p.log('breaking precedence: $p.tok ($lbp < $min_lbp)')
+		if lbp < min_bp {
+			// p.log('breaking precedence: $p.tok ($lbp < $min_bp)')
 			break
 		}
 		// p.expr(lbp)
 		// TODO: use bp loop for infix & postifx instead		
 		// lbp2 := p.tok.infix_bp()
-		// if lbp2 < min_lbp {
+		// if lbp2 < min_bp {
 		// 	break
 		// }
 		// p.next()
@@ -619,9 +620,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 			// deref assign: `*a = b`
 			if p.tok == .mul && p.line_nr != line_nr {
 				// check that starts at start of line
-				if p.tok == .mul && p.scanner.line_offsets[p.line_nr-1]+1 == p.pos {
+				// TODO: fix
+				// if p.tok == .mul && p.scanner.line_offsets[p.line_nr-1]+1 == p.pos {
 					return lhs
-				}
+				// }
 			}
 			lhs = ast.Infix{
 				op: p.tok()

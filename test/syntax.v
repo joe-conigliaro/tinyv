@@ -53,12 +53,10 @@ fn fn_a() {
 		string { println('string') }
 	}
 	unsafe {
-		d := 1
-		a++
+		mut ptr_0 := &voidptr(0)
+		*ptr_0 = 0
 	}
 	// unsafe_a := unsafe(a++)
-	
-	
 	unsafe_b := unsafe { d := 1 d++ d+ d }
 	ubsafe_c := unsafe {
 		d := 1

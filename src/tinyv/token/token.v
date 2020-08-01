@@ -203,6 +203,18 @@ pub fn (t Token) left_binding_power() BindingPower {
 	}
 }
 
+// TODO: prefix binding power
+pub fn (t Token) right_binding_power() BindingPower {
+	match t {
+		.mul {
+			return .lowest
+		}
+		else {
+			return .lowest
+		}
+	}
+}
+
 [inline]
 pub fn (tok Token) is_prefix() bool {
 	return tok in [.minus, .amp, .mul, .not, .bit_not]
