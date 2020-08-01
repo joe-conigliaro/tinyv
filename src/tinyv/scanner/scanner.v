@@ -14,7 +14,7 @@ pub mut:
 	// need to store per token is the offset (pos)
 	line_offsets  []int  // start of each line
 	offset        int    // current char offset
-	pos           int    // token offser 
+	pos           int    // token offset
 	lit           string
 }
 

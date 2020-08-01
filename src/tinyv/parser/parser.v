@@ -229,14 +229,19 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				init = p.stmt()
 			}
 			// init := p.stmt()
+			// TODO: clean up
 			mut cond := ast.Expr{}
 			mut post := ast.Stmt{}
 			if p.tok == .semicolon {
 				p.next()
+			}
+			if p.tok != .semicolon {
 				cond = p.expr(.lowest)
 			}
 			if p.tok == .semicolon {
 				p.next()
+			}
+			if p.tok != .lcbr {
 				post = p.stmt()
 			}
 			p.in_init = in_init
@@ -524,6 +529,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 				stmts: p.block()
 			}
 		}
+		//  TODO:
+		.rsbr {
+			return lhs
+		}
 		else {
 			if p.tok.is_prefix() {
 				return ast.Prefix{
@@ -531,8 +540,8 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					expr: p.expr(.lowest)
 				}
 			}
-			// TODO: rearrange loop below, need to make error conditions stable
-			if p.tok !in [.lpar, .lsbr, .dot, .dotdot, .rsbr] {
+			// TODO: rearrange loop below, need to make error conditions stable (rememeber assign stmt isnt peeking, hence)
+			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot] && !p.tok.is_assignment() {
 				p.error('expr: unexpected token `$p.tok`')
 			}
 		}
