@@ -12,9 +12,9 @@ pub mut:
 	// it slows things down a tiny bit appending 
 	// to this but it means the only position we
 	// need to store per token is the offset (pos)
-	line_offsets  []int
-	offset        int
-	pos           int
+	line_offsets  []int  // start of each line
+	offset        int    // current char offset
+	pos           int    // token offser 
 	lit           string
 }
 
@@ -135,11 +135,12 @@ pub fn (mut s Scanner) scan() token.Token {
 			}
 			else if c2 == `i` {
 				c3 := s.text[s.offset+1]
-				if c3 == `n` {
+				c4_is_space := s.text[s.offset+2] in [` `, `\t`]
+				if c3 == `n` && c4_is_space {
 					s.offset+=2
 					return .not_in
 				}
-				else if c3 == `s` {
+				else if c3 == `s` && c4_is_space {
 					s.offset+=2
 					return .not_is
 				}

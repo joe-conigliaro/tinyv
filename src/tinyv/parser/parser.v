@@ -225,18 +225,20 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					expr: p.expr(.lowest)
 				}
 			}
-			else {
+			else if p.tok != .semicolon {
 				init = p.stmt()
 			}
 			// init := p.stmt()
+			mut cond := ast.Expr{}
+			mut post := ast.Stmt{}
 			if p.tok == .semicolon {
 				p.next()
+				cond = p.expr(.lowest)
 			}
-			cond := p.expr(.lowest)
 			if p.tok == .semicolon {
 				p.next()
+				post = p.stmt()
 			}
-			post := p.stmt()
 			p.in_init = in_init
 			return ast.For{
 				init: init
@@ -528,6 +530,10 @@ pub fn (mut p Parser) expr(min_lbp token.BindingPower) ast.Expr {
 					op: p.tok()
 					expr: p.expr(.lowest)
 				}
+			}
+			// TODO: rearrange loop below, need to make error conditions stable
+			if p.tok !in [.lpar, .lsbr, .dot, .dotdot, .rsbr] {
+				p.error('expr: unexpected token `$p.tok`')
 			}
 		}
 	}
@@ -876,7 +882,7 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 
 pub fn (mut p Parser) call_args() []ast.Expr {
 	p.expect(.lpar)
-	args := p.expr_list()
+	args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
 	p.expect(.rpar)
 	return args
 }

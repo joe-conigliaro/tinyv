@@ -24,14 +24,15 @@ type SumTypeA = StructA | int | string
 
 fn fn_a() {
 	a := 1
-	a, b := 1, 2
+	b, c := 1, 2
 	array_init_a := [1,2,3,4]
 	array_init_b := []string{len: 2, cap :2}
 	call_a := foo()
 	call_b := foo('string', 1, a, b)
 	call_c := foo[1]('string', 1, a, b)
 	index_a := foo.bar[1]
-	assoc_a := {struct_a|fa: fva}
+	struct_a := StructA{field_a: 1, field_b: 'v'}
+	assoc_a := {struct_a|field_a: 111}
 	for val_a in list_a {
 		println(val_a)
 	}
@@ -39,6 +40,9 @@ fn fn_a() {
 		println(key_a)
 		println(val_a)
 	}
+	for idx_a:=0; idx_a<=100; idx_a++ {
+		println(idx_a)
+	} 
 	// TODO:
 	infix_a := 1 * 2
 	*deref_assign_a = 2
@@ -49,15 +53,17 @@ fn fn_a() {
 		string { println('string') }
 	}
 	unsafe {
-		a := 1
+		d := 1
 		a++
 	}
 	// unsafe_a := unsafe(a++)
-	unsafe_b := unsafe { a := 1 a++ a++ a }
+	
+	
+	unsafe_b := unsafe { d := 1 d++ d+ d }
 	ubsafe_c := unsafe {
-		a := 1
-		a++
-		a
+		d := 1
+		d++
+		d
 	}
 	call_with_unsafe_as_arg_a('string', unsafe {*deref_a})
 }
