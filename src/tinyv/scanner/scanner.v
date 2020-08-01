@@ -446,7 +446,7 @@ fn (mut s Scanner) number() {
 			continue
 		}
 		// fracton
-		else if !has_decimal && c == `.` {
+		else if !has_decimal && c == `.` && s.text[s.offset+1] != `.` /* range */ {
 			has_decimal = true
 			s.offset++
 			continue

@@ -529,10 +529,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				stmts: p.block()
 			}
 		}
-		//  TODO:
-		.rsbr {
-			return lhs
-		}
 		else {
 			if p.tok.is_prefix() {
 				op := p.tok()
@@ -541,7 +537,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					expr: p.expr(op.right_binding_power())
 				}
 			}
-			// TODO: rearrange loop below, need to make error conditions stable (rememeber assign stmt isnt peeking, hence)
+			// TODO: perhaps re-arrange the expression chaning support
+			// below in a way which makes error conditions more stable
 			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot] {
 				p.error('expr: unexpected token `$p.tok`')
 			}
@@ -597,9 +594,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		else if p.tok == .dotdot {
 			p.next()
 			// p.log('ast.Range')
-			lhs = ast.Range{
-				start: lhs
-				end: p.expr(.lowest)
+			if p.tok == .rsbr {
+				lhs = ast.Range{
+					start: lhs
+				}
+			}
+			else {
+				lhs = ast.Range{
+					start: lhs
+					end: p.expr(.lowest)
+				}
 			}
 		}
 
