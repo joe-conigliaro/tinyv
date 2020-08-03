@@ -323,6 +323,19 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				value: p.lit()
 			}
 		}
+		.key_fn {
+			p.next()
+			args := p.fn_args()
+			mut return_type := ast.Expr{}
+			if p.tok != .lcbr {
+				return_type = p.typ()
+			}
+			lhs = ast.Fn{
+				args: args
+				stmts: p.block()
+				return_type: return_type
+			}
+		}
 		.key_if {
 			// p.log('START IF')
 			p.next()

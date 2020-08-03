@@ -3,7 +3,7 @@ module ast
 import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Cast | Call | Ident | If | IfGuard | Index
+pub type Expr = ArrayInit | Cast | Call | Fn | Ident | If | IfGuard | Index
 	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
 	| Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
 	| Type | TypeOf | Unsafe
@@ -67,6 +67,14 @@ pub struct FieldInit {
 pub:
 	name  string
 	value Expr
+}
+
+// anon fn
+pub struct Fn {
+pub:
+	args        []Arg
+	stmts       []Stmt
+	return_type Expr
 }
 
 pub struct Ident {

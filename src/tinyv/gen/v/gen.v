@@ -336,6 +336,21 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write(')')
 		}
+		ast.Fn {
+			g.write('fn(')
+			for i, arg in expr.args {
+				g.write(arg.name)
+				g.write(' ')
+				g.expr(arg.typ)
+				if i < expr.args.len-1 { g.write(', ') }
+			}
+			g.write(') ')
+			// TODO: if expr.return_type
+			g.expr(expr.return_type)
+			g.writeln(' {')
+			g.stmts(expr.stmts)
+			g.write('}')
+		}
 		ast.Ident {
 			if expr.is_mut {
 				g.write('mut ')
