@@ -22,5 +22,6 @@ I'm very passionate about the V project & it's community. Making the V compiler 
 2. Parser - Working (almost complete)
 3. Backends / Generation Stage
    - V (almost complete) Generates V code from the AST, useful for testing the parser
-   - x64 (not started)
+   - SSA (single static assignment form - planned/research in progress) The AST will be lowered to this form, which will be used by the x64 (and possibly C) backend
    - C (not started)
+   - x64 (not started)
