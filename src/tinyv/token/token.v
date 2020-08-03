@@ -17,7 +17,7 @@ const (
 		'mut': Token.key_mut,
 		'type': Token.key_type,
 		'for': Token.key_for,
-		'switch': Token.key_switch,
+		// 'switch': Token.key_switch,
 		'fn': Token.key_fn,
 		'true': Token.key_true,
 		'false': Token.key_false,
@@ -152,7 +152,7 @@ pub enum Token {
 	key_unlikely
 	key_offsetof
 	key_struct
-	key_switch
+	// key_switch
 	key_true
 	key_type
 	key_typeof
@@ -336,7 +336,7 @@ fn build_tokens_str() []string {
 	s[Token.key_rlock] = 'rlock'
 	s[Token.key_type] = 'type'
 	s[Token.key_for] = 'for'
-	s[Token.key_switch] = 'switch'
+	// s[Token.key_switch] = 'switch'
 	s[Token.key_fn] = 'fn'
 	s[Token.key_true] = 'true'
 	s[Token.key_false] = 'false'

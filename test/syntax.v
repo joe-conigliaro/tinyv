@@ -88,7 +88,7 @@ fn main_a() {
 		*ptr_b = 0
 	}
 	// unsafe_a := unsafe(a++)
-	unsafe_b := unsafe { d := 1 d++ d+ d }
+	unsafe_b := unsafe { d := 1 d++ d }
 	ubsafe_c := unsafe {
 		d := 1
 		d++

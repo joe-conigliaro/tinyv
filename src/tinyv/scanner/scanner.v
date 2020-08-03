@@ -9,12 +9,11 @@ pub struct Scanner {
 mut:
 	text          string
 pub mut:
-	// it slows things down a tiny bit appending 
-	// to this but it means the only position we
-	// need to store per token is the offset (pos)
+	// it slows things down a tiny bit appending to this but it
+	// means the only position we need to store per token is `pos`
 	line_offsets  []int  // start of each line
 	offset        int    // current char offset
-	pos           int    // token offset
+	pos           int    // token offset (start of current token)
 	lit           string
 }
 
@@ -207,7 +206,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		`&` {
 			c2 := s.text[s.offset]
 			if c2 == `&` {
-				// so that we pass &&Type as two .amp instead of .and
+				// so that we parse &&Type as two .amp instead of .and
 				// but this requires there is a space. we could check
 				// for capital or some other way, this is simplest for now.
 				if s.offset+2 <= s.text.len && s.text[s.offset+2] in [` `, `\t`] {
@@ -271,7 +270,6 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .hash
 		}
 		// `@` { return .at }
-		// `#` { return .hash }
 		`~` { return .bit_not }
 		`,` { return .comma }
 		`$` { return .dollar }
@@ -385,9 +383,9 @@ fn (mut s Scanner) string_literal() {
 			s.line_offsets << s.offset
 			continue
 		}
-		// TODO: will probably store replacement positions in scanner
-		// to save work by doing it later in parser, I still dont
-		// think I want to break strings apart in scanner though
+		// TODO: I will probably store replacement positions in scanner
+		// for efficiency rather than doing it later in parser, I still
+		// dont think I want to break strings apart in scanner though
 		// else if c2 == `$` {}
 		else if c2 == c {
 			s.offset++
@@ -401,7 +399,7 @@ fn (mut s Scanner) number() {
 	if s.text[s.offset] == `0` {
 		s.offset++
 		c := s.text[s.offset]
-		// TODO: fix underscore support
+		// TODO: impl proper underscore support
 		// 0b (binary)
 		if c in [`b`, `B`] {
 			s.offset++
