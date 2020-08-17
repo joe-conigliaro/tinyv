@@ -29,7 +29,8 @@ enum PrimitiveKind {
 
 struct Primitive {
 	kind  PrimitiveKind
-	props Properties
+	// props Properties
+	props int
 }
 
 struct Array {

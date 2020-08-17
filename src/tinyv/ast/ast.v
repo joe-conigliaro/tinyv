@@ -82,6 +82,8 @@ pub:
 	name   string
 	kind   IdentKind
 	is_mut bool
+// pub mut:
+// 	obj    Object
 }
 
 pub enum IdentKind {
