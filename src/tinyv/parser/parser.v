@@ -173,7 +173,16 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.lsbr {
 			// [attribute]
 			p.next()
-			name := p.name()
+			mut name := ''
+			// since unsafe is a keyword
+			if p.tok == .key_unsafe {
+				p.next()
+				name = 'unsafe'
+			}
+			else {
+				name = p.name()
+			}
+			// name := p.name()
 			// p.log('ast.Attribute: $name')
 			p.expect(.rsbr)
 			return ast.Attribute{name: name}
@@ -312,7 +321,6 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 }
 
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
-	// TODO: fix match so it last expr can be used `x := match {...`
 	// p.log('EXPR: $p.tok - $p.line_nr')
 	line_nr := p.line_nr
 	mut lhs := ast.Expr{}
@@ -552,7 +560,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// TODO: perhaps re-arrange the expression chaning support
 			// below in a way which makes error conditions more stable
-			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot] {
+			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot, .ellipsis] {
 				p.error('expr: unexpected token `$p.tok`')
 			}
 		}
@@ -604,16 +612,21 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			continue
 		}
 		// range
-		else if p.tok == .dotdot {
+		// else if p.tok == .dotdot {
+		// seriously wtf? why ... for range we alrady have 0..2 range. fooken
+		else if p.tok in [.dotdot, .ellipsis] {
+			op := p.tok
 			p.next()
 			// p.log('ast.Range')
 			if p.tok == .rsbr {
 				lhs = ast.Range{
+					op: op
 					start: lhs
 				}
 			}
 			else {
 				lhs = ast.Range{
+					op: op
 					start: lhs
 					end: p.expr(.lowest)
 				}

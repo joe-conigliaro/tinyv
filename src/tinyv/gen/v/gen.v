@@ -476,7 +476,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.Range {
 			g.expr(expr.start)
-			g.write('..')
+			// g.write('..')
+			g.write(expr.op.str())
 			g.expr(expr.end)
 		}
 		ast.Selector {
