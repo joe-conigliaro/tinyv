@@ -174,7 +174,7 @@ pub:
 
 pub struct Range {
 pub:
-	op    token.Token // insert fucked of emoticon
+	op    token.Token // `..` exclusive | `...` inclusive
 	start Expr
 	end   Expr
 }
