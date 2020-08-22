@@ -5,10 +5,13 @@ import tinyv.ast
 import tinyv.gen.v as gen_v
 import tinyv.parser
 import tinyv.pref
+import tinyv.types
 import time
 
 struct Builder {
 	pref &pref.Preferences
+mut:
+	files []ast.File
 }
 
 pub fn new_builder(pref &pref.Preferences) &Builder {
@@ -19,8 +22,9 @@ pub fn new_builder(pref &pref.Preferences) &Builder {
 
 pub fn (mut b Builder) build(files []string) {
 	total0 := time.ticks()
-	ast_files := b.parse_files(files)
-	b.gen_v_files(ast_files)
+	b.files = b.parse_files(files)
+	// b.check_files()
+	b.gen_v_files()
 	total1 := time.ticks()
 	total_time := total1 - total0
 	println('total time: ${total_time}ms')
@@ -55,9 +59,14 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	return ast_files
 }
 
-fn (mut b Builder) gen_v_files(ast_files []ast.File) {
+fn (mut b Builder) check_files() {
+	checker := types.new_checker()
+	checker.check_files(b.files)
+}
+
+fn (mut b Builder) gen_v_files() {
 	mut gen := gen_v.new_gen(b.pref)
-	for file in ast_files {
+	for file in b.files {
 		gen.gen(file)
 		if b.pref.debug {
 			gen.print_output()

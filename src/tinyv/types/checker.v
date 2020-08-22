@@ -12,12 +12,12 @@ pub fn new_checker() &Checker {
 	}
 }
 
-pub fn (c &Checker) files(files []ast.File) {
+pub fn (c &Checker) check_files(files []ast.File) {
 	for file in files {
-
+		_ = file
 	}
 }
 
 pub fn (c &Checker) ident(ident ast.Ident) {
-
+	
 }

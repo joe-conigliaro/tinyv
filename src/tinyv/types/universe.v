@@ -1,10 +1,6 @@
 module types
 
 const(
-	// universe = &Scope
-)
-
-const(
 	// TODO: v: allow initialising flags like so: `.integer | .unsigned`
 	bool_ = Primitive{props: int(Properties.boolean)}
 	i8_   = Primitive{props: int(Properties.integer)}
@@ -21,19 +17,18 @@ const(
 	f32_  = Primitive{props: int(Properties.float)}
 )
 
-fn init() {
-	// TODO: scopes
+fn init_universe() &Scope {
 	// universe scope
-	universe := {
-		'bool': bool_
-		'i8': i8_
-		'i16': i16_
-		'int': int_
-		'i64': i64_
-		'byte': byte_
-		'u16': u16_
-		'u64': u64_
-		'f16': f16_
-		'f32': f32_
-	}
+	mut universe := &Scope{parent: 0}
+	universe.register('bool', bool_)
+	universe.register('i8', i8_)
+	universe.register('i16', i16_)
+	universe.register('int', int_)
+	universe.register('i64', i64_)
+	universe.register('byte', byte_)
+	universe.register('u16', u16_)
+	universe.register('u64', u64_)
+	universe.register('f16', f16_)
+	universe.register('f32', f32_)
+	return universe
 }
