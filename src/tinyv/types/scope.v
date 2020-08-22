@@ -2,7 +2,7 @@ module types
 
 // TODO: this MIGHT be moved to anohter module, here for now
 
-pub type Object = Type | Scope
+pub type Object = Module | Type
 
 pub struct Scope{
 	parent  &Scope
