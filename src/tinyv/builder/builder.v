@@ -45,7 +45,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 			if mod.name in parsed_imports {
 				continue
 			}
-			relative_dir := os.base_dir(ast_file.path) + os.path_separator + mod.name
+			relative_dir := os.base(ast_file.path) + os.path_separator + mod.name
 			mod_path := if os.is_dir(relative_dir) {
 				relative_dir
 			}

@@ -298,9 +298,7 @@ pub:
 
 pub struct GlobalDecl {
 pub:
-	name  string
-	typ   Expr
-	value Expr
+	fields []FieldDecl
 }
 
 pub struct Import {

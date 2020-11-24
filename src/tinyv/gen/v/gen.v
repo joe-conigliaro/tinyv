@@ -203,13 +203,16 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.expr(stmt.expr)
 		}
 		ast.GlobalDecl {
-			g.write('global ')
-			g.write(stmt.name)
-			// if stmt.value != none {
-				g.write(' = ')
-				g.expr(stmt.value)
-			// }
-			g.writeln('')
+			g.writeln('global (')
+			for field in stmt.fields {
+				// TODO
+				g.write(field.name)
+				// if stmt.value != none {
+					g.write(' = ')
+					g.expr(field.value)
+				// }
+			}
+			g.writeln(')')
 		}
 		ast.Import {
 			g.write('import ')

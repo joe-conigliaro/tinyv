@@ -898,16 +898,8 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
-		mut name := 'arg_$args.len'
-		if p.tok == .name {
-			name = p.name()
-		}
-		typ := if p.tok !in [.comma, .rpar] {
-			p.typ()
-		}
-		else {
-			ast.Expr{}
-		}
+		name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
+		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.Expr{} }
 		if p.tok == .comma {
 			p.next()
 		}
@@ -956,17 +948,33 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 
 pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 	p.next()
-	name := p.name()
-	typ := p.typ()
-	mut value := ast.Expr{}
-	if p.tok == .assign {
-		p.next()
-		value = p.expr(.lowest)
+    if p.tok != .lpar {
+        p.error('globals must be grouped, e.g. `__global ( a = int(1) )`')
+    }
+	mut fields := []ast.FieldDecl{}
+	p.next()
+	for {
+		name := p.name()
+		if p.tok == .assign {
+			p.next()
+			fields << ast.FieldDecl{
+				name: name
+				value: p.expr(.lowest)
+			}
+		}
+		else {
+			fields << ast.FieldDecl{
+				name: name
+				typ: p.typ()
+			}
+		}
+		if p.tok == .rpar {
+			break
+		}
 	}
+	p.next()
 	return ast.GlobalDecl{
-		name: name
-		typ: typ
-		value: value
+		fields: fields
 	}
 }
 

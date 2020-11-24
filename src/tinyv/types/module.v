@@ -6,7 +6,7 @@ pub struct Module {
 	scope &Scope
 }
 
-pub fn new_module(name, path string, parent &Scope) Module {
+pub fn new_module(name string, path string, parent &Scope) Module {
 	return Module{
 		name: name
 		path: path

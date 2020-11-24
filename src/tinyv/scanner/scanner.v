@@ -3,6 +3,12 @@ module scanner
 import tinyv.token
 import tinyv.pref
 
+enum StringLiteralKind {
+	c
+	raw
+	v
+}
+
 pub struct Scanner {
 	pref          &pref.Preferences
 	scan_comments bool
@@ -73,8 +79,19 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.lit = s.text[s.pos..s.offset]
 		return .number
 	}
-	// name
+	// c/raw string OR name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
+		// `c'c string"` || `r'raw string'`
+		if s.text[s.offset+1] in [`'`, `"`] {
+			string_lit_kind := if c == `c` { StringLiteralKind.c } 
+				else if c == `r` { StringLiteralKind.raw }
+				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
+			s.offset++
+			s.string_literal(string_lit_kind)
+			s.lit = s.text[s.pos+1..s.offset-1]
+			return .string
+		}
+		// name
 		s.name()
 		s.lit = s.text[s.pos..s.offset]
 		tok := token.key_tokens[s.lit]
@@ -85,7 +102,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	}
 	// string
 	else if c in [`'`, `"`] {
-		s.string_literal()
+		s.string_literal(.v)
 		s.lit = s.text[s.pos+1..s.offset-1]
 		return .string
 	}
@@ -363,7 +380,7 @@ fn(mut s Scanner) comment() {
 	}
 }
 
-fn (mut s Scanner) string_literal() {
+fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 	c := s.text[s.offset]
 	s.offset++
 	for s.offset < s.text.len {

@@ -7,7 +7,7 @@ import tinyv.builder
 
 const(
 	pref = &pref.Preferences{
-		// debug: true
+		debug: true
 		// verbose: true
 	}
 )

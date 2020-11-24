@@ -19,18 +19,29 @@ pub fn (mut p Parser) typ() ast.Expr {
 	if p.tok == .amp {
 		return ast.Prefix{op: p.tok(), expr: p.typ()}
 	}
-	// map
-	else if p.tok == .name && p.lit == 'map' {
-		p.next()
-		// map[string]string
-		if p.tok == .lsbr {
-			p.expect(.lsbr)
-			key_type := p.typ()
-			p.expect(.rsbr)
-			return ast.MapType{key_type: key_type, value_type: p.typ()}
+	// name OR map
+	else if p.tok == .name {
+		// map
+		if p.lit == 'map' {
+			p.next()
+			// map[string]string
+			if p.tok == .lsbr {
+				p.expect(.lsbr)
+				key_type := p.typ()
+				p.expect(.rsbr)
+				return ast.MapType{key_type: key_type, value_type: p.typ()}
+			}
+			// there is just struct called map in builtin
+			return ast.Ident{name: 'map'}
 		}
-		// there is just struct called map in builtin
-		return ast.Ident{name: 'map'}
+		// name
+		ident := p.ident()
+		if p.tok == .dot {
+			p.next()
+			// p.name()
+			return ast.Selector{lhs: ident, rhs: p.ident()}
+		}
+		return ident
 	}
 	// array
 	else if p.tok == .lsbr {
@@ -73,19 +84,10 @@ pub fn (mut p Parser) typ() ast.Expr {
 		}
 		return ast.FnType{args: args, return_type: return_type}
 	}
-	else if p.tok == .name {
-		ident := p.ident()
-		if p.tok == .dot {
-			p.next()
-			// p.name()
-			return ast.Selector{lhs: ident, rhs: p.ident()}
-		}
-		return ident
-	}
 	// TODO: :D quick hack to handle just ?
 	if is_optional {
 		return ast.Ident{name: '?'}
 	}
-	p.error('typ: unknown type')
+	p.error('typ: unknown type (tok: `$p.tok`)')
 	exit(1)
 }
