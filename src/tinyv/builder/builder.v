@@ -34,7 +34,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	mut parser := parser.new_parser(b.pref)
 	mut ast_files := []ast.File{}
 	// parse builtin
-	ast_files << parser.parse_files(get_v_files_from_dir(get_module_path('builtin')))
+	ast_files << parser.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
 	// parse user files
 	ast_files << parser.parse_files(files)
 	// parse imports
@@ -50,7 +50,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 				relative_dir
 			}
 			else {
-				get_module_path(mod.name)
+				b.get_module_path(mod.name, ast_file.path)
 			}
 			ast_files << parser.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
@@ -74,9 +74,21 @@ fn (mut b Builder) gen_v_files() {
 	}
 }
 
-fn get_module_path(mod string) string {
-	// return '/mnt/storage/homes/kastro/dev/v/vlib/' + mod.replace('.', os.path_separator)
-	return '/home/kastro/dev/src/v/vlib/' + mod.replace('.', os.path_separator)
+fn (b &Builder) get_vlib_module_path(mod string) string {
+	mod_path := mod.replace('.', os.path_separator)
+	return os.join_path(b.pref.vroot, 'vlib', mod_path)
+}
+
+// check for relative and then vlib
+fn (b &Builder) get_module_path(mod string, importing_file_path string) string {
+	mod_path := mod.replace('.', os.path_separator)
+	relative_path := os.dir(importing_file_path) + os.path_separator + mod_path
+	// relative
+	if os.is_dir(relative_path) {
+		return relative_path
+	}
+	// vlib
+	return os.join_path(b.pref.vroot, 'vlib', mod_path)
 }
 
 fn get_v_files_from_dir(dir string) []string {
