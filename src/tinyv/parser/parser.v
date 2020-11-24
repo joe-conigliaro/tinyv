@@ -568,6 +568,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 
 	for {
 		if p.tok == .lpar {
+			// (*ptr_a) = *ptr_a - 1
+			if line_nr != p.line_nr {
+				return lhs
+			}
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
 			args := p.call_args()
 			// lhs = ast.Cast{
@@ -585,6 +589,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// no need to continue
 				return lhs
+			}
+			// fncall()?
+			else if p.tok == .question {
+				p.next()
+				// TODO
 			}
 		}
 		// excluded from binding power check they run either way

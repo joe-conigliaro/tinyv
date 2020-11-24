@@ -79,6 +79,7 @@ fn main_a() {
 	infix_and_par_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
 	mut ptr_a := &voidptr(0)
 	*ptr_a = 0
+	(*ptr_a) = *ptr_a - 1
 	sumtype_a := SumTypeA(111)
 	match sumtype_a {
 		StructA { println('StructA') }
