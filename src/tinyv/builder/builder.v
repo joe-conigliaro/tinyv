@@ -15,9 +15,9 @@ mut:
 }
 
 pub fn new_builder(pref &pref.Preferences) &Builder {
-	return &Builder{
+	unsafe { return &Builder{
 		pref: pref
-	}
+	} }
 }
 
 pub fn (mut b Builder) build(files []string) {

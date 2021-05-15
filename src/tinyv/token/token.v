@@ -1,6 +1,6 @@
 module token
 
-const (
+pub const (
 	key_tokens = {
 		'assert': Token.key_assert,
 		'struct': Token.key_struct,
@@ -24,7 +24,7 @@ const (
 		'continue': Token.key_continue,
 		'break': Token.key_break,
 		'import': Token.key_import,
-		'embed': Token.key_embed,
+		// 'embed': Token.key_embed,
 		'unsafe': Token.key_unsafe,
 		'typeof': Token.key_typeof,
 		'enum': Token.key_enum,
@@ -124,7 +124,7 @@ pub enum Token {
 	key_continue
 	key_defer
 	key_else
-	key_embed
+	// key_embed
 	key_enum
 	key_false
 	key_for
@@ -165,7 +165,7 @@ pub enum Token {
 	_end_
 }
 
-enum BindingPower {
+pub enum BindingPower {
 	lowest
 	one
 	two
@@ -249,6 +249,16 @@ pub fn (tok Token) is_assignment() bool {
 		.and_assign,
 		.right_shift_assign,
 		.left_shift_assign
+	]
+}
+
+[inline]
+pub fn (tok Token) is_overloadable() bool {
+	return tok in [
+		// `+` |  `-` |  `|` | `^`
+		.plus, .minus, .pipe, .xor,
+		// `==` | `!=` | `<` | `<=` | `>` | `>=`
+		.eq, .ne, .lt, .le, .gt, .ge
 	]
 }
 
@@ -343,7 +353,7 @@ fn build_tokens_str() []string {
 	s[Token.key_continue] = 'continue'
 	s[Token.key_break] = 'break'
 	s[Token.key_import] = 'import'
-	s[Token.key_embed] = 'embed'
+	// s[Token.key_embed] = 'embed'
 	s[Token.key_unsafe] = 'unsafe'
 	s[Token.key_typeof] = 'typeof'
 	s[Token.key_enum] = 'enum'

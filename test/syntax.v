@@ -5,6 +5,7 @@ module main
 
 __global (
 	global_a string
+	global_b = 'global_b_value'
 )
 
 const (
@@ -40,17 +41,29 @@ fn (rec &StructA) method_a(arg_a string, arg_b int) int {
 	return 1
 }
 
+// TODO: operator overload
+pub fn (a StructA) == (b StructA) bool {
+	return a.field_a == b.field_a
+}
+
 fn main_a() {
 	a := 1
 	b, c := 1, 2
 	array_init_a := [1,2,3,4]
 	array_init_b := []string{len: 2, cap :2}
-	array_init_c := [fn(arg_a int) int {
+	array_init_c := [][][][]string{}
+	array_init_d := [fn(arg_a int) int {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]
+	map_init_long_string_string := map[string]string{}
+	map_init_long_string_array_string := map[string][]string{}
+	map_init_short_string_string := {'key_a': 'value_a'}
+	map_init_short_string_array_string := {'key_a': ['value_a', 'value_b']}
 	struct_a := StructA{field_a: 1, field_b: 'v'}
-	assoc_a := {struct_a|field_a: 111}
+	// this is parsed as: StructInit{ExprList{Infix{'|'}}}, not intentional, remove?
+	assoc_old_a := {struct_a|field_a: 111}
+	assoc_current_a := {...struct_a field_a: 111}
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
 	call_c := array_init_c[0](1)
@@ -61,6 +74,9 @@ fn main_a() {
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]
+	index_or_a := array_init_a[1] or {
+		5
+	}
 	for val_a in list_a {
 		println(val_a)
 	}
@@ -68,6 +84,10 @@ fn main_a() {
 		println(val_a)
 	}
 	for key_a, val_a in list_a {
+		println(key_a)
+		println(val_a)
+	}
+	for key_a, mut val_a in list_a {
 		println(key_a)
 		println(val_a)
 	}

@@ -20,21 +20,21 @@ mut:
 }
 
 fn build_tabs() []string {
-	mut tabs := []string{len: 10, cap: 10}
+	mut tabs_arr := []string{len: 10, cap: 10}
 	mut indent := ''
 	for i in 1..10 {
 		indent += '\t'
-		tabs[i] = indent
+		tabs_arr[i] = indent
 	}
-	return tabs
+	return tabs_arr
 }
 
 pub fn new_gen(pref &pref.Preferences) &Gen {
-	return &Gen{
+	unsafe { return &Gen{
 		pref: pref
 		out: strings.new_builder(1000)
 		indent: -1
-	}
+	} }
 }
 
 pub fn (mut g Gen) reset() {
@@ -49,7 +49,7 @@ pub fn (mut g Gen) gen(file ast.File) {
 		g.reset()
 	}
 	if !g.pref.verbose {
-		goto start_no_time
+		unsafe { goto start_no_time }
 	}
 	gt0 := time.ticks()
 	start_no_time:
@@ -87,18 +87,23 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			if !g.in_init { g.writeln('') }
 		}
-		ast.Attribute {
+		ast.AttributeDecl {
 			g.write('[')
-			g.write(stmt.name)
+			for i, attribute in stmt.attributes {
+				g.write(attribute.name)
+				if i < stmt.attributes.len-1 {
+					g.write('; ')
+				}
+			}
 			g.writeln(']')
 		}
-		ast.ComptimeIf {
-			g.write('\$if ')
-			g.expr(stmt.cond)
-			g.writeln(' {')
-			g.stmts(stmt.stmts)
-			g.writeln('}')
-		}
+		// ast.ComptimeIf {
+		// 	g.write('\$if ')
+		// 	g.expr(stmt.cond)
+		// 	g.writeln(' {')
+		// 	g.stmts(stmt.stmts)
+		// 	g.writeln('}')
+		// }
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -125,6 +130,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write(' ')
 			g.writeln(stmt.value)
 		}
+		ast.EmptyStmt {}
 		ast.EnumDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -184,10 +190,14 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			in_init := g.in_init
 			g.in_init = true
 			g.stmt(stmt.init)
-			g.write('; ')
-			g.expr(stmt.cond)
-			g.write('; ')
-			g.stmt(stmt.post)
+			if stmt.cond !is ast.EmptyExpr {
+				g.write('; ')
+				g.expr(stmt.cond)
+			}
+			if stmt.post !is ast.EmptyStmt {
+				g.write('; ')
+				g.stmt(stmt.post)
+			}
 			g.in_init = in_init
 			g.writeln(' {')
 			g.stmts(stmt.stmts)
@@ -198,20 +208,31 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(stmt.key)
 				g.write(', ')
 			}
+			if stmt.value_is_mut {
+				g.write('mut ')
+			}
 			g.write(stmt.value)
 			g.write(' in ')
 			g.expr(stmt.expr)
 		}
 		ast.GlobalDecl {
-			g.writeln('global (')
+			g.writeln('__global (')
+			g.indent++
 			for field in stmt.fields {
 				// TODO
 				g.write(field.name)
-				// if stmt.value != none {
+				// if field.value != none {
+				if field.value !is ast.EmptyExpr {
 					g.write(' = ')
 					g.expr(field.value)
-				// }
+				}
+				else {
+					g.write(' ')
+					g.expr(field.typ)
+				}
+				g.writeln('')
 			}
+			g.indent--
 			g.writeln(')')
 		}
 		ast.Import {
@@ -310,21 +331,39 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.expr(expr.typ)
 				g.write('{')
 				// if expr.init != none {
+				if expr.init !is ast.EmptyExpr {
 					g.write('init: ')
 					g.expr(expr.init)
 					g.write(', ')
-				// }
+				}
 				// if expr.len != none {
+				if expr.len !is ast.EmptyExpr {
 					g.write('len: ')
 					g.expr(expr.len)
 					g.write(', ')
-				// }
+				}
 				// if expr.cap != none {
+				if expr.cap !is ast.EmptyExpr {
 					g.write('cap: ')
 					g.expr(expr.cap)
-				// }
+				}
 				g.write('}')
 			}
+		}
+		ast.Assoc {
+			g.writeln('{')
+			g.indent++
+			g.write('...')
+			g.expr(expr.expr)
+			g.writeln('')
+			for field in expr.fields {
+				g.write(field.name)
+				g.write(': ')
+				g.expr(field.value)
+			}
+			g.writeln('')
+			g.indent--
+			g.write('}')
 		}
 		ast.Cast {}
 		ast.Call {
@@ -338,6 +377,13 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				if i < expr.args.len-1 { g.write(', ') }
 			}
 			g.write(')')
+		}
+		ast.EmptyExpr {}
+		// TODO: should this be handled like this
+		ast.FieldInit {
+			g.write(expr.name)
+			g.write(': ')
+			g.expr(expr.value)
 		}
 		ast.Fn {
 			g.write('fn(')
@@ -363,15 +409,17 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.If {
 			for i, branch in expr.branches {
 				if i == 0 {
+					if expr.is_comptime { g.write('$') }
 					g.write('if ')
 				}
 				else {
 					g.writeln('')
+					if expr.is_comptime { g.write('$') }
 					g.write('else ')
-					// TODO: if no cond is else
-					// if branch.cond != none {
+					if branch.cond[0] !is ast.EmptyExpr {
+						if expr.is_comptime { g.write('$') }
 						g.write('if ')
-					// }
+					}
 				}
 				g.expr(branch.cond[0])
 				g.writeln(' {')
@@ -418,15 +466,26 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.MapInit {
-			g.write('{')
-			for i, key in expr.keys {
-				val := expr.vals[i]
-				g.expr(key)
-				g.write(': ')
-				g.expr(val)
-				if i < expr.keys.len-1 { g.write(', ') }
+			//g.writeln('// mapinit: $expr.keys.len')
+			// long syntax
+			if expr.keys.len == 0 {
+				g.write('map[')
+				g.expr(expr.key_type)
+				g.write(']')
+				g.expr(expr.value_type)
+				g.write('{}')
+			// shorthand syntax
+			} else {
+				g.write('{')
+				for i, key in expr.keys {
+					val := expr.vals[i]
+					g.expr(key)
+					g.write(': ')
+					g.expr(val)
+					if i < expr.keys.len-1 { g.write(', ') }
+				}
+				g.write('}')
 			}
-			g.write('}')
 		}
 		ast.Match {
 			g.write('match ')
@@ -527,52 +586,57 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('}')
 		}
 		// Type Nodes
-		ast.ArrayType {
-			g.write('[]')
-			g.expr(expr.elem_type)
-		}
-		ast.FnType {
-			g.write('fn(')
-			for i, arg in expr.args {
-				g.expr(arg.typ)
-				if i < expr.args.len-1 { g.write(', ') }
+		// TODO: I really would like to allow matching the nested sumtypes like TS
+		ast.Type {
+			match expr {
+				ast.ArrayType {
+					g.write('[]')
+					g.expr(expr.elem_type)
+				}
+				ast.FnType {
+					g.write('fn(')
+					for i, arg in expr.args {
+						g.expr(arg.typ)
+						if i < expr.args.len-1 { g.write(', ') }
+					}
+					g.write(')')
+					g.expr(expr.return_type)
+				}
+				ast.MapType {
+					g.write('map[')
+					g.expr(expr.key_type)
+					g.write(']')
+					g.expr(expr.value_type)
+				}
+				ast.TupleType {
+					g.write('(')
+					for i, x in expr.types {
+						g.expr(x)
+						if i < expr.types.len-1 { g.write(', ') } 
+					}
+					g.write(')')
+				}
+				// TODO: v bug since all variants are accounted for
+				// this should not be required?
+				//ast.Type {}
 			}
-			g.write(')')
-			g.expr(expr.return_type)
 		}
-		ast.MapType {
-			g.write('map[')
-			g.expr(expr.key_type)
-			g.write(']')
-			g.expr(expr.value_type)
-		}
-		ast.TupleType {
-			g.write('(')
-			for i, x in expr.types {
-				g.expr(x)
-				if i < expr.types.len-1 { g.write(', ') } 
-			}
-			g.write(')')
-		}
-		// TODO: v bug since all variants are accounted for
-		// this should not be required?
-		ast.Type {}
 	}
 }
 
 [inline]
 fn (mut g Gen) write(str string) {
 	if g.on_newline {
-		g.out.write(tabs[g.indent])
+		g.out.write_string(tabs[g.indent])
 	}
-	g.out.write(str)
+	g.out.write_string(str)
 	g.on_newline = false
 }
 
 [inline]
 fn (mut g Gen) writeln(str string) {
 	if g.on_newline {
-		g.out.write(tabs[g.indent])
+		g.out.write_string(tabs[g.indent])
 	}
 	g.out.writeln(str)
 	g.on_newline = true

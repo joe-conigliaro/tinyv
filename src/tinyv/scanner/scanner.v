@@ -24,11 +24,11 @@ pub mut:
 }
 
 pub fn new_scanner(pref &pref.Preferences, scan_comments bool) &Scanner {
-	return &Scanner{
+	unsafe { return &Scanner{
 		pref: pref
 		scan_comments: scan_comments
 		line_offsets: [0]
-	}
+	} }
 }
 
 pub fn (mut s Scanner) set_text(text string) {
@@ -59,7 +59,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		if c2 in [`/`, `*`] {
 			s.comment()
 			if !s.scan_comments {
-				goto start
+				unsafe { goto start }
 			}
 			s.lit = s.text[s.pos..s.offset]
 			return .comment
@@ -383,8 +383,10 @@ fn(mut s Scanner) comment() {
 fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 	c := s.text[s.offset]
 	s.offset++
+	mut has_interpolation := false
 	for s.offset < s.text.len {
 		c2 := s.text[s.offset]
+		c3 := s.text[s.offset+1]
 		// skip escape \n | \'
 		if c2 == `\\` {
 			s.offset+=2
@@ -395,16 +397,29 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 			s.line_offsets << s.offset
 			continue
 		}
-		else if c2 == `\r` && s.text[s.offset+1] == `\n` {
+		// else if c2 == `\r` && s.text[s.offset+1] == `\n` {
+		else if c2 == `\r` && c3 == `\n` {
 			s.offset+=2
 			s.line_offsets << s.offset
 			continue
+		}
+		else if c2 == `$` && c3 == `{` {
+			has_interpolation = true
+		}
+		else if c2 == `}` {
+			if has_interpolation {
+				has_interpolation = false
+			}
 		}
 		// TODO: I will probably store replacement positions in scanner
 		// for efficiency rather than doing it later in parser, I still
 		// dont think I want to break strings apart in scanner though
 		// else if c2 == `$` {}
-		else if c2 == c {
+		// TODO: since support for non escaped quotes inside ${} was added
+		// i will need to do some checking here, I still would prefer to store
+		// positions here and scan it as a whole string.. then parser can use
+		// the positions. I may change my mind about this. needs more thought.
+		else if c2 == c && !has_interpolation {
 			s.offset++
 			break
 		}

@@ -24,10 +24,10 @@ mut:
 }
 
 pub fn new_parser(pref &pref.Preferences) &Parser {
-	return &Parser{
+	unsafe { return &Parser{
 		pref: pref
 		scanner: scanner.new_scanner(pref, false)
-	}
+	} }
 }
 
 pub fn (mut p Parser) reset() {
@@ -53,7 +53,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 		p.reset()
 	}
 	if !p.pref.verbose {
-		goto start_no_time
+		unsafe { goto start_no_time }
 	}
 	pt0 := time.ticks()
 	start_no_time:
@@ -89,7 +89,8 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
-			return p.comptime_if()
+			p.next()
+			return ast.ExprStmt{expr: p.@if(true)}
 		}
 		.hash {
 			return p.directive()
@@ -173,19 +174,47 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.lsbr {
 			// [attribute]
 			p.next()
-			mut name := ''
-			// since unsafe is a keyword
-			if p.tok == .key_unsafe {
-				p.next()
-				name = 'unsafe'
-			}
-			else {
-				name = p.name()
+			mut attributes := []ast.Attribute{}
+			for {
+				mut name := ''
+				mut value := ''
+				// since unsafe is a keyword
+				if p.tok == .key_unsafe {
+					p.next()
+					name = 'unsafe'
+				}
+				else {
+					name = p.name()
+				}
+				if p.tok == .colon {
+					p.next()
+					if p.tok == .name {
+						// kind = .plain
+						value = p.name()
+					} else if p.tok == .number {
+						// kind = .number
+						value = p.lit()
+					} else if p.tok == .string { // `name: 'arg'`
+						// kind = .string
+						value = p.lit()
+					} else {
+						p.error('unexpected $p.tok, an argument is expected after `:`')
+					}
+				}
+				attributes << ast.Attribute{
+					name: name
+					value: value
+				}
+				if p.tok == .semicolon {
+					p.next()
+				} else {
+					break
+				}
 			}
 			// name := p.name()
 			// p.log('ast.Attribute: $name')
 			p.expect(.rsbr)
-			return ast.Attribute{name: name}
+			return ast.AttributeDecl{attributes: attributes}
 		}
 		else {
 			panic('X: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
@@ -199,7 +228,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 	// p.log('STMT: $p.tok - $p.file_path:$p.line_nr')
 	match p.tok {
 		.dollar {
-			return p.comptime_if()
+			p.next()
+			return ast.ExprStmt{expr: p.@if(true)}
 		}
 		.hash {
 			return p.directive()
@@ -219,18 +249,24 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			in_init := p.in_init
 			p.in_init = true
-			mut init := ast.Stmt{}
+			mut init := ast.new_empty_stmt()
 			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
+				mut value_is_mut := false
 				if p.tok == .comma {
 					p.next()
 					key = value
+					if p.tok == .key_mut {
+						value_is_mut = true
+						p.next()
+					}
 					value = p.name()
 				}
 				p.expect(.key_in)
 				init = ast.ForIn{
 					key: key
 					value: value
+					value_is_mut: value_is_mut
 					expr: p.expr(.lowest)
 				}
 			}
@@ -239,8 +275,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 			// init := p.stmt()
 			// TODO: clean up
-			mut cond := ast.Expr{}
-			mut post := ast.Stmt{}
+			mut cond := ast.new_empty_expr()
+			mut post := ast.new_empty_stmt()
 			if p.tok == .semicolon {
 				p.next()
 			}
@@ -323,7 +359,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line_nr')
 	line_nr := p.line_nr
-	mut lhs := ast.Expr{}
+	mut lhs := ast.new_empty_expr()
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
 			lhs = ast.Literal{
@@ -334,7 +370,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_fn {
 			p.next()
 			args := p.fn_args()
-			mut return_type := ast.Expr{}
+			mut return_type := ast.new_empty_expr()
 			if p.tok != .lcbr {
 				return_type = p.typ()
 			}
@@ -345,37 +381,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_if {
-			// p.log('START IF')
-			p.next()
-			mut branches := []ast.Branch{}
-			for {
-				in_init := p.in_init
-				p.in_init = true
-				mut cond := p.expr(.lowest)
-				// if guard
-				// if p.tok in [.assign. .decl_assign] {
-				if p.tok == .decl_assign {
-					cond = ast.IfGuard{
-						stmt: p.assign([cond])
-					}
-				}
-				p.in_init = in_init
-				branches << ast.Branch{
-					cond: [cond]
-					stmts: p.block()
-				}
-				if p.tok != .key_else {
-					break
-				}
-				p.next()
-				if p.tok == .key_if {
-					p.next()
-				}
-			}
-			lhs = ast.If{
-				branches: branches
-			}
-			// no need to continue
+			lhs = p.@if(false)
 			return lhs
 		}
 		.key_none {
@@ -406,14 +412,36 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.expect(.rpar)
 		}
 		.lcbr {
+			// shorthand map / struct init
 			if !p.in_init {
 				// TODO: options struct
 				// lhs = p.struct_init()
 				p.next()
+				// assoc
+				if p.tok == .ellipsis {
+					p.next()
+					lx := p.expr(.lowest)
+					mut fields := []ast.FieldInit{}
+					for p.tok != .rcbr {
+						field_name := p.name()
+						p.expect(.colon)
+						fields << ast.FieldInit{
+							name: field_name
+							value: p.expr(.lowest)
+						}
+					}
+					p.next()
+					return ast.Assoc{
+						expr: lx
+						fields: fields
+					}
+				}
+				// empty struct init
 				if p.tok == .rcbr {
 					p.next()
 					return ast.StructInit{}
 				}
+				// map init
 				mut keys := []ast.Expr{}
 				mut vals := []ast.Expr{}
 				for p.tok != .rcbr {
@@ -427,6 +455,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 				p.next()
+				// panic('GOT HERE. hrmm?')
 				lhs = ast.MapInit{
 					keys: keys
 					vals: vals
@@ -445,11 +474,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			p.expect(.rsbr)
-			mut typ := ast.Expr{}
+			if p.tok == .not {
+				// TODO:
+				// is_fixed =  true
+				p.next()
+			}
+			mut typ := ast.new_empty_expr()
 			// []int{}
-			mut cap, mut init, mut len := ast.Expr{}, ast.Expr{}, ast.Expr{}
+			mut cap, mut init, mut len := ast.new_empty_expr(), ast.new_empty_expr(), ast.new_empty_expr()
 			// TODO: restructure in parts (type->init) ?? no
-			if p.tok == .name && p.line_nr == line_nr {
+			// NOTE: for [][]string, the first `[]` is parsed here, and the rest in p.typ()
+			if p.tok in [.lsbr, .name] && p.line_nr == line_nr {
 				typ = p.typ()
 				// init
 				if p.tok == .lcbr && !p.in_init {
@@ -527,6 +562,22 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// 	p.next()
 			// }
 			name := p.name()
+			// long map init: map[string]string{}
+			if name == 'map' && p.tok == .lsbr {
+				// p.expect(.lsbr)
+				p.next()
+				key_type := p.typ()
+				p.expect(.rsbr)
+				value_type := p.typ()
+				p.expect(.lcbr)
+				// TODO: init stuffs (check support)
+				p.expect(.rcbr)
+				return ast.MapInit{
+					lhs: lhs
+					key_type: key_type
+					value_type: value_type
+				}
+			}
 			// p.log('NAME: $name - $p.tok ($p.scanner.lit)')
 			// struct init
 			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
@@ -606,6 +657,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				expr: p.expr(.lowest)
 			}
 			p.expect(.rsbr)
+			if p.tok == .key_or {
+				p.next()
+				lhs = ast.Or{
+					expr: lhs
+					stmts: p.block()
+				}
+				return lhs
+			}
 			// continue to allows `Index[1]Selector` with no regard to binding power 
 			continue
 		}
@@ -644,7 +703,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 
 		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
-		if lbp < min_bp {
+		if int(lbp) < int(min_bp) {
 			// p.log('breaking precedence: $p.tok ($lbp < $min_bp)')
 			break
 		}
@@ -757,38 +816,53 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
 
-pub fn (mut p Parser) comptime_if() ast.ComptimeIf {
+pub fn (mut p Parser) @if(is_comptime bool) ast.If {
+	// p.log('START IF')
+	// TODO: clean up comptime stuff
 	p.next()
-	p.expect(.key_if)
-	// p.log('ast.ComptimeIf')
-	// we are setting in_init here to maake sure
-	// `$if foo {` is not mistaken for struct init
-	in_init := p.in_init
-	p.in_init = true
-	cond := p.expr(.lowest)
-	p.in_init = in_init
-	if p.tok == .question {
+	mut branches := []ast.Branch{}
+	for {
+		in_init := p.in_init
+		p.in_init = true
+		mut cond := p.expr(.lowest)
+		if is_comptime && p.tok == .question {
+			p.next()
+		}
+		// if guard
+		// if p.tok in [.assign. .decl_assign] {
+		if p.tok == .decl_assign {
+			cond = ast.IfGuard{
+				stmt: p.assign([cond])
+			}
+		}
+		p.in_init = in_init
+		branches << ast.Branch{
+			cond: [cond]
+			stmts: p.block()
+		}
+		// if is_comptime {
+		// 	p.expect(.dollar)
+		// }
+		if p.tok == .dollar && p.next_tok == .key_else {
+			p.next()
+		}
+		if p.tok != .key_else {
+			break
+		}
 		p.next()
+		// if is_comptime {
+		// 	p.expect(.dollar)
+		// }
+		if p.tok == .dollar && p.next_tok == .key_if {
+			p.next()
+		}
+		if p.tok == .key_if {
+			p.next()
+		}
 	}
-	stmts := p.block()
-	mut else_stmts := []ast.Stmt{}
-	// TODO:
-	// if p.tok == .dollar {
-	// 	p.next()
-	// 	if p.tok == .key_else {
-	// 		p.next()
-	// 		else_stmts = p.block()
-	// 	}
-	// }
-	if p.tok == .dollar && p.next_tok == .key_else {
-		p.next()
-		p.next()
-		else_stmts = p.block()
-	}
-	return ast.ComptimeIf{
-		cond: cond
-		stmts: stmts
-		else_stmts: stmts
+	return ast.If{
+		branches: branches
+		is_comptime: is_comptime
 	}
 }
 
@@ -810,7 +884,12 @@ pub fn (mut p Parser) directive() ast.Directive {
 
 pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	p.next()
-	p.expect(.lpar)
+	// p.expect(.lpar)
+	mut is_single := true
+	if p.tok == .lpar {
+		p.next()
+		is_single = false
+	}
 	mut fields := []ast.FieldInit{}
 	for {
 		name := p.name()
@@ -821,11 +900,14 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 			name:  name
 			value: value
 		}
-		if p.tok == .rpar {
+		if is_single || p.tok == .rpar {
 			break
 		}
 	}
-	p.expect(.rpar)
+	// p.expect(.rpar)
+	if p.tok == .rpar {
+		p.next()
+	}
 	return ast.ConstDecl{
 		is_public: is_public
 		fields: fields
@@ -853,6 +935,35 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 			is_mut: is_mut
 		}
 		p.expect(.rpar)
+		// operator overload
+		// TODO: finish / what a mess clean this up
+		// try uncouple, or at least separate nicely
+		if p.tok.is_overloadable() {
+			// println('look like overload!')
+			op := p.tok()
+			_ = op
+			p.expect(.lpar)
+			is_mut2 := p.tok == .key_mut
+			_ = is_mut2
+			if is_mut {
+				p.next()
+			}
+			receiver2 := ast.Arg{
+				name: p.name()
+				typ: p.typ()
+				is_mut: is_mut
+			}
+			_ = receiver2
+			p.expect(.rpar)
+			mut return_type := ast.new_empty_expr()
+			_ = return_type
+			if p.tok != .lcbr && p.line_nr == line_nr {
+				return_type = p.typ()
+			}
+			p.block()
+			// TODO
+			return ast.FnDecl{}
+		}
 	}
 	mut name := p.name()
 	// TODO: think if we use string or selector/ident
@@ -879,7 +990,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 	args := p.fn_args()
 	// TODO:
 	// mut return_type := types.void
-	mut return_type := ast.Expr{}
+	mut return_type := ast.new_empty_expr()
 	if p.tok != .lcbr && p.line_nr == line_nr {
 		return_type = p.typ() // return type
 	}
@@ -908,7 +1019,7 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
-		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.Expr{} }
+		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.new_empty_expr() }
 		if p.tok == .comma {
 			p.next()
 		}
@@ -924,8 +1035,34 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 
 pub fn (mut p Parser) call_args() []ast.Expr {
 	p.expect(.lpar)
-	args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
-	p.expect(.rpar)
+	// args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
+	// NOTE: I'm doing this manually now instead of using p.expr_list()
+	// because I need to support the config syntax. I think this is only
+	// allowed in call args, need to double check.
+	mut args := []ast.Expr{}
+	for p.tok != .rpar  {
+		mut expr := p.expr(.lowest)
+		// TODO: where does this belong? here or in expr?
+		// was this just allowed in args? need to check, cant remember
+		// short short struct config syntax
+		if p.tok == .colon {
+			p.next()
+			// println('looks like config syntax')
+			if expr !is ast.Ident {
+				p.error('expecting ident for structy config syntax??')
+			}
+			expr = ast.FieldInit{
+				name: (expr as ast.Ident).name
+				value: p.expr(.lowest)
+			}
+		}
+		args << expr
+		if p.tok == .comma {
+			p.next()
+		}
+	}
+	// p.expect(.rpar)
+	p.next()
 	return args
 }
 
@@ -937,7 +1074,7 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		field_name := p.name()
-		mut value := ast.Expr{}
+		mut value := ast.new_empty_expr()
 		if p.tok == .assign {
 			p.next()
 			value = p.expr(.lowest)
@@ -1005,12 +1142,16 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	// mut methods := []
 	for p.tok != .rcbr {
 		line_nr := p.line_nr
-		p.name() // method name
-		p.fn_args()
-		if p.line_nr == line_nr {
-			p.typ() // method return type
+		p.name() // method/field name
+		if p.tok == .lpar {
+			p.fn_args()
+			if p.line_nr == line_nr {
+				p.typ() // method return type
+			}
+			// methods <<
+		} else {
+			// fields <<
 		}
-		// TODO: methods <<
 	}
 	p.next()
 	return ast.InterfaceDecl{
@@ -1049,7 +1190,7 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 		field_name := p.name()
 		typ := p.typ()
 		// default field value
-		mut value := ast.Expr{}
+		mut value := ast.new_empty_expr()
 		if p.tok == .assign {
 			p.next()
 			value = p.expr(.lowest)
@@ -1077,7 +1218,12 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 		mut value := p.expr(.lowest)
 		// name / value
 		if p.tok == .colon {
-			field_name = (value as ast.Ident).name
+			match mut value {
+				ast.Literal { field_name = value.value }
+				ast.Ident { field_name = value.name }
+				else { p.error('struct_init: expected field name, got $value.type_name()') }
+			}
+			// field_name = (value as ast.Ident).name
 			p.next()
 			value = p.expr(.lowest)
 		}
@@ -1096,7 +1242,7 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
-	mut parent_type := ast.Expr{}
+	mut parent_type := ast.new_empty_expr()
 	// sum type (otherwise alias)
 	mut variants := []ast.Expr{}
 	if p.tok == .assign {

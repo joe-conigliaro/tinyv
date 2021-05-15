@@ -3,15 +3,32 @@ module ast
 import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Cast | Call | Fn | Ident | If | IfGuard | Index
-	| Infix | List | Literal | MapInit | Match | Modifier | None | Or
-	| Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
+pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Ident | If
+	| IfGuard | Index | Infix | List | Literal | MapInit | Match | Modifier
+	| None | Or | Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
 	| Type | TypeOf | Unsafe
-pub type Stmt = Assert | Assign | Attribute | ComptimeIf | ConstDecl
-	| Defer | Directive | EnumDecl | ExprStmt | FlowControl | FnDecl | For
-	| ForIn | GlobalDecl | Import | InterfaceDecl | Label | Module | Return
+	// TODO: decide if this going to be done like this
+	| FieldInit
+pub type Stmt = Assert | Assign | AttributeDecl | ConstDecl | Defer | Directive
+	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
+	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
+// TOOD: Fix nested sumtype like TS
+// currently need to cast to type in parser.type. Should I leave like
+// this or add these directly to Exor until nesting is implemented?
 pub type Type = ArrayType | MapType | FnType | TupleType
+
+pub struct EmptyExpr {}
+pub struct EmptyStmt {}
+
+[inline]
+pub fn new_empty_expr() Expr {
+	return Expr(EmptyExpr{})
+}
+[inline]
+pub fn new_empty_stmt() Stmt {
+	return Stmt(EmptyStmt{})
+}
 
 // File (main Ast container)
 pub struct File {
@@ -33,9 +50,17 @@ pub struct ArrayInit {
 pub:
 	typ   Expr
 	exprs []Expr
-	init  Expr
-	cap   Expr
-	len   Expr
+	// TODO: don't use EmptyExpr, inits struct each time
+	// use bool, or ideally none or option when impl
+	init  Expr = EmptyExpr{}
+	cap   Expr = EmptyExpr{}
+	len   Expr = EmptyExpr{}
+}
+
+pub struct Assoc {
+pub:
+	expr   Expr
+	fields []FieldInit
 }
 
 pub struct Branch {
@@ -60,7 +85,7 @@ pub struct FieldDecl {
 pub:
 	name  string
 	typ   Expr
-	value Expr
+	value Expr = EmptyExpr{}
 }
 
 pub struct FieldInit {
@@ -97,7 +122,8 @@ pub enum IdentKind {
 
 pub struct If {
 pub:
-	branches []Branch
+	branches    []Branch
+	is_comptime bool
 }
 
 pub struct IfGuard {
@@ -131,6 +157,9 @@ pub:
 
 pub struct MapInit {
 pub:
+	lhs Expr
+	key_type Expr
+	value_type Expr
 	keys []Expr
 	vals []Expr
 }
@@ -221,16 +250,15 @@ pub:
 	rhs []Expr
 }
 
-pub struct Attribute {
+pub struct AttributeDecl {
 pub:
-	name string
+	attributes []Attribute
 }
 
-pub struct ComptimeIf {
+pub struct Attribute {
 pub:
-	cond       Expr
-	stmts      []Stmt
-	else_stmts []Stmt
+	name  string
+	value string
 }
 
 pub struct ConstDecl {
@@ -291,9 +319,10 @@ pub:
 // possibly split into its own loop stmt later, work out whats best
 pub struct ForIn {
 pub:
-	key   string
-	value string
-	expr  Expr
+	key   		 string
+	value 		 string
+	value_is_mut bool
+	expr  		 Expr
 }
 
 pub struct GlobalDecl {

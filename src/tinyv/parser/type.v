@@ -29,7 +29,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 				p.expect(.lsbr)
 				key_type := p.typ()
 				p.expect(.rsbr)
-				return ast.MapType{key_type: key_type, value_type: p.typ()}
+				return ast.Type(ast.MapType{key_type: key_type, value_type: p.typ()})
 			}
 			// there is just struct called map in builtin
 			return ast.Ident{name: 'map'}
@@ -50,7 +50,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 			p.next()
 		}
 		p.expect(.rsbr)
-		return ast.ArrayType{elem_type: p.typ()}
+		return ast.Type(ast.ArrayType{elem_type: p.typ()})
 	}
 	// Tuple (multi return)
 	else if p.tok == .lpar {
@@ -63,7 +63,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 			}
 		}
 		p.expect(.rpar)
-		return ast.TupleType{types: types}
+		return ast.Type(ast.TupleType{types: types})
 	}
 	// variadic
 	// TODO:
@@ -77,12 +77,12 @@ pub fn (mut p Parser) typ() ast.Expr {
 		if p.tok == .lpar {
 			args = p.fn_args()
 		}
-		mut return_type := ast.Expr{}
+		mut return_type := ast.new_empty_expr()
 		if p.tok in [.amp, .lsbr, .name, .question] {
 			// return type
 			return_type = p.typ()
 		}
-		return ast.FnType{args: args, return_type: return_type}
+		return ast.Type(ast.FnType{args: args, return_type: return_type})
 	}
 	// TODO: :D quick hack to handle just ?
 	if is_optional {

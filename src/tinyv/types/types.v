@@ -1,5 +1,6 @@
 module types
 
+// TODO: fix nested sum type in tinyv (like TS)
 pub type Type = Primitive | Array | Enum | Map | Pointer | Struct
 
 [flag]
