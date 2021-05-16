@@ -21,10 +21,14 @@ enum EnumA {
 struct StructA {
 	field_a int
 	field_b string
-	field_c fn(int) int
+	field_c fn(int) int // FIXME
+	field_d int = 111
+	field_e int [attribute_a]
 }
 
 type SumTypeA = StructA | int | string
+
+fn C.external_fn_a(arg_a int) int
 
 fn fn_a(arg_a string, arg_b int) int {
 	println('fn_a($arg_a, $arg_b)')
@@ -117,4 +121,7 @@ fn main_a() {
 		d
 	}
 	fn_a('string', unsafe {*ptr_a})
+	{
+		block_test_a := 1
+	}
 }

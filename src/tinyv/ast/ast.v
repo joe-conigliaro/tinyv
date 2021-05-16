@@ -9,9 +9,9 @@ pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Ident | If
 	| Type | TypeOf | Unsafe
 	// TODO: decide if this going to be done like this
 	| FieldInit
-pub type Stmt = Assert | Assign | AttributeDecl | ConstDecl | Defer | Directive
-	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
-	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
+pub type Stmt = Assert | Assign | AttributeDecl | Block | ConstDecl | Defer
+	| Directive | EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For
+	| ForIn | GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
@@ -83,9 +83,10 @@ pub:
 
 pub struct FieldDecl {
 pub:
-	name  string
-	typ   Expr
-	value Expr = EmptyExpr{}
+	name  	   string
+	typ   	   Expr
+	value	   Expr = EmptyExpr{}
+	attributes []Attribute
 }
 
 pub struct FieldInit {
@@ -250,6 +251,8 @@ pub:
 	rhs []Expr
 }
 
+// TODO: look at part 1 & 2 in parser
+// consider removing this completely
 pub struct AttributeDecl {
 pub:
 	attributes []Attribute
@@ -259,6 +262,11 @@ pub struct Attribute {
 pub:
 	name  string
 	value string
+}
+
+pub struct Block {
+pub:
+	stmts []Stmt
 }
 
 pub struct ConstDecl {
@@ -298,6 +306,7 @@ pub:
 
 pub struct FnDecl {
 pub:
+	attributes  []Attribute
 	is_public   bool
 	is_method   bool
 	receiver    Arg

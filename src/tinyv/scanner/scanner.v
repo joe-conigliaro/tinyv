@@ -83,12 +83,13 @@ pub fn (mut s Scanner) scan() token.Token {
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
 		// `c'c string"` || `r'raw string'`
 		if s.text[s.offset+1] in [`'`, `"`] {
+			// TODO: maybe move & need to make use of these
 			string_lit_kind := if c == `c` { StringLiteralKind.c } 
 				else if c == `r` { StringLiteralKind.raw }
 				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
 			s.offset++
 			s.string_literal(string_lit_kind)
-			s.lit = s.text[s.pos+1..s.offset-1]
+			s.lit = s.text[s.pos+2..s.offset-1]
 			return .string
 		}
 		// name

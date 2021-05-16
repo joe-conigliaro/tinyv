@@ -102,7 +102,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.enum_decl(false)
 		}
 		.key_fn {
-			return p.fn_decl(false)
+			return p.fn_decl(false, [])
 		}
 		.key_global {
 			return p.global_decl()
@@ -151,7 +151,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 					return p.enum_decl(true)
 				}
 				.key_fn {
-					return p.fn_decl(true)
+					return p.fn_decl(true, [])
 				}
 				.key_interface {
 					return p.interface_decl(true)
@@ -172,48 +172,22 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.type_decl(false)
 		}
 		.lsbr {
-			// [attribute]
-			p.next()
-			mut attributes := []ast.Attribute{}
-			for {
-				mut name := ''
-				mut value := ''
-				// since unsafe is a keyword
-				if p.tok == .key_unsafe {
-					p.next()
-					name = 'unsafe'
-				}
-				else {
-					name = p.name()
-				}
-				if p.tok == .colon {
-					p.next()
-					if p.tok == .name {
-						// kind = .plain
-						value = p.name()
-					} else if p.tok == .number {
-						// kind = .number
-						value = p.lit()
-					} else if p.tok == .string { // `name: 'arg'`
-						// kind = .string
-						value = p.lit()
-					} else {
-						p.error('unexpected $p.tok, an argument is expected after `:`')
-					}
-				}
-				attributes << ast.Attribute{
-					name: name
-					value: value
-				}
-				if p.tok == .semicolon {
-					p.next()
-				} else {
-					break
-				}
-			}
-			// name := p.name()
-			// p.log('ast.Attribute: $name')
-			p.expect(.rsbr)
+			attributes := p.attributes()
+			// part 2
+			// mut is_pub := false
+			// if p.tok == .key_pub {
+			// 	p.next()
+			// 	is_pub = true
+			// }
+			// if p.tok == .key_fn {
+			// 	return p.fn_decl(is_pub, attributes)
+			// }
+			// else if p.tok == .key_struct {
+
+			// }
+			// else {
+			// 	p.error('needs impl (pass attrs): $p.tok')
+			// }
 			return ast.AttributeDecl{attributes: attributes}
 		}
 		else {
@@ -250,6 +224,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			in_init := p.in_init
 			p.in_init = true
 			mut init := ast.new_empty_stmt()
+			// for x in vals {
 			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
 				mut value_is_mut := false
@@ -270,7 +245,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					expr: p.expr(.lowest)
 				}
 			}
-			else if p.tok != .semicolon {
+			// all other for with init
+			else if p.tok != .semicolon && p.tok != .lcbr {
 				init = p.stmt()
 			}
 			// init := p.stmt()
@@ -306,6 +282,13 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 			return ast.Return{
 				exprs: p.expr_list()
+			}
+		}
+		.lcbr {
+			// TODO: see if this interferes with anything as
+			// I had to add a special check in For
+			return ast.Block {
+				stmts: p.block()
 			}
 		}
 		else {
@@ -812,6 +795,66 @@ pub fn (mut p Parser) expr_list() []ast.Expr {
 	return exprs
 }
 
+// [attribute]
+pub fn (mut p Parser) attributes() []ast.Attribute {
+	p.next()
+	mut attributes := []ast.Attribute{}
+	for {
+		mut name := ''
+		mut value := ''
+		// since unsafe is a keyword
+		if p.tok == .key_unsafe {
+			p.next()
+			name = 'unsafe'
+		}
+		// TODO: properly
+		else if p.tok == .key_if {
+			p.next()
+			name = 'if ' + p.name() 
+		}
+		else {
+			name = p.name()
+		}
+		if p.tok == .colon {
+			p.next()
+			if p.tok == .name {
+				// kind = .plain
+				value = p.name()
+			} else if p.tok == .number {
+				// kind = .number
+				value = p.lit()
+			} else if p.tok == .string { // `name: 'arg'`
+				// kind = .string
+				value = p.lit()
+			} else {
+				p.error('unexpected $p.tok, an argument is expected after `:`')
+			}
+		}
+		attributes << ast.Attribute{
+			name: name
+			value: value
+		}
+		if p.tok == .semicolon {
+			p.next()
+			continue
+		}
+		// part 1:
+		// totally rids AttrubuteDecl, in which case []Attribute will
+		// be added directly to the nodes they belong to (fn/type etc)
+		// also part2 (in top_stmt .lsbr) will need to be uncommented
+		// else if p.next_tok == .lsbr {
+		// 	p.expect(.rsbr)
+		// 	p.next()
+		// 	continue
+		// }
+		break
+	}
+	// name := p.name()
+	// p.log('ast.Attribute: $name')
+	p.expect(.rsbr)
+	return attributes
+}
+
 pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
@@ -914,7 +957,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	}
 }
 
-pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
+pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl {
 	p.next()
 	line_nr := p.line_nr
 	// method
@@ -1002,6 +1045,7 @@ pub fn (mut p Parser) fn_decl(is_public bool) ast.FnDecl {
 		[]ast.Stmt{}
 	}
 	return ast.FnDecl{
+		attributes: attributes
 		is_public: is_public
 		is_method: is_method
 		receiver: receiver
@@ -1139,6 +1183,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 		}
 	}
 	p.next()
+	// TODO: finish
 	// mut methods := []
 	for p.tok != .rcbr {
 		line_nr := p.line_nr
@@ -1151,6 +1196,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 			// methods <<
 		} else {
 			// fields <<
+			p.typ()
 		}
 	}
 	p.next()
@@ -1158,6 +1204,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 		is_public: is_public
 		name: name
 		// methods: methods
+		// fields: fields
 	}
 }
 
@@ -1195,10 +1242,12 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 			p.next()
 			value = p.expr(.lowest)
 		}
+		attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
 		fields << ast.FieldDecl{
 			name: field_name
 			typ: typ
 			value: value
+			attributes: attributes
 		}
 	}
 	p.next()

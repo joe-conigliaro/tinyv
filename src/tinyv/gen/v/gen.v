@@ -6,7 +6,7 @@ import strings
 import time
 
 const(
-	tabs = build_tabs()
+	tabs = build_tabs(14)
 )
 
 struct Gen {
@@ -19,10 +19,10 @@ mut:
 	in_init    bool
 }
 
-fn build_tabs() []string {
-	mut tabs_arr := []string{len: 10, cap: 10}
+fn build_tabs(tabs_len int) []string {
+	mut tabs_arr := []string{len: tabs_len, cap: tabs_len}
 	mut indent := ''
-	for i in 1..10 {
+	for i in 1..tabs_len {
 		indent += '\t'
 		tabs_arr[i] = indent
 	}
@@ -96,6 +96,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				}
 			}
 			g.writeln(']')
+		}
+		ast.Block {
+			g.writeln('{')
+			g.stmts(stmt.stmts)
+			g.writeln('}')
 		}
 		// ast.ComptimeIf {
 		// 	g.write('\$if ')
@@ -283,9 +288,20 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(' ')
 				g.expr(field.typ)
 				// if field.value != none {
-				// 	g.write(' = ')
-				// 	g.expr(field.value)
-				// }
+				if field.value !is ast.EmptyExpr {
+					g.write(' = ')
+					g.expr(field.value)
+				}
+				if field.attributes.len > 0 {
+					g.write(' [')
+					for i, attribute in field.attributes {
+						g.write(attribute.name)
+						if i < field.attributes.len-1 {
+							g.write('; ')
+						}
+					}
+					g.write(']')
+				}
 				g.writeln('')
 			}
 			g.indent--
