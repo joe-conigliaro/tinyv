@@ -38,6 +38,12 @@ pub:
 	imports []Import
 }
 
+pub enum Language {
+	c
+	v
+	js
+}
+
 // Expressions
 pub struct Arg {
 pub:
@@ -314,6 +320,7 @@ pub:
 	args        []Arg
 	stmts       []Stmt
 	return_type Expr
+	language    Language
 }
 
 pub struct For {

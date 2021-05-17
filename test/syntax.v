@@ -16,6 +16,7 @@ const (
 enum EnumA {
 	value_a
 	value_b
+	value_c = 111
 }
 
 struct StructA {

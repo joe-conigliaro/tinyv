@@ -91,6 +91,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write('[')
 			for i, attribute in stmt.attributes {
 				g.write(attribute.name)
+				if attribute.value.len > 0 {
+					g.write(": '")
+					g.write(attribute.value)
+					g.write("'")
+				}
 				if i < stmt.attributes.len-1 {
 					g.write('; ')
 				}
@@ -145,12 +150,13 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {
-				g.write('$field.name ')
+				g.write('$field.name')
 				g.expr(field.typ)
 				// if field.value != none {
+				if field.value !is ast.EmptyExpr {
 					g.write(' = ')
 					g.expr(field.value)
-				// }
+				}
 				g.writeln('')
 			}
 			g.indent--
@@ -184,11 +190,18 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				if i < stmt.args.len-1 { g.write(', ') }
 			}
 			g.write(') ')
-			// TODO: if stmt.return_type
-			g.expr(stmt.return_type)
-			g.writeln(' {')
-			g.stmts(stmt.stmts)
-			g.writeln('}')
+			if stmt.return_type !is ast.EmptyExpr {
+				g.expr(stmt.return_type)
+			}
+			// C fn definition
+			if stmt.language == .c && stmt.stmts.len == 0 {
+				g.writeln('')
+			}
+			else {
+				g.writeln(' {')
+				g.stmts(stmt.stmts)
+				g.writeln('}')
+			}
 		}
 		ast.For {
 			g.write('for ')

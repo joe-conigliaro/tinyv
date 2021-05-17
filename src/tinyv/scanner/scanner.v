@@ -88,6 +88,7 @@ pub fn (mut s Scanner) scan() token.Token {
 				else if c == `r` { StringLiteralKind.raw }
 				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
 			s.offset++
+			// TODOL need a way to use the correct quote when string includes quotes
 			s.string_literal(string_lit_kind)
 			s.lit = s.text[s.pos+2..s.offset-1]
 			return .string

@@ -1015,6 +1015,17 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	// 	p.next()
 	// 	name = 
 	// }
+	mut language := ast.Language.v
+	// TODO: use module namespaces
+	if p.tok == .dot {
+		if name.len == 1 && name[0] == `C` {
+			language = .c
+		}
+		else if name.len == 2 && name == 'JS' {
+			language = .js
+		}
+	}
+	// do we do this or always idents
 	for p.tok == .dot {
 		p.next()
 		name += '.$p.name()'
@@ -1053,6 +1064,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		args: args
 		stmts: stmts
 		return_type: return_type
+		language: language
 	}
 }
 
