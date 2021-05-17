@@ -63,12 +63,23 @@ fn main_a() {
 	}]
 	map_init_long_string_string := map[string]string{}
 	map_init_long_string_array_string := map[string][]string{}
-	map_init_short_string_string := {'key_a': 'value_a'}
+	mut map_init_short_string_string := {'key_a': 'value_a'}
+	map_init_short_string_string = {} // test empty
 	map_init_short_string_array_string := {'key_a': ['value_a', 'value_b']}
-	struct_a := StructA{field_a: 1, field_b: 'v'}
+	struct_init_a := StructA{field_a: 1, field_b: 'v'}
+	mut struct_init_b := StructA{1, 'v'}
+	struct_init_b = {field_d: 222} // TODO: parsed as MapInit
 	// this is parsed as: StructInit{ExprList{Infix{'|'}}}, not intentional, remove?
 	assoc_old_a := {struct_a|field_a: 111}
-	assoc_current_a := {...struct_a field_a: 111}
+	assoc_current_a := StructA{
+		...struct_a
+		field_a: 1
+	}
+	// NOTE: is this supported any more?
+	assoc_current_b := {
+		...struct_a
+		field_a: 1
+	}
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
 	call_c := array_init_c[0](1)

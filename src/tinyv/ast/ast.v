@@ -65,6 +65,7 @@ pub:
 
 pub struct Assoc {
 pub:
+	typ    Expr
 	expr   Expr
 	fields []FieldInit
 }
@@ -164,11 +165,11 @@ pub:
 
 pub struct MapInit {
 pub:
-	lhs Expr
-	key_type Expr
-	value_type Expr
-	keys []Expr
-	vals []Expr
+	lhs        Expr
+	key_type   Expr = EmptyExpr{}
+	value_type Expr = EmptyExpr{}
+	keys 	   []Expr
+	vals 	   []Expr
 }
 
 pub struct Match {

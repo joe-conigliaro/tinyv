@@ -380,6 +380,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.Assoc {
+			g.expr(expr.typ)
 			g.writeln('{')
 			g.indent++
 			g.write('...')
@@ -497,14 +498,15 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.MapInit {
 			//g.writeln('// mapinit: $expr.keys.len')
 			// long syntax
-			if expr.keys.len == 0 {
+			if expr.key_type !is ast.EmptyExpr {
 				g.write('map[')
 				g.expr(expr.key_type)
 				g.write(']')
 				g.expr(expr.value_type)
 				g.write('{}')
+			}
 			// shorthand syntax
-			} else {
+			else if expr.keys.len > 0 {
 				g.write('{')
 				for i, key in expr.keys {
 					val := expr.vals[i]
@@ -514,6 +516,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					if i < expr.keys.len-1 { g.write(', ') }
 				}
 				g.write('}')
+			}
+			// empty {}
+			else {
+				g.write('{}')
 			}
 		}
 		ast.Match {
@@ -583,18 +589,24 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.StructInit {
 			g.expr(expr.typ)
-			if expr.fields.len == 0 {
-				g.write('{')
-			}
-			else {
+			// with field names
+			if expr.fields.len > 0 && expr.fields[0].name.len > 0 {
 				g.writeln('{')
+				for i, field in expr.fields {
+					g.write('\t')
+					g.write(field.name)
+					g.write(': ')
+					g.expr(field.value)
+					if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
+				}
 			}
-			for i, field in expr.fields {
-				g.write('\t')
-				g.write(field.name)
-				g.write(': ')
-				g.expr(field.value)
-				if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
+			// without field names, or empty init `Struct{}`
+			else {
+				g.write('{')
+				for i, field in expr.fields {
+					g.expr(field.value)
+					if i < expr.fields.len-1 { g.write(', ') }
+				}
 			}
 			g.write('}')
 		}

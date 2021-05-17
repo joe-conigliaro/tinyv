@@ -401,29 +401,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// lhs = p.struct_init()
 				p.next()
 				// assoc
+				// TODO: check if this is still supported (without starting `TypeName{...`)
 				if p.tok == .ellipsis {
-					p.next()
-					lx := p.expr(.lowest)
-					mut fields := []ast.FieldInit{}
-					for p.tok != .rcbr {
-						field_name := p.name()
-						p.expect(.colon)
-						fields << ast.FieldInit{
-							name: field_name
-							value: p.expr(.lowest)
-						}
-					}
-					p.next()
-					return ast.Assoc{
-						expr: lx
-						fields: fields
-					}
+					return p.assoc(ast.new_empty_expr())
 				}
 				// empty struct init
 				if p.tok == .rcbr {
 					p.next()
-					return ast.StructInit{}
+					return ast.MapInit{}
 				}
+				// TODO: dfferentiate short map / struct init (if possible at this stage)
 				// map init
 				mut keys := []ast.Expr{}
 				mut vals := []ast.Expr{}
@@ -544,6 +531,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// if is_mut {
 			// 	p.next()
 			// }
+			if p.next_tok == .lcbr && !p.in_init {
+				typ := p.typ()
+				if p.next_tok == .ellipsis {
+					p.next()
+					return p.assoc(typ)
+				}
+				// NOTE: we can allow this if wanted also for assoc
+				// lhs = p.struct_init(typ)
+				return p.struct_init(typ)
+			}
 			name := p.name()
 			// long map init: map[string]string{}
 			if name == 'map' && p.tok == .lsbr {
@@ -561,20 +558,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					value_type: value_type
 				}
 			}
-			// p.log('NAME: $name - $p.tok ($p.scanner.lit)')
-			// struct init
-			// NOTE: can use lit0 capital check, OR registered type check, OR inside stmt init check (eg. `for cond {` OR `if cond {`)
-			// currently using in_init for if/for/map initialization
-			if p.tok == .lcbr && !p.in_init {
-				// TODO: add type or name (prob type)
-				lhs = p.struct_init()
-			}
-			// ident
-			else {
-				lhs = ast.Ident{
-					name: name
-					// is_mut: is_mut
-				}
+			lhs = ast.Ident{
+				name: name
+				// is_mut: is_mut
 			}
 		}
 		.key_unsafe {
@@ -1220,6 +1206,26 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	}
 }
 
+pub fn (mut p Parser) assoc(typ ast.Expr) ast.Assoc {
+	p.next()
+	lx := p.expr(.lowest)
+	mut fields := []ast.FieldInit{}
+	for p.tok != .rcbr {
+		field_name := p.name()
+		p.expect(.colon)
+		fields << ast.FieldInit{
+			name: field_name
+			value: p.expr(.lowest)
+		}
+	}
+	p.next()
+	return ast.Assoc{
+		typ: typ
+		expr: lx
+		fields: fields
+	}
+}
+
 pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	// TODO: union
 	// is_union := p.tok == .key_union
@@ -1270,9 +1276,11 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 	}
 }
 
-pub fn (mut p Parser) struct_init() ast.StructInit {
+// TODO: consider parsing type in here (same for assoc)
+pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 	p.next()
 	mut fields := []ast.FieldInit{}
+	mut prev_field_name_len := 0
 	for p.tok != .rcbr {
 		// could be name or init without field name
 		mut field_name := ''
@@ -1288,6 +1296,11 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 			p.next()
 			value = p.expr(.lowest)
 		}
+		// better way to do this?
+		if fields.len > 0 && ((prev_field_name_len == 0 && field_name.len > 0) || (prev_field_name_len > 0 && field_name.len == 0)) {
+			p.error('struct_init: cant mix & match name & no name')
+		}
+		prev_field_name_len = field_name.len
 		if p.tok == .comma {
 			p.next()
 		}
@@ -1297,7 +1310,7 @@ pub fn (mut p Parser) struct_init() ast.StructInit {
 		}
 	}
 	p.next()
-	return ast.StructInit{fields: fields}
+	return ast.StructInit{typ: typ, fields: fields}
 }
 
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
