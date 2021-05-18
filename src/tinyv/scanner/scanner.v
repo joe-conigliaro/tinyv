@@ -229,7 +229,7 @@ pub fn (mut s Scanner) scan() token.Token {
 				// so that we parse &&Type as two .amp instead of .and
 				// but this requires there is a space. we could check
 				// for capital or some other way, this is simplest for now.
-				if s.offset+2 <= s.text.len && s.text[s.offset+2] in [` `, `\t`] {
+				if s.offset+1 <= s.text.len && s.text[s.offset+1] in [` `, `\t`] {
 					s.offset++
 					return .and
 				}

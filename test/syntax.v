@@ -109,9 +109,12 @@ fn main_a() {
 	}
 	for idx_a:=0; idx_a<=100; idx_a++ {
 		println(idx_a)
-	} 
+	}
+	prefix_a := &StructA{}
+	prefix_b := &&StructA{}
 	infix_a := 1 * 2
 	infix_b := infix_a * 4 * 2 + 11 / 2
+	infix_c := a == b && c == d
 	infix_and_par_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
 	mut ptr_a := &voidptr(0)
 	*ptr_a = 0
