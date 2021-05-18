@@ -386,7 +386,7 @@ fn(mut s Scanner) comment() {
 fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 	c := s.text[s.offset]
 	s.offset++
-	mut has_interpolation := false
+	mut in_interpolation := false
 	for s.offset < s.text.len {
 		c2 := s.text[s.offset]
 		c3 := s.text[s.offset+1]
@@ -407,11 +407,11 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 			continue
 		}
 		else if c2 == `$` && c3 == `{` {
-			has_interpolation = true
+			in_interpolation = true
 		}
 		else if c2 == `}` {
-			if has_interpolation {
-				has_interpolation = false
+			if in_interpolation {
+				in_interpolation = false
 			}
 		}
 		// TODO: I will probably store replacement positions in scanner
@@ -422,7 +422,7 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		// i will need to do some checking here, I still would prefer to store
 		// positions here and scan it as a whole string.. then parser can use
 		// the positions. I may change my mind about this. needs more thought.
-		else if c2 == c && !has_interpolation {
+		else if c2 == c && !in_interpolation {
 			s.offset++
 			break
 		}

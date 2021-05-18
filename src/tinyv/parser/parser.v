@@ -406,7 +406,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					// p.error('# assoc missing type (old/mid syntax): $p.file_path: $p.line_nr')
 					return p.assoc(ast.new_empty_expr())
 				}
-				// empty struct init
+				// empty map init `{}`
 				if p.tok == .rcbr {
 					p.next()
 					return ast.MapInit{}
