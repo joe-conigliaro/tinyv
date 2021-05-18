@@ -93,6 +93,15 @@ fn main_a() {
 	index_or_a := array_init_a[1] or {
 		5
 	}
+	if a == 1 {
+		println('a == $s')
+	}
+	else if a == 2 {
+		println('a == $s')
+	}
+	else {
+		println('a == $s')
+	}
 	for val_a in list_a {
 		println(val_a)
 	}
@@ -109,6 +118,16 @@ fn main_a() {
 	}
 	for idx_a:=0; idx_a<=100; idx_a++ {
 		println(idx_a)
+	}
+	for idx_a:=0; idx_a<=100; {
+		idx_a++
+		println(idx_a)
+	}
+	for x < 100 {
+		println(x)
+	}
+	for {
+		println('infinate loop')
 	}
 	prefix_a := &StructA{}
 	prefix_b := &&StructA{}

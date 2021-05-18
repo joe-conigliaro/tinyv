@@ -854,7 +854,9 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 	for {
 		in_init := p.in_init
 		p.in_init = true
-		mut cond := p.expr(.lowest)
+		// mut cond := p.expr(.lowest)
+		// NOTE: the line above works, but avoid calling p.expr()
+		mut cond := if p.tok == .lcbr { ast.new_empty_expr() }  else { p.expr(.lowest) }
 		if is_comptime && p.tok == .question {
 			p.next()
 		}

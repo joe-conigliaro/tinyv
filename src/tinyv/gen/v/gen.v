@@ -207,17 +207,23 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write('for ')
 			in_init := g.in_init
 			g.in_init = true
-			g.stmt(stmt.init)
+			mut infinate := true
+			if stmt.init !is ast.EmptyStmt {
+				infinate = false
+				g.stmt(stmt.init)
+			}
 			if stmt.cond !is ast.EmptyExpr {
+				infinate = false
 				g.write('; ')
 				g.expr(stmt.cond)
 			}
 			if stmt.post !is ast.EmptyStmt {
+				infinate = false
 				g.write('; ')
 				g.stmt(stmt.post)
 			}
 			g.in_init = in_init
-			g.writeln(' {')
+			g.writeln(if infinate { '{' } else { ' {'} )
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
@@ -445,8 +451,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				else {
 					g.writeln('')
 					if expr.is_comptime { g.write('$') }
-					g.write('else ')
+					g.write('else')
 					if branch.cond[0] !is ast.EmptyExpr {
+						g.write(' ')
 						if expr.is_comptime { g.write('$') }
 						g.write('if ')
 					}
