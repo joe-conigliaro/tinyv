@@ -403,6 +403,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// assoc
 				// TODO: check if this is still supported (without starting `TypeName{...`)
 				if p.tok == .ellipsis {
+					// p.error('# assoc missing type (old/mid syntax): $p.file_path: $p.line_nr')
 					return p.assoc(ast.new_empty_expr())
 				}
 				// empty struct init
