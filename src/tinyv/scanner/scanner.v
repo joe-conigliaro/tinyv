@@ -113,8 +113,10 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.offset++
 		// NOTE: if there is more than one char still scan it
 		// we can error at a later stage. should we error now?
-		for s.text[s.offset] != c {
-			if s.text[s.offset] == `\\` {
+		for {
+			c2 := s.text[s.offset]
+			if c2 == c { break }
+			else if c2 == `\\` {
 				s.offset+=2
 				continue
 			}
@@ -124,6 +126,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.lit = s.text[s.pos+1..s.offset-1]
 		return .char
 	}
+	// s.lit not set, as tokens below get converted directly to string
 	s.lit = ''
 	s.offset++
 	match c {
