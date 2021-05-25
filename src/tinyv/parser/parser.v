@@ -845,8 +845,7 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 }
 
 pub fn (mut p Parser) @if(is_comptime bool) ast.If {
-	// p.log('START IF')
-	// TODO: clean up comptime stuff
+	// p.log('ast.If')
 	p.next()
 	mut branches := []ast.Branch{}
 	for {
@@ -870,23 +869,23 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			cond: [cond]
 			stmts: p.block()
 		}
-		// if is_comptime {
-		// 	p.expect(.dollar)
-		// }
+		// comptime else
 		if p.tok == .dollar && p.next_tok == .key_else {
 			p.next()
 		}
-		if p.tok != .key_else {
+		// no else or else if
+		else if p.tok != .key_else {
 			break
 		}
+		// else
 		p.next()
-		// if is_comptime {
-		// 	p.expect(.dollar)
-		// }
+		// comptime else if
 		if p.tok == .dollar && p.next_tok == .key_if {
 			p.next()
+			p.next()
 		}
-		if p.tok == .key_if {
+		// else if
+		else if p.tok == .key_if {
 			p.next()
 		}
 	}
