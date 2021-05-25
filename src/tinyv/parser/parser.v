@@ -743,6 +743,7 @@ pub fn (mut p Parser) name() string {
 [inline]
 pub fn (mut p Parser) lit() string {
 	// lit := p.lit
+	// TODO: check if there is a better way to handle this?
 	lit := if p.lit.len == 0 { p.tok.str() } else { p.lit }
 	p.next()
 	return lit
