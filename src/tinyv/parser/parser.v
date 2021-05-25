@@ -617,9 +617,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// TODO
 			}
 		}
-		// excluded from binding power check they run either way
-		// index
-		if p.tok == .lsbr {
+		// everything below is excluded from binding power check
+
+		// index: `expr[i]`
+		// checking linr_nr so that this wont het parsed as index:
+		// `__global my_global = expr`
+		// `[someattr]`
+		// we could also check pos, making sure it's directly after
+		if p.tok == .lsbr && p.line_nr == line_nr {
 			p.next()
 			// p.log('ast.Index: $p.scanner.lit')
 			lhs = ast.Index{
@@ -1139,11 +1144,16 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 
 pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 	p.next()
-    if p.tok != .lpar {
-        p.error('globals must be grouped, e.g. `__global ( a = int(1) )`')
-    }
+    // NOTE: this got changed at some stage (or perhaps was never forced)
+    // if p.tok != .lpar {
+    //     p.error('globals must be grouped, e.g. `__global ( a = int(1) )`')
+    // }
+	// p.next()
+	is_grouped := p.tok == .lpar
+	if is_grouped {
+		p.next()
+	}
 	mut fields := []ast.FieldDecl{}
-	p.next()
 	for {
 		name := p.name()
 		if p.tok == .assign {
@@ -1159,11 +1169,13 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 				typ: p.typ()
 			}
 		}
-		if p.tok == .rpar {
+		if !is_grouped {
+			break
+		} else if p.tok == .rpar {
+			p.next()
 			break
 		}
 	}
-	p.next()
 	return ast.GlobalDecl{
 		fields: fields
 	}

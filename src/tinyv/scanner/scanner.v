@@ -17,7 +17,7 @@ mut:
 pub mut:
 	// it slows things down a tiny bit appending to this but it
 	// means the only position we need to store per token is `pos`
-	line_offsets  []int  // start of each line
+	line_offsets  []int = [0] // start of each line
 	offset        int    // current char offset
 	pos           int    // token offset (start of current token)
 	lit           string
@@ -27,7 +27,6 @@ pub fn new_scanner(pref &pref.Preferences, scan_comments bool) &Scanner {
 	unsafe { return &Scanner{
 		pref: pref
 		scan_comments: scan_comments
-		line_offsets: [0]
 	} }
 }
 
