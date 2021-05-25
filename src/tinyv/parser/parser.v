@@ -99,7 +99,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.const_decl(false)
 		}
 		.key_enum {
-			return p.enum_decl(false)
+			return p.enum_decl(false, [])
 		}
 		.key_fn {
 			return p.fn_decl(false, [])
@@ -148,7 +148,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 					return p.const_decl(true)
 				}
 				.key_enum {
-					return p.enum_decl(true)
+					return p.enum_decl(true, [])
 				}
 				.key_fn {
 					return p.fn_decl(true, [])
@@ -179,6 +179,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				is_pub = true
 			}
 			match p.tok {
+				.key_enum { return p.enum_decl(false, attributes) }
 				.key_fn { return p.fn_decl(is_pub, attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
 				else { p.error('needs impl (pass attrs): $p.tok') }
@@ -741,7 +742,8 @@ pub fn (mut p Parser) name() string {
 // return lit & go to next token
 [inline]
 pub fn (mut p Parser) lit() string {
-	lit := p.lit
+	// lit := p.lit
+	lit := if p.lit.len == 0 { p.tok.str() } else { p.lit }
 	p.next()
 	return lit
 }
@@ -1106,7 +1108,7 @@ pub fn (mut p Parser) call_args() []ast.Expr {
 	return args
 }
 
-pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
+pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.EnumDecl {
 	p.next()
 	name := p.name()
 	// p.log('ast.EnumDecl: $name')
@@ -1126,6 +1128,7 @@ pub fn (mut p Parser) enum_decl(is_public bool) ast.EnumDecl {
 	}
 	p.next()
 	return ast.EnumDecl{
+		attributes: attributes
 		is_public: is_public
 		name: name
 		fields: fields

@@ -127,6 +127,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.EmptyStmt {}
 		ast.EnumDecl {
+			if stmt.attributes.len > 0 {
+				g.attributes(stmt.attributes)
+				g.writeln('')
+			}
 			if stmt.is_public {
 				g.write('pub ')
 			}

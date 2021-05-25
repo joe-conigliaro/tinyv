@@ -296,9 +296,10 @@ pub:
 
 pub struct EnumDecl {
 pub:
-	is_public bool
-	name      string
-	fields    []FieldDecl
+	attributes []Attribute
+	is_public  bool
+	name       string
+	fields     []FieldDecl
 }
 
 pub struct ExprStmt {

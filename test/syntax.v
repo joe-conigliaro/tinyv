@@ -13,6 +13,7 @@ const (
 	const_b = 'two'
 )
 
+[attribute_a]
 enum EnumA {
 	value_a
 	value_b
