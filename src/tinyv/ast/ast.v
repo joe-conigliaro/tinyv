@@ -3,15 +3,15 @@ module ast
 import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Ident | If
-	| IfGuard | Index | Infix | List | Literal | MapInit | Match | Modifier
-	| None | Or | Paren | Postfix | Prefix | Range | Selector | SizeOf | StructInit
-	| Type | TypeOf | Unsafe
+pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Ident
+	| If | IfGuard | Index | Infix | List | Literal | MapInit | Match
+	| Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
+	| SizeOf | StructInit | Type | TypeOf | Unsafe
 	// TODO: decide if this going to be done like this
 	| FieldInit
-pub type Stmt = Assert | Assign | AttributeDecl | Block | ConstDecl | Defer
-	| Directive | EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For
-	| ForIn | GlobalDecl | Import | InterfaceDecl | Label | Module | Return
+pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
+	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
+	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
@@ -378,9 +378,10 @@ pub:
 
 pub struct StructDecl {
 pub:
-	is_public bool
-	name      string
-	fields    []FieldDecl
+	attributes []Attribute
+	is_public  bool
+	name       string
+	fields     []FieldDecl
 }
 
 pub struct TypeDecl {

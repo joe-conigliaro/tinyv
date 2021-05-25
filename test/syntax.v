@@ -19,6 +19,9 @@ enum EnumA {
 	value_c = 111
 }
 
+[attribute_a: 'attribute_a_val'; attribute_b]
+[attribute_c: 'attribute_c_val']
+[attribute_d]
 struct StructA {
 	field_a int
 	field_b string
@@ -31,6 +34,9 @@ type SumTypeA = StructA | int | string
 
 fn C.external_fn_a(arg_a int) int
 
+[attribute_a: 'attribute_a_val'; attribute_b]
+[attribute_c: 'attribute_c_val']
+[attribute_d]
 fn fn_a(arg_a string, arg_b int) int {
 	println('fn_a($arg_a, $arg_b)')
 	return 1

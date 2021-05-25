@@ -87,21 +87,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			if !g.in_init { g.writeln('') }
 		}
-		ast.AttributeDecl {
-			g.write('[')
-			for i, attribute in stmt.attributes {
-				g.write(attribute.name)
-				if attribute.value.len > 0 {
-					g.write(": '")
-					g.write(attribute.value)
-					g.write("'")
-				}
-				if i < stmt.attributes.len-1 {
-					g.write('; ')
-				}
-			}
-			g.writeln(']')
-		}
 		ast.Block {
 			g.writeln('{')
 			g.stmts(stmt.stmts)
@@ -170,6 +155,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln(stmt.op.str())
 		}
 		ast.FnDecl {
+			if stmt.attributes.len > 0 {
+				g.attributes(stmt.attributes)
+				g.writeln('')
+			}
 			if stmt.is_public {
 				g.write('pub ')
 			}
@@ -295,6 +284,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln('')
 		}
 		ast.StructDecl {
+			if stmt.attributes.len > 0 {
+				g.attributes(stmt.attributes)
+				g.writeln('')
+			}
 			if stmt.is_public {
 				g.write('pub ')
 			}
@@ -312,14 +305,8 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 					g.expr(field.value)
 				}
 				if field.attributes.len > 0 {
-					g.write(' [')
-					for i, attribute in field.attributes {
-						g.write(attribute.name)
-						if i < field.attributes.len-1 {
-							g.write('; ')
-						}
-					}
-					g.write(']')
+					g.write(' ')
+					g.attributes(field.attributes)
 				}
 				g.writeln('')
 			}
@@ -670,6 +657,22 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 	}
+}
+
+fn (mut g Gen) attributes(attributes []ast.Attribute) {
+	g.write('[')
+	for i, attribute in attributes {
+		g.write(attribute.name)
+		if attribute.value.len > 0 {
+			g.write(": '")
+			g.write(attribute.value)
+			g.write("'")
+		}
+		if i < attributes.len-1 {
+			g.write('; ')
+		}
+	}
+	g.write(']')
 }
 
 [inline]

@@ -157,7 +157,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 					return p.interface_decl(true)
 				}
 				.key_struct, .key_union {
-					return p.struct_decl(true)
+					return p.struct_decl(true, [])
 				}
 				.key_type {
 					return p.type_decl(true)
@@ -166,29 +166,23 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			}
 		}
 		.key_struct, .key_union {
-			return p.struct_decl(false)
+			return p.struct_decl(false, [])
 		}
 		.key_type {
 			return p.type_decl(false)
 		}
 		.lsbr {
 			attributes := p.attributes()
-			// part 2
-			// mut is_pub := false
-			// if p.tok == .key_pub {
-			// 	p.next()
-			// 	is_pub = true
-			// }
-			// if p.tok == .key_fn {
-			// 	return p.fn_decl(is_pub, attributes)
-			// }
-			// else if p.tok == .key_struct {
-
-			// }
-			// else {
-			// 	p.error('needs impl (pass attrs): $p.tok')
-			// }
-			return ast.AttributeDecl{attributes: attributes}
+			mut is_pub := false
+			if p.tok == .key_pub {
+				p.next()
+				is_pub = true
+			}
+			match p.tok {
+				.key_fn { return p.fn_decl(is_pub, attributes) }
+				.key_struct { return p.struct_decl(is_pub, attributes) }
+				else { p.error('needs impl (pass attrs): $p.tok') }
+			}
 		}
 		else {
 			panic('X: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
@@ -830,15 +824,11 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 			p.next()
 			continue
 		}
-		// part 1:
-		// totally rids AttrubuteDecl, in which case []Attribute will
-		// be added directly to the nodes they belong to (fn/type etc)
-		// also part2 (in top_stmt .lsbr) will need to be uncommented
-		// else if p.next_tok == .lsbr {
-		// 	p.expect(.rsbr)
-		// 	p.next()
-		// 	continue
-		// }
+		else if p.next_tok == .lsbr {
+			p.expect(.rsbr)
+			p.next()
+			continue
+		}
 		break
 	}
 	// name := p.name()
@@ -1241,7 +1231,7 @@ pub fn (mut p Parser) assoc(typ ast.Expr) ast.Assoc {
 	}
 }
 
-pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
+pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.StructDecl {
 	// TODO: union
 	// is_union := p.tok == .key_union
 	p.next()
@@ -1275,16 +1265,17 @@ pub fn (mut p Parser) struct_decl(is_public bool) ast.StructDecl {
 			p.next()
 			value = p.expr(.lowest)
 		}
-		attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
+		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
 		fields << ast.FieldDecl{
 			name: field_name
 			typ: typ
 			value: value
-			attributes: attributes
+			attributes: field_attributes
 		}
 	}
 	p.next()
 	return ast.StructDecl{
+		attributes: attributes
 		is_public: is_public
 		name: name
 		fields: fields
