@@ -92,13 +92,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
-		// ast.ComptimeIf {
-		// 	g.write('\$if ')
-		// 	g.expr(stmt.cond)
-		// 	g.writeln(' {')
-		// 	g.stmts(stmt.stmts)
-		// 	g.writeln('}')
-		// }
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -190,6 +183,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			if stmt.language == .c && stmt.stmts.len == 0 {
 				g.writeln('')
 			}
+			// normal v function
 			else {
 				g.writeln(' {')
 				g.stmts(stmt.stmts)
@@ -322,7 +316,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write(stmt.name)
 			if stmt.variants.len > 0 {
 				g.write(' = ')
-				//for i, vairant in stmt.variants {
 				for i, variant in stmt.variants {
 					g.expr(variant)
 					if i < stmt.variants.len-1 {

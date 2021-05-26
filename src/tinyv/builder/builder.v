@@ -78,9 +78,9 @@ fn (b &Builder) get_module_path(mod string, importing_file_path string) string {
 	mod_path := mod.replace('.', os.path_separator)
 	// TODO: is this the best order?
 	// vlib
-	vlb_path := os.join_path(b.pref.vroot, 'vlib', mod_path)
-	if os.is_dir(vlb_path) {
-		return vlb_path
+	vlib_path := os.join_path(b.pref.vroot, 'vlib', mod_path)
+	if os.is_dir(vlib_path) {
+		return vlib_path
 	}
 	// ~/.vmodules
 	vmodules_path := os.join_path(b.pref.vmodules_path, mod_path)
