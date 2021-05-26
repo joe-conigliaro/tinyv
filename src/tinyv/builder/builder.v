@@ -45,13 +45,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 			if mod.name in parsed_imports {
 				continue
 			}
-			relative_dir := os.base(ast_file.path) + os.path_separator + mod.name
-			mod_path := if os.is_dir(relative_dir) {
-				relative_dir
-			}
-			else {
-				b.get_module_path(mod.name, ast_file.path)
-			}
+			mod_path := b.get_module_path(mod.name, ast_file.path)
 			ast_files << parser.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
 		}
@@ -82,13 +76,23 @@ fn (b &Builder) get_vlib_module_path(mod string) string {
 // check for relative and then vlib
 fn (b &Builder) get_module_path(mod string, importing_file_path string) string {
 	mod_path := mod.replace('.', os.path_separator)
-	relative_path := os.dir(importing_file_path) + os.path_separator + mod_path
-	// relative
+	// TODO: is this the best order?
+	// vlib
+	vlb_path := os.join_path(b.pref.vroot, 'vlib', mod_path)
+	if os.is_dir(vlb_path) {
+		return vlb_path
+	}
+	// ~/.vmodules
+	vmodules_path := os.join_path(b.pref.vmodules_path, mod_path)
+	if os.is_dir(vmodules_path) {
+		return vmodules_path
+	}
+	// relative to file importing it
+	relative_path := os.join_path(os.dir(importing_file_path), mod_path)
 	if os.is_dir(relative_path) {
 		return relative_path
 	}
-	// vlib
-	return os.join_path(b.pref.vroot, 'vlib', mod_path)
+	panic('get_module_path: cannot find module path for $mod')
 }
 
 fn get_v_files_from_dir(dir string) []string {
@@ -100,7 +104,7 @@ fn get_v_files_from_dir(dir string) []string {
 		if !file.ends_with('.v') || file.ends_with('.js.v') || file.ends_with('_test.v') {
 			continue
 		}
-		v_files << dir + os.path_separator + file
+		v_files << os.join_path(dir, file)
 	}
 	return v_files
 }

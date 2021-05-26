@@ -8,11 +8,13 @@ pub mut:
 	verbose          bool
 pub:
 	vroot            string
+	vmodules_path    string
 }
 
 pub fn new_preferences() Preferences {
 	p := Preferences{
 		vroot: os.dir(vexe_path())
+		vmodules_path: os.vmodules_dir()
 	}
 	return p
 }
