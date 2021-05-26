@@ -855,6 +855,8 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 		// NOTE: the line above works, but avoid calling p.expr()
 		mut cond := if p.tok == .lcbr { ast.new_empty_expr() }  else { p.expr(.lowest) }
 		if is_comptime && p.tok == .question {
+			// TODO: use postfix for this?
+			cond = ast.Postfix{expr: cond, op: p.tok}
 			p.next()
 		}
 		// if guard

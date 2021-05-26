@@ -109,6 +109,18 @@ fn main_a() {
 	else {
 		println('a == $s')
 	}
+	$if linux {
+		println('linux')
+	}
+	$else if windows {
+		println('windows')
+	}
+	$else {
+		println('other')
+	}
+	$if option_a ? {
+		println('custom option: `v -d option_a`')
+	}
 	for val_a in list_a {
 		println(val_a)
 	}
