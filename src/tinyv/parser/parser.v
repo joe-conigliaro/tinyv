@@ -1037,12 +1037,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		return_type = p.typ() // return type
 	}
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.next_tok')
-	stmts := if p.tok == .lcbr {
-		p.block()
-	}
-	else {
-		[]ast.Stmt{}
-	}
+	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
 	return ast.FnDecl{
 		attributes: attributes
 		is_public: is_public
@@ -1345,6 +1340,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		parent_type = p.typ()
 	}
 	// p.log('ast.TypeDecl: $name')
+	// TODO: consider seperate node for alias / sum type ?
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name
