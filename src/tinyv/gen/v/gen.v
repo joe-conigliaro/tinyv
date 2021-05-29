@@ -421,9 +421,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('}')
 		}
 		ast.Ident {
-			if expr.is_mut {
-				g.write('mut ')
-			}
+			// if expr.is_mut {
+			// 	g.write('mut ')
+			// }
 			g.write(expr.name)
 		}
 		ast.If {

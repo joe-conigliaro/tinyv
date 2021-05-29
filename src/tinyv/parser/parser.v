@@ -219,7 +219,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			in_init := p.in_init
 			p.in_init = true
 			mut init := ast.new_empty_stmt()
-			// for x in vals {
+			mut cond := ast.new_empty_expr()
+			mut post := ast.new_empty_stmt()
+			// for in `for x in vals {`
 			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
 				mut value_is_mut := false
@@ -240,25 +242,23 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					expr: p.expr(.lowest)
 				}
 			}
-			// all other for with init
-			else if p.tok != .semicolon && p.tok != .lcbr {
-				init = p.stmt()
-			}
-			// init := p.stmt()
-			// TODO: clean up
-			mut cond := ast.new_empty_expr()
-			mut post := ast.new_empty_stmt()
-			if p.tok == .semicolon {
-				p.next()
-			}
-			if p.tok != .semicolon {
-				cond = p.expr(.lowest)
-			}
-			if p.tok == .semicolon {
-				p.next()
-			}
-			if p.tok != .lcbr {
-				post = p.stmt()
+			// infinate `for {` and C style `for x:=1; x<=10; x++`
+			else {
+				if p.tok != .semicolon && p.tok != .lcbr {
+					init = p.stmt()
+				}
+				if p.tok == .semicolon {
+					p.next()
+				}
+				if p.tok != .semicolon {
+					cond = p.expr(.lowest)
+				}
+				if p.tok == .semicolon {
+					p.next()
+				}
+				if p.tok != .lcbr {
+					post = p.stmt()
+				}
 			}
 			p.in_init = in_init
 			return ast.For{

@@ -112,21 +112,21 @@ pub:
 
 pub struct Ident {
 pub:
+	// kind   IdentKind
 	name   string
-	kind   IdentKind
-	is_mut bool
+	// is_mut bool
 // pub mut:
 // 	obj    Object
 }
 
-pub enum IdentKind {
-	unresolved
-	constant
-	function
-	global
-	mod
-	variable
-}
+// pub enum IdentKind {
+// 	unresolved
+// 	constant
+// 	function
+// 	global
+// 	mod
+// 	variable
+// }
 
 pub struct If {
 pub:
