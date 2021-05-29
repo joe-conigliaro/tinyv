@@ -58,7 +58,7 @@ pub fn (mut g Gen) gen(file ast.File) {
 	if g.pref.verbose {
 		gt1 := time.ticks()
 		gen_time := gt1-gt0
-		println('gen (v) for $file.path: ${gen_time}ms')
+		println('gen (v) $file.path: ${gen_time}ms')
 	}
 }
 

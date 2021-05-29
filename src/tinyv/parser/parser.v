@@ -10,16 +10,16 @@ import tinyv.pref
 struct Parser {
 	pref      &pref.Preferences
 mut:
-	file_path   string
-	scanner     &scanner.Scanner
-	in_init     bool // for/if/match eg. `for x in vals {`
+	file_path string
+	scanner   &scanner.Scanner
+	in_init   bool // for/if/match eg. `for x in vals {`
 	// start token info
 	// the following are for tok, for next_tok get directly from scanner
-	line_nr     int
-	lit         string
-	pos         int
-	tok         token.Token // last token
-	next_tok    token.Token // next token (scanner stays 1 tok ahead)
+	line_nr   int
+	lit       string
+	pos       int
+	tok       token.Token // last token
+	next_tok  token.Token // next token (scanner stays 1 tok ahead)
 	// end token info
 }
 
@@ -77,7 +77,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	if p.pref.verbose {
 		pt1 := time.ticks()
 		parse_time := pt1 - pt0
-		println('scan & parse time for $file_path: ${parse_time}ms')
+		println('scan & parse $file_path: ${parse_time}ms')
 	}
 	return ast.File{
 		path: file_path
@@ -581,7 +581,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 	}
-
+	
 	for {
 		if p.tok == .lpar {
 			// (*ptr_a) = *ptr_a - 1
@@ -1093,7 +1093,7 @@ pub fn (mut p Parser) call_args() []ast.Expr {
 			p.next()
 			// println('looks like config syntax')
 			if expr !is ast.Ident {
-				p.error('expecting ident for structy config syntax??')
+				p.error('expecting ident for struct config syntax?')
 			}
 			expr = ast.FieldInit{
 				name: (expr as ast.Ident).name
