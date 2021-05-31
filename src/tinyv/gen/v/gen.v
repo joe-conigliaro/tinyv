@@ -640,6 +640,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.write(']')
 					g.expr(expr.value_type)
 				}
+				ast.OptionType {
+					g.write('?')
+					if expr.base_type !is ast.EmptyExpr {
+						g.expr(expr.base_type)
+					}
+				}
 				ast.TupleType {
 					g.write('(')
 					for i, x in expr.types {

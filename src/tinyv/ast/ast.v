@@ -16,7 +16,7 @@ pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Exor until nesting is implemented?
-pub type Type = ArrayType | MapType | FnType | TupleType
+pub type Type = ArrayType | MapType | FnType | OptionType | TupleType
 
 pub struct EmptyExpr {}
 pub struct EmptyStmt {}
@@ -409,6 +409,11 @@ pub struct MapType {
 pub:
 	key_type   Expr
 	value_type Expr
+}
+
+pub struct OptionType {
+pub:
+	base_type Expr = EmptyExpr{}
 }
 
 pub struct TupleType {

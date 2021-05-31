@@ -5,18 +5,15 @@ import tinyv.ast
 // TODO:
 pub fn (mut p Parser) typ() ast.Expr {
 	// optional
-	// TODO: handle
-	is_optional := p.tok == .question
-	if is_optional {
+	if p.tok == .question {
 		p.next()
+		if p.tok == .lcbr { return ast.Type(ast.OptionType{}) }
+		return ast.Type(ast.OptionType{ base_type: p.typ() })
 	}
 	// pointer
-	// mut ptr_count := 0
-	// for p.tok == .amp {
-	// 	ptr_count++
-	// 	p.next()
-	// }
-	if p.tok == .amp {
+	else if p.tok == .amp {
+		// TODO: bug
+		// return ast.Prefix{op: p.tok(), expr: p.typ()?}
 		return ast.Prefix{op: p.tok(), expr: p.typ()}
 	}
 	// name OR map
@@ -77,17 +74,9 @@ pub fn (mut p Parser) typ() ast.Expr {
 		if p.tok == .lpar {
 			args = p.fn_args()
 		}
-		mut return_type := ast.new_empty_expr()
-		if p.tok in [.amp, .lsbr, .name, .question] {
-			// return type
-			return_type = p.typ()
-		}
+		return_type := if p.tok in [.amp, .lsbr, .name, .question] { p.typ() } else { ast.new_empty_expr() }
 		return ast.Type(ast.FnType{args: args, return_type: return_type})
 	}
-	// TODO: :D quick hack to handle just ?
-	if is_optional {
-		return ast.Ident{name: '?'}
-	}
-	p.error('typ: unknown type (tok: `$p.tok`)')
+	p.error('typ: expected type, got `$p.tok`')
 	exit(1)
 }
