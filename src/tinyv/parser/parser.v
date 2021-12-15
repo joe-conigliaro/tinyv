@@ -182,7 +182,17 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_enum { return p.enum_decl(false, attributes) }
 				.key_fn { return p.fn_decl(is_pub, attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
-				else { p.error('needs impl (pass attrs): $p.tok') }
+				else {
+					// I didnt want attributes as a statemment, but attached to things like fn/struct
+					// will have to rethink this now, it can be set on p.has_globals = true
+					// if not needed in later stages. otherwise add a stmt for it. come back to this
+					if attributes[0].name == 'has_globals' {
+						// TODO
+						// p.has_globals = true
+						return ast.new_empty_stmt()
+					}
+					p.error('needs impl (pass attrs): $p.tok')
+				}
 			}
 		}
 		else {
@@ -359,8 +369,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_if {
-			lhs = p.@if(false)
-			return lhs
+			return p.@if(false)
 		}
 		.key_none {
 			p.next()
@@ -379,6 +388,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			expr := p.expr(.lowest)
 			p.expect(.rpar)
 			lhs = ast.TypeOf{expr: expr}
+		}
+		.dollar {
+			p.next()
+			return p.@if(true)
 		}
 		.lpar {
 			// Paren
@@ -515,7 +528,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				branches: branches
 			}
 		}
-		.key_mut, .key_shared {
+		.key_mut, .key_shared, .key_static {
 			lhs = ast.Modifier {
 				kind: p.tok()
 				expr: p.expr(.lowest)
@@ -791,15 +804,21 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 	for {
 		mut name := ''
 		mut value := ''
+		mut is_comptime := false
 		// since unsafe is a keyword
 		if p.tok == .key_unsafe {
 			p.next()
 			name = 'unsafe'
 		}
 		// TODO: properly
+		// consider using normal if expr
 		else if p.tok == .key_if {
 			p.next()
-			name = 'if ' + p.name() 
+			name = 'if ' + p.name()
+			if p.tok == .question {
+				is_comptime = true
+				p.next()
+			}
 		}
 		else {
 			name = p.name()
@@ -822,6 +841,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		attributes << ast.Attribute{
 			name: name
 			value: value
+			// is_comptime: is_comptime
 		}
 		if p.tok == .semicolon {
 			p.next()

@@ -699,3 +699,7 @@ fn (mut g Gen) writeln(str string) {
 pub fn (g &Gen) print_output() {
 	println(g.out)
 }
+// // weird output bug, try instead:
+// pub fn (mut g Gen) print_output() {
+// 	println(g.out.str())
+// }

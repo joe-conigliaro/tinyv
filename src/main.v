@@ -8,7 +8,7 @@ import tinyv.builder
 fn main() {
 	mut pref := pref.new_preferences()
 	pref.debug = true
-	// pref.verbose = true
+	pref.verbose = true
 
 	files := cmdline.only_non_options(os.args[1..])
 	if files.len == 0 { eprintln('At least 1 .v file expected') exit(1) }

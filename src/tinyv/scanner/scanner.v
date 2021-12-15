@@ -393,17 +393,17 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		c2 := s.text[s.offset]
 		c3 := s.text[s.offset+1]
 		// skip escape \n | \'
-		if c2 == `\\` {
+		if c2 == `\\` && kind != .raw {
 			s.offset+=2
 			continue
 		}
-		else if c2 == `\n` {
+		else if c2 == `\n` && kind != .raw {
 			s.offset++
 			s.line_offsets << s.offset
 			continue
 		}
 		// else if c2 == `\r` && s.text[s.offset+1] == `\n` {
-		else if c2 == `\r` && c3 == `\n` {
+		else if c2 == `\r` && c3 == `\n` && kind != .raw {
 			s.offset+=2
 			s.line_offsets << s.offset
 			continue
