@@ -92,6 +92,7 @@ fn main_a() {
 	call_c := array_init_c[0](1)
 	call_d := struct_a.method_a('string', 1)
 	call_e := struct_a.field_c(1)
+	call_generic_a := fn_generic_a<StructA>('string', 1)
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
 	index_range_a := array_init_a[0..2]
@@ -108,6 +109,13 @@ fn main_a() {
 	}
 	else {
 		println('a == $s')
+	}
+	if (if a > 0 {
+		1
+	} else {
+		2
+	}) < 2 {
+		println('if expr in if cond < 2')
 	}
 	$if linux {
 		println('linux')

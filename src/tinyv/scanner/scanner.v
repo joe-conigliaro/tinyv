@@ -274,7 +274,16 @@ pub fn (mut s Scanner) scan() token.Token {
 			c2 := s.text[s.offset]
 			if c2 == `>` {
 				s.offset++
-				if s.text[s.offset] == `=` {
+				c3 := s.text[s.offset]
+				if c3 == `>` {
+					s.offset++
+					if s.text[s.offset] == `=` {
+						s.offset++
+						return .right_shift_unsigned_assign
+					}
+					return .right_shift_unsigned
+				}
+				else if c3 == `=` {
 					s.offset++
 					return .right_shift_assign
 				}

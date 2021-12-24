@@ -15,6 +15,7 @@ pub const (
 		'goto': Token.key_goto,
 		'const': Token.key_const,
 		'mut': Token.key_mut,
+		'shared': Token.key_shared,
 		'type': Token.key_type,
 		'for': Token.key_for,
 		// 'switch': Token.key_switch,
@@ -79,6 +80,7 @@ pub enum Token {
 	str_dollar
 	left_shift
 	right_shift
+	right_shift_unsigned
 	not_in // !in
 	not_is // !is
 	// at // @
@@ -94,6 +96,7 @@ pub enum Token {
 	and_assign
 	right_shift_assign
 	left_shift_assign
+	right_shift_unsigned_assign
 	// {}  () []
 	lcbr
 	rcbr
@@ -177,8 +180,8 @@ pub enum BindingPower {
 
 pub fn (t Token) left_binding_power() BindingPower {
 	match t {
-		// `*` |  `/` | `%` | `<<` | `>>` | `&`
-		.mul, .div, .mod, .left_shift, .right_shift, .amp {
+		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
+		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
 			return .five
 		}
 		// `+` |  `-` |  `|` | `^`
@@ -226,7 +229,7 @@ pub fn (tok Token) is_infix() bool {
 	//
 	.key_as, .ge, .le, .logical_or, .xor, .not_in, .key_is, .not_is,
 	//
-	.and, /*.dot,*/ .pipe, .amp, .left_shift, .right_shift]
+	.and, /*.dot,*/ .pipe, .amp, .left_shift, .right_shift, .right_shift_unsigned]
 }
 
 [inline]
@@ -248,7 +251,8 @@ pub fn (tok Token) is_assignment() bool {
 		.or_assign,
 		.and_assign,
 		.right_shift_assign,
-		.left_shift_assign
+		.left_shift_assign,
+		.right_shift_unsigned_assign
 	]
 }
 
@@ -307,6 +311,7 @@ fn build_tokens_str() []string {
 	s[Token.and_assign] = '&='
 	s[Token.right_shift_assign] = '>>='
 	s[Token.left_shift_assign] = '<<='
+	s[Token.right_shift_unsigned_assign] = '>>>='
 	s[Token.lcbr] = '{'
 	s[Token.rcbr] = '}'
 	s[Token.lpar] = '('
@@ -322,6 +327,7 @@ fn build_tokens_str() []string {
 	s[Token.question] = '?'
 	s[Token.left_shift] = '<<'
 	s[Token.right_shift] = '>>'
+	s[Token.right_shift_unsigned] = '>>>'
 	s[Token.comment] = '// comment'
 	s[Token.nl] = 'NLL'
 	s[Token.dollar] = '$'

@@ -6,8 +6,9 @@ import tinyv.ast
 pub fn (mut p Parser) typ() ast.Expr {
 	// optional
 	if p.tok == .question {
+		line_nr := p.line_nr
 		p.next()
-		if p.tok == .lcbr { return ast.Type(ast.OptionType{}) }
+		if p.tok == .lcbr || line_nr != p.line_nr { return ast.Type(ast.OptionType{}) }
 		return ast.Type(ast.OptionType{ base_type: p.typ() })
 	}
 	// pointer
@@ -15,6 +16,13 @@ pub fn (mut p Parser) typ() ast.Expr {
 		// TODO: bug
 		// return ast.Prefix{op: p.tok(), expr: p.typ()?}
 		return ast.Prefix{op: p.tok(), expr: p.typ()}
+	}
+	// atomic | shared
+	// TODO: proper
+	else if p.tok in [.key_atomic, .key_shared] {
+		kind := p.tok
+		p.next()
+		return ast.Modifier{kind: kind, expr: p.typ()}
 	}
 	// name OR map
 	else if p.tok == .name {
@@ -43,8 +51,14 @@ pub fn (mut p Parser) typ() ast.Expr {
 	// array
 	else if p.tok == .lsbr {
 		p.next()
-		if p.tok == .number {
-			p.next()
+		// if p.tok == .number {
+		// 	p.next()
+		// }
+		// fixed array length
+		if p.tok != .rsbr {
+			len_expr := p.expr(.lowest)
+			p.expect(.rsbr)
+			return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.typ()})
 		}
 		p.expect(.rsbr)
 		return ast.Type(ast.ArrayType{elem_type: p.typ()})

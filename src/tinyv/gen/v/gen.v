@@ -388,6 +388,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.Cast {}
 		ast.Call {
 			g.expr(expr.lhs)
+			// TODO: generic call
 			g.write('(')
 			for i, arg in expr.args {
 				// if arg.is_mut {
@@ -419,6 +420,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.writeln(' {')
 			g.stmts(expr.stmts)
 			g.write('}')
+		}
+		ast.Go {
+			g.write('go ')
+			g.expr(expr.expr)
 		}
 		ast.Ident {
 			// if expr.is_mut {
@@ -623,6 +628,14 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			match expr {
 				ast.ArrayType {
 					g.write('[]')
+					g.expr(expr.elem_type)
+				}
+				ast.ArrayFixedType {
+					g.write('[')
+					if expr.len !is ast.EmptyExpr {
+						g.expr(expr.len)
+					}
+					g.write(']')
 					g.expr(expr.elem_type)
 				}
 				ast.FnType {

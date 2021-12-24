@@ -368,6 +368,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				return_type: return_type
 			}
 		}
+		.key_go {
+			p.next()
+			return ast.Go{expr: p.expr(.lowest)}
+		}
 		.key_if {
 			return p.@if(false)
 		}
@@ -596,12 +600,19 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	}
 	
 	for {
-		if p.tok == .lpar {
+		// call || generic call (TODO: proper, fix thsi fugly :-D)
+		if p.tok == .lpar || (p.tok == .lt && p.next_tok == .name && p.scanner.lit[0].is_capital()) {
 			// (*ptr_a) = *ptr_a - 1
 			if line_nr != p.line_nr {
 				return lhs
 			}
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
+			// generic call
+			if p.tok == .lt {
+				p.next()
+				p.typ()
+				p.expect(.gt)
+			}
 			args := p.call_args()
 			// lhs = ast.Cast{
 			lhs = ast.Call{
@@ -804,7 +815,10 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 	for {
 		mut name := ''
 		mut value := ''
-		mut is_comptime := false
+		mut comptime_cond := ast.new_empty_expr()
+		mut comptime_cond_opt := false
+		// TODO: implement is_comptime
+		// mut is_comptime := false
 		// since unsafe is a keyword
 		if p.tok == .key_unsafe {
 			p.next()
@@ -814,9 +828,10 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		// consider using normal if expr
 		else if p.tok == .key_if {
 			p.next()
-			name = 'if ' + p.name()
-			if p.tok == .question {
-				is_comptime = true
+			// name = 'if ' + p.name()
+			comptime_cond = p.expr(.lowest)
+			comptime_cond_opt = p.tok == .question
+			if comptime_cond_opt {
 				p.next()
 			}
 		}
@@ -841,7 +856,8 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		attributes << ast.Attribute{
 			name: name
 			value: value
-			// is_comptime: is_comptime
+			comptime_cond: comptime_cond
+			comptime_cond_opt: comptime_cond_opt
 		}
 		if p.tok == .semicolon {
 			p.next()
@@ -1209,6 +1225,11 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	// TODO: finish
 	// mut methods := []
 	for p.tok != .rcbr {
+		is_mut := p.tok == .key_mut
+		if is_mut {
+			p.next()
+			p.expect(.colon)	
+		}
 		line_nr := p.line_nr
 		p.name() // method/field name
 		if p.tok == .lpar {

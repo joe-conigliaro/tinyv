@@ -3,7 +3,7 @@ module ast
 import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Ident
+pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Go | Ident
 	| If | IfGuard | Index | Infix | List | Literal | MapInit | Match
 	| Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
 	| SizeOf | StructInit | Type | TypeOf | Unsafe
@@ -16,7 +16,7 @@ pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Exor until nesting is implemented?
-pub type Type = ArrayType | MapType | FnType | OptionType | TupleType
+pub type Type = ArrayType | ArrayFixedType | MapType | FnType | OptionType | TupleType
 
 pub struct EmptyExpr {}
 pub struct EmptyStmt {}
@@ -108,6 +108,11 @@ pub:
 	args        []Arg
 	stmts       []Stmt
 	return_type Expr
+}
+
+pub struct Go {
+pub:
+	expr Expr
 }
 
 pub struct Ident {
@@ -267,8 +272,10 @@ pub:
 
 pub struct Attribute {
 pub:
-	name  string
-	value string
+	name              string
+	value             string
+	comptime_cond     Expr
+	comptime_cond_opt bool
 }
 
 pub struct Block {
@@ -396,6 +403,12 @@ pub:
 // Type Nodes
 pub struct ArrayType {
 pub:
+	elem_type Expr
+}
+
+pub struct ArrayFixedType {
+pub:
+	len       Expr
 	elem_type Expr
 }
 
