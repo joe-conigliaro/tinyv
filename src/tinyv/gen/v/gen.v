@@ -67,12 +67,13 @@ pub fn (mut g Gen) gen(file ast.File) {
 
 fn (mut g Gen) stmts(stmts []ast.Stmt) {
 	for stmt in stmts {
+		g.indent++
 		g.stmt(stmt)
+		g.indent--
 	}
 }
 
 fn (mut g Gen) stmt(stmt ast.Stmt) {
-	g.indent++
 	match stmt {
 		ast.Assert {
 			g.write('assert ')
@@ -337,7 +338,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln('')
 		}
 	}
-	g.indent--
 	// g.writeln('')
 }
 
@@ -444,6 +444,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.If {
 			for i, branch in expr.branches {
+				in_init := g.in_init
+				g.in_init = true
 				if i == 0 {
 					// if expr.is_comptime { g.write('$') }
 					g.write('if ')
@@ -459,6 +461,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					}
 				}
 				g.expr(branch.cond[0])
+				g.in_init = in_init
 				g.writeln(' {')
 				g.stmts(branch.stmts)
 				g.write('}')
@@ -629,9 +632,17 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// 	g.expr(expr.stmts[0])
 			// 	g.write(')')
 			// }
-			g.writeln('unsafe {')
+			if g.in_init {
+				g.write('unsafe { ')
+			} else {
+				g.writeln('unsafe {')
+			}
 			g.stmts(expr.stmts)
-			g.write('}')
+			if g.in_init {
+				g.write(' }')
+			} else {
+				g.write('}')
+			}
 		}
 		// Type Nodes
 		// TODO: I really would like to allow matching the nested sumtypes like TS

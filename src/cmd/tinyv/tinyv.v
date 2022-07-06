@@ -10,7 +10,7 @@ import tinyv.builder
 
 fn main() {
 	mut pref := pref.new_preferences()
-	// pref.debug = true
+	pref.debug = true
 	pref.verbose = true
 
 	files := cmdline.only_non_options(os.args[1..])
