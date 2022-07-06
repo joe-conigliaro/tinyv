@@ -633,6 +633,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				args: args
 			}
 			// TODO: should make this part of call? see which way is more helpful for gen
+			// after more consideration, try impl using this method so later stages can
+			// hopefully use generalised code to handle all use cases (hoefully)
+			// if we need the conditional / other info based on node we can use helpers
+			// this the general concept im tryng to acheive with modifiers & comptime etc
 			if p.tok == .key_or {
 				// p.log('ast.Or')
 				p.next()
