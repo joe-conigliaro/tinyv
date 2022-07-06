@@ -7,7 +7,7 @@ import tinyv.token
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Go | Ident
-	| If | IfGuard | Index | Infix | List | Literal | MapInit | Match
+	| If | IfGuard | Index | Infix | List | Literal | Lock | MapInit | Match
 	| Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
 	| SizeOf | StructInit | Type | TypeOf | Unsafe
 	| ComptimeExpr
@@ -177,6 +177,13 @@ pub struct Literal {
 pub:
 	kind  token.Token
 	value string
+}
+
+pub struct Lock {
+pub:
+	kind  token.Token
+	exprs []Expr
+	stmts []Stmt
 }
 
 pub struct MapInit {

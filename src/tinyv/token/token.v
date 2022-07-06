@@ -47,6 +47,8 @@ pub const (
 		'none': Token.key_none,
 		'__offsetof': Token.key_offsetof,
 		'is': Token.key_is
+		'lock': Token.key_lock
+		'rlock': Token.key_rlock
 	}
 	tokens_str = build_tokens_str()
 )

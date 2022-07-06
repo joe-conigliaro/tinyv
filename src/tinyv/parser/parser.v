@@ -93,6 +93,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
+			// NOTE: just for testing, will be removed (all cases)
 			if p.tok == .key_if {
 				return ast.ComptimeStmt{stmt: ast.ExprStmt{expr: p.@if(true)}}
 			}
@@ -385,6 +386,20 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			return p.@if(false)
 		}
+		.key_lock, .key_rlock {
+			kind := p.tok
+			p.next()
+			// TODO: handle with in_init, or different solution? check .lcbr in expr()
+			in_init := p.in_init
+			p.in_init = true
+			exprs := p.expr_list()
+			p.in_init = in_init
+			return ast.Lock{
+				kind: kind
+				exprs: exprs
+				stmts: p.block()
+			}
+		}
 		.key_none {
 			p.next()
 			return ast.None{}
@@ -647,7 +662,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// no need to continue
 				return lhs
 			}
-			// fncall()? | fncall()!
+			// fncall()! | fncall()?
 			else if p.tok in [.not, .question] {
 				p.next()
 				// TODO
@@ -911,8 +926,8 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 		// mut cond := p.expr(.lowest)
 		// NOTE: the line above works, but avoid calling p.expr()
 		mut cond := if p.tok == .lcbr { ast.new_empty_expr() }  else { p.expr(.lowest) }
-		if is_comptime && p.tok == .question {
-			// TODO: use postfix for this?
+		if p.tok == .question {
+			// TODO: use postfix for this? handle individual cases like this or globally add to token.is_postfix()?
 			cond = ast.Postfix{expr: cond, op: p.tok}
 			p.next()
 		}
@@ -931,11 +946,13 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 		if p.tok == .dollar && p.next_tok == .key_else {
 			p.next()
 		}
+		// else
 		if p.tok == .key_else {
 			p.next()
 			if p.tok == .dollar && p.next_tok == .key_if {
 				p.next()
 			}
+			// else if
 			if p.tok == .key_if {
 				p.next()
 			}
@@ -1317,11 +1334,11 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
-		field_name := p.name()
-		if language == .v && field_name[0].is_capital() {
-			embedded << ast.Ident{name: field_name}
+		if language == .v && (p.next_tok == .dot || p.lit[0].is_capital()) {
+			embedded << p.typ()
 			continue
 		}
+		field_name := p.name()
 		typ := p.typ()
 		// default field value
 		mut value := ast.new_empty_expr()
@@ -1426,9 +1443,13 @@ pub fn (mut p Parser) log(msg string) {
 }
 
 pub fn (mut p Parser) error(msg string) {
-	println('error: $msg')
+	// NOTE: use scanner.position()) when all we know is pos (later stages)
+	// since we already know line_nr here we use it instead
 	// line_nr, col := p.scanner.position(p.pos)
 	col := p.pos-p.scanner.line_offsets[p.line_nr-1]+1
-	println('$p.file_path:$p.line_nr:$col')
+	println('========================================')
+	println(' error: $msg')
+	println(' file: $p.file_path:$p.line_nr:$col')
+	println('========================================')
 	exit(1)
 }

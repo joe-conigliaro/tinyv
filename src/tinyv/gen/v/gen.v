@@ -505,6 +505,16 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(expr.value)
 			}
 		}
+		ast.Lock {
+			g.write('$expr.kind ')
+			for i, x in expr.exprs {
+				g.expr(x)
+				if i < expr.exprs.len-1 { g.write(', ') }
+			}
+			g.writeln(' {')
+			g.stmts(expr.stmts)
+			g.writeln('}')
+		}
 		ast.MapInit {
 			//g.writeln('// mapinit: $expr.keys.len')
 			// long syntax
