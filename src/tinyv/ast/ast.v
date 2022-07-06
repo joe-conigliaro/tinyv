@@ -10,16 +10,18 @@ pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Go | Ident
 	| If | IfGuard | Index | Infix | List | Literal | MapInit | Match
 	| Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
 	| SizeOf | StructInit | Type | TypeOf | Unsafe
+	| ComptimeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
 	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
+	| ComptimeStmt
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Exor until nesting is implemented?
-pub type Type = ArrayType | ArrayFixedType | MapType | FnType | OptionType | TupleType
+pub type Type = ArrayType | ArrayFixedType | MapType | FnType | OptionType | ResultType | TupleType
 
 pub struct EmptyExpr {}
 pub struct EmptyStmt {}
@@ -91,6 +93,11 @@ pub:
 	args []Expr
 }
 
+pub struct ComptimeExpr {
+pub:
+	expr Expr
+}
+
 pub struct FieldDecl {
 pub:
 	name  	   string
@@ -156,8 +163,9 @@ pub:
 
 pub struct Index {
 pub:
-	lhs  Expr
-	expr Expr
+	lhs  	 Expr
+	expr 	 Expr
+	is_gated bool
 }
 
 pub struct List {
@@ -286,6 +294,11 @@ pub:
 	stmts []Stmt
 }
 
+pub struct ComptimeStmt {
+pub:
+	stmt Stmt
+}
+
 pub struct ConstDecl {
 pub:
 	is_public bool
@@ -355,7 +368,8 @@ pub:
 
 pub struct GlobalDecl {
 pub:
-	fields []FieldDecl
+	attributes []Attribute
+	fields     []FieldDecl
 }
 
 pub struct Import {
@@ -391,6 +405,7 @@ pub struct StructDecl {
 pub:
 	attributes []Attribute
 	is_public  bool
+	embedded   []Expr
 	name       string
 	fields     []FieldDecl
 }
@@ -428,6 +443,11 @@ pub:
 }
 
 pub struct OptionType {
+pub:
+	base_type Expr = EmptyExpr{}
+}
+
+pub struct ResultType {
 pub:
 	base_type Expr = EmptyExpr{}
 }

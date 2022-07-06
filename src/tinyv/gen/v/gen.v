@@ -95,6 +95,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
+		ast.ComptimeStmt {
+			g.write('$')
+			g.stmt(stmt.stmt)
+		}
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -402,6 +406,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write(')')
 		}
+		ast.ComptimeExpr {
+			g.write('$')
+			g.expr(expr.expr)
+		}
 		ast.EmptyExpr {}
 		// TODO: should this be handled like this
 		ast.FieldInit {
@@ -437,7 +445,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.If {
 			for i, branch in expr.branches {
 				if i == 0 {
-					if expr.is_comptime { g.write('$') }
+					// if expr.is_comptime { g.write('$') }
 					g.write('if ')
 				}
 				else {
@@ -658,6 +666,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				ast.OptionType {
 					g.write('?')
+					if expr.base_type !is ast.EmptyExpr {
+						g.expr(expr.base_type)
+					}
+				}
+				ast.ResultType {
+					g.write('!')
 					if expr.base_type !is ast.EmptyExpr {
 						g.expr(expr.base_type)
 					}

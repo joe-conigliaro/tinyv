@@ -93,7 +93,10 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			return ast.ExprStmt{expr: p.@if(true)}
+			if p.tok == .key_if {
+				return ast.ComptimeStmt{stmt: ast.ExprStmt{expr: p.@if(true)}}
+			}
+			return ast.ComptimeStmt{stmt: p.stmt()}
 		}
 		.hash {
 			return p.directive()
@@ -108,7 +111,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.fn_decl(false, [])
 		}
 		.key_global {
-			return p.global_decl()
+			return p.global_decl([])
 		}
 		.key_import {
 			p.next()
@@ -184,6 +187,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			match p.tok {
 				.key_enum { return p.enum_decl(false, attributes) }
 				.key_fn { return p.fn_decl(is_pub, attributes) }
+				.key_global { return p.global_decl(attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
 				else {
 					// I didnt want attributes as a statemment, but attached to things like fn/struct
@@ -211,7 +215,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			return ast.ExprStmt{expr: p.@if(true)}
+			if p.tok == .key_if {
+				return ast.ComptimeStmt{stmt: ast.ExprStmt{expr: p.@if(true)}}
+			}
+			return ast.ComptimeStmt{stmt: p.stmt()}
 		}
 		.hash {
 			return p.directive()
@@ -398,7 +405,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.dollar {
 			p.next()
-			return p.@if(true)
+			if p.tok == .key_if {
+				return ast.ComptimeExpr{expr: p.@if(true)}
+			}
+			return ast.ComptimeExpr{expr: p.expr(.lowest)}
 		}
 		.lpar {
 			// Paren
@@ -633,8 +643,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// no need to continue
 				return lhs
 			}
-			// fncall()?
-			else if p.tok == .question {
+			// fncall()? | fncall()!
+			else if p.tok in [.not, .question] {
 				p.next()
 				// TODO
 			}
@@ -646,12 +656,15 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// `__global my_global = expr`
 		// `[someattr]`
 		// we could also check pos, making sure it's directly after
+		is_gated := p.tok == .hash && p.next_tok == .lsbr
+		if is_gated { p.next() }
 		if p.tok == .lsbr && p.line_nr == line_nr {
 			p.next()
 			// p.log('ast.Index: $p.scanner.lit')
 			lhs = ast.Index{
 				lhs: lhs
 				expr: p.expr(.lowest)
+				is_gated: is_gated
 			}
 			p.expect(.rsbr)
 			if p.tok == .key_or {
@@ -794,8 +807,8 @@ pub fn (mut p Parser) block() []ast.Stmt {
 		stmts << p.stmt()
 		// p.log('BLOCK STMT END')
 	}
+	// rcbr
 	p.next()
-	// p.log('END BLOCK')
 	return stmts
 }
 
@@ -885,6 +898,7 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 
 pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 	// p.log('ast.If')
+	// .key_if
 	p.next()
 	mut branches := []ast.Branch{}
 	for {
@@ -910,24 +924,19 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			cond: [cond]
 			stmts: p.block()
 		}
-		// comptime else
 		if p.tok == .dollar && p.next_tok == .key_else {
 			p.next()
 		}
-		// no else or else if
-		else if p.tok != .key_else {
+		if p.tok == .key_else {
+			p.next()
+			if p.tok == .dollar && p.next_tok == .key_if {
+				p.next()
+			}
+			if p.tok == .key_if {
+				p.next()
+			}
+		} else {
 			break
-		}
-		// else
-		p.next()
-		// comptime else if
-		if p.tok == .dollar && p.next_tok == .key_if {
-			p.next()
-			p.next()
-		}
-		// else if
-		else if p.tok == .key_if {
-			p.next()
 		}
 	}
 	return ast.If{
@@ -1171,7 +1180,7 @@ pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.
 	}
 }
 
-pub fn (mut p Parser) global_decl() ast.GlobalDecl {
+pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 	p.next()
     // NOTE: this got changed at some stage (or perhaps was never forced)
     // if p.tok != .lpar {
@@ -1206,6 +1215,7 @@ pub fn (mut p Parser) global_decl() ast.GlobalDecl {
 		}
 	}
 	return ast.GlobalDecl{
+		attributes: attributes
 		fields: fields
 	}
 }
@@ -1280,6 +1290,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	// is_union := p.tok == .key_union
 	p.next()
 	mut name := p.name()
+	language := if name == 'C' && p.tok == .dot { ast.Language.c } else { ast.Language.v }
 	for p.tok == .dot {
 		p.next()
 		name += p.name()
@@ -1295,6 +1306,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	p.next()
 	// fields
 	mut fields := []ast.FieldDecl{}
+	mut embedded := []ast.Expr{}
 	for p.tok != .rcbr {
 		is_pub := p.tok == .key_pub
 		if is_pub { p.next() }
@@ -1302,6 +1314,10 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
 		field_name := p.name()
+		if language == .v && field_name[0].is_capital() {
+			embedded << ast.Ident{name: field_name}
+			continue
+		}
 		typ := p.typ()
 		// default field value
 		mut value := ast.new_empty_expr()
@@ -1321,6 +1337,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	return ast.StructDecl{
 		attributes: attributes
 		is_public: is_public
+		embedded: embedded
 		name: name
 		fields: fields
 	}

@@ -14,6 +14,11 @@ pub fn (mut p Parser) typ() ast.Expr {
 		if p.tok == .lcbr || line_nr != p.line_nr { return ast.Type(ast.OptionType{}) }
 		return ast.Type(ast.OptionType{ base_type: p.typ() })
 	}
+	// result
+	else if p.tok == .not {
+		p.next()
+		return ast.Type(ast.ResultType{ base_type: p.typ() })
+	}
 	// pointer
 	else if p.tok == .amp {
 		// TODO: bug
@@ -50,6 +55,11 @@ pub fn (mut p Parser) typ() ast.Expr {
 			return ast.Selector{lhs: ident, rhs: p.ident()}
 		}
 		return ident
+	}
+	else if p.tok == .key_none {
+		// TODO: remove/fix all uses of Ident in this file (temp hack)
+		p.next()
+		return ast.Ident{name: 'none'}
 	}
 	// array
 	else if p.tok == .lsbr {
