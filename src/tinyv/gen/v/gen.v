@@ -54,14 +54,13 @@ pub fn (mut g Gen) gen(file ast.File) {
 	if !g.pref.verbose {
 		unsafe { goto start_no_time }
 	}
-	gt0 := time.ticks()
+	mut sw := time.new_stopwatch()
 	start_no_time:
 	g.file = file
 	g.stmts(g.file.stmts)
 	if g.pref.verbose {
-		gt1 := time.ticks()
-		gen_time := gt1-gt0
-		println('gen (v) $file.path: ${gen_time}ms')
+		gen_time := sw.elapsed()
+		println('gen (v) $file.path: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
 	}
 }
 

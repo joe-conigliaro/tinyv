@@ -58,7 +58,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	if !p.pref.verbose {
 		unsafe { goto start_no_time }
 	}
-	pt0 := time.ticks()
+	mut sw := time.new_stopwatch()
 	start_no_time:
 	p.file_path = file_path
 	text := os.read_file(file_path) or {
@@ -78,9 +78,8 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 		top_stmts << stmt
 	}
 	if p.pref.verbose {
-		pt1 := time.ticks()
-		parse_time := pt1 - pt0
-		println('scan & parse $file_path: ${parse_time}ms')
+		parse_time := sw.elapsed()
+		println('scan & parse $file_path: ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
 		path: file_path
