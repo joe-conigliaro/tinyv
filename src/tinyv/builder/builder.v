@@ -24,13 +24,18 @@ pub fn new_builder(pref &pref.Preferences) &Builder {
 }
 
 pub fn (mut b Builder) build(files []string) {
-	total0 := time.ticks()
+	t_start := time.ticks()
 	b.files = b.parse_files(files)
+	t_scan_and_parse := time.ticks()
 	// b.check_files()
 	b.gen_v_files()
-	total1 := time.ticks()
-	total_time := total1 - total0
-	println('total time: ${total_time}ms')
+	t_gen_v := time.ticks()
+	scan_and_parse_time := t_scan_and_parse - t_start
+	gen_v_time := t_gen_v - t_scan_and_parse
+	total_time := time.ticks() - t_start
+	println(' * Scan & Parse: ${scan_and_parse_time}ms')
+	println(' * Gen (v): ${gen_v_time}ms')
+	println(' * Total: ${total_time}ms')
 }
 
 fn (mut b Builder) parse_files(files []string) []ast.File {
