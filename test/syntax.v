@@ -64,7 +64,8 @@ fn main_a() {
 	array_init_a := [1,2,3,4]
 	array_init_b := []string{len: 2, cap :2}
 	array_init_c := [][][][]string{}
-	array_init_d := [fn(arg_a int) int {
+	array_init_d := []&StructA{}
+	array_init_e := [fn(arg_a int) int {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]

@@ -495,7 +495,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			mut cap, mut init, mut len := ast.new_empty_expr(), ast.new_empty_expr(), ast.new_empty_expr()
 			// TODO: restructure in parts (type->init) ?? no
 			// NOTE: for [][]string, the first `[]` is parsed here, and the rest in p.typ()
-			if p.tok in [.lsbr, .name] && p.line_nr == line_nr {
+			if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
 				typ = p.typ()
 				// init
 				if p.tok == .lcbr && !p.in_init {
