@@ -449,15 +449,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				if i == 0 {
 					// if expr.is_comptime { g.write('$') }
 					g.write('if ')
-				}
-				else {
-					g.writeln('')
-					if expr.is_comptime { g.write('$') }
-					g.write('else')
+				} else {
+					if expr.is_comptime { g.write(' \$else') } else { g.write(' else') }
 					if branch.cond[0] !is ast.EmptyExpr {
-						g.write(' ')
-						if expr.is_comptime { g.write('$') }
-						g.write('if ')
+						if expr.is_comptime { g.write(' \$if ') } else { g.write('if ') }
 					}
 				}
 				g.expr(branch.cond[0])
@@ -497,9 +492,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('`')
 			}
 			else if expr.kind == .string {
-				g.write("'")
+				// TODO: proper store extra info from scanner in Literal (also raw etc)
+				quote := if expr.value.contains('"') { "'" } else { '"' }
+				g.write(quote)
 				g.write(expr.value)
-				g.write("'")
+				g.write(quote)
 			}
 			else {
 				g.write(expr.value)
@@ -612,6 +609,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// with field names
 			if expr.fields.len > 0 && expr.fields[0].name.len > 0 {
 				g.writeln('{')
+				in_init := g.in_init
+				g.in_init = true
 				for i, field in expr.fields {
 					g.write('\t')
 					g.write(field.name)
@@ -619,6 +618,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.expr(field.value)
 					if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 				}
+				g.in_init = in_init
 			}
 			// without field names, or empty init `Struct{}`
 			else {
@@ -636,12 +636,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(')')
 		}
 		ast.Unsafe {
-			// some sort of fuckery
-			// if expr.stmts.len == 1 && expr.stmts[0] is ast.ExprStmt {
-			// 	g.write('unsafe(')
-			// 	g.expr(expr.stmts[0])
-			// 	g.write(')')
-			// }
+			// NOTE: use in_init or stmts.len? check vfmt
 			if g.in_init {
 				g.write('unsafe { ')
 			} else {
