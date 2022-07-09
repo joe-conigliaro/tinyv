@@ -48,6 +48,11 @@ fn fn_b(arg_a string, arg_b, arg_c, arg_d int) int {
 	return 1
 }
 
+fn fn_c(arg_a [][]StructA, arg_b [4]StructA) [][]StructA {
+	println('fn_b($arg_a, $arg_b)')
+	return arg_a
+}
+
 fn (rec &StructA) method_a(arg_a string, arg_b int) int {
 	println('StructA.method_a($arg_a, $arg_b)')
 	return 1
@@ -96,6 +101,8 @@ fn main_a() {
 	call_generic_a := fn_generic_a<StructA>('string', 1)
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
+	index_c := [StructA{}][0] // direct index after init
+	index_d := [[StructA{}]][0][0] // unlimited chaining (add more examples, fns/closures)
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]

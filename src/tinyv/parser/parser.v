@@ -474,7 +474,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.lsbr {
 			p.next()
-			// [1,2,3,4]
+			// [1,2,3,4] or []int{} etc
 			// line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
@@ -490,11 +490,15 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 			}
 			mut typ := ast.new_empty_expr()
-			// []int{}
 			mut cap, mut init, mut len := ast.new_empty_expr(), ast.new_empty_expr(), ast.new_empty_expr()
-			// TODO: restructure in parts (type->init) ?? no
-			// NOTE: for [][]string, the first `[]` is parsed here, and the rest in p.typ()
-			if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
+			// [1,2,3,4]
+			if exprs.len > 0 && p.tok == .lsbr {
+				// continue with lhs as ArrayInit
+				// TODO: tidy these if conditions up
+			}
+			// []int{} | [][]string{} | []&Foo{} ...
+			// TODO: make sure we never end up here in for anything besides ArrayInit
+			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
 				typ = p.typ()
 				// init
 				if p.tok == .lcbr && !p.in_init {
