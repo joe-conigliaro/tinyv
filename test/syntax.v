@@ -102,7 +102,8 @@ fn main_a() {
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
-	index_d := [[StructA{}]][0][0] // unlimited chaining (add more examples, fns/closures)
+	index_d := [[StructA{}]][0][0] // unlimited chaining (add more examples)
+	index_e := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]
