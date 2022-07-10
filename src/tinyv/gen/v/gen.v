@@ -492,7 +492,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			else if expr.kind == .string {
 				// TODO: proper store extra info from scanner in Literal (also raw etc)
-				quote := if expr.value.contains('"') { "'" } else { '"' }
+				quote := if expr.value.contains("'") { '"' } else { "'" }
 				g.write(quote)
 				g.write(expr.value)
 				g.write(quote)
