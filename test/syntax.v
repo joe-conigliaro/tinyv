@@ -67,10 +67,12 @@ fn main_a() {
 	a := 1
 	b, c := 1, 2
 	array_init_a := [1,2,3,4]
-	array_init_b := []string{len: 2, cap :2}
-	array_init_c := [][][][]string{}
-	array_init_d := []&StructA{}
-	array_init_e := [fn(arg_a int) int {
+	array_init_b := [array_init_a]
+	array_init_c := []string{len: 2, cap :2}
+	array_init_d := [][]string{}
+	array_init_e := [['a','b','c','d']]
+	array_init_f := []&StructA{}
+	array_init_g := [fn(arg_a int) int {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]
@@ -95,7 +97,7 @@ fn main_a() {
 	}
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
-	call_c := array_init_c[0](1)
+	call_c := array_init_g[0](1)
 	call_d := struct_a.method_a('string', 1)
 	call_e := struct_a.field_c(1)
 	call_generic_a := fn_generic_a<StructA>('string', 1)
@@ -104,12 +106,18 @@ fn main_a() {
 	index_c := [StructA{}][0] // direct index after init
 	index_d := [[StructA{}]][0][0] // unlimited chaining (add more examples)
 	index_e := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
+	index_f := fn() []string { return ['a', 'b'] }()[0]
+	index_g := array_init_e[0] or { ['e', 'f'] }[0]
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]
-	index_or_a := array_init_a[1] or {
-		5
-	}
+	index_or_a := array_init_a[0] or { 1 }
+	index_or_b := array_init_b[0] or { [5,6,7,8] }[0]
+	index_or_c := fn() []int { return [array_init_a[0] or { 1 }] }()[0] or { 1 }
+	index_or_d := match index_a {
+		int { array_init_a }
+		else { [5,6,7,8] }
+	}[0] or { 1 }
 	if a == 1 {
 		println('a == $s')
 	}

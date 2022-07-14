@@ -345,6 +345,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			if p.tok.is_assignment() {
 				return p.assign([expr])
 			}
+			// TODO: add check for all ExprStmt eg.
+			// if expr is ast.ArrayInit {
+			// 	p.error('UNUSED')
+			// }
 			return ast.ExprStmt{
 				expr: expr
 			}
@@ -356,7 +360,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line_nr')
-	line_nr := p.line_nr
+	mut line_nr := p.line_nr
 	mut lhs := ast.new_empty_expr()
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
@@ -475,7 +479,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.lsbr {
 			p.next()
 			// [1,2,3,4] or []int{} etc
-			// line_nr := p.line_nr
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
 				exprs << p.expr(.lowest)
@@ -483,7 +486,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 				}
 			}
-			p.expect(.rsbr)
+			// rsbr
+			p.next()
 			if p.tok == .not {
 				// TODO:
 				// is_fixed =  true
@@ -557,16 +561,26 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
+			// update linr_nr to support chaining
+			line_nr = p.line_nr
+			// rcbr
 			p.next()
-			return ast.Match{
+			lhs = ast.Match{
 				expr: expr
 				branches: branches
 			}
 		}
 		.key_mut, .key_shared, .key_static {
-			lhs = ast.Modifier {
+			return ast.Modifier {
 				kind: p.tok()
 				expr: p.expr(.lowest)
+			}
+		}
+		.key_unsafe {
+			// p.log('ast.Unsafe')
+			p.next()
+			lhs = ast.Unsafe{
+				stmts: p.block()
 			}
 		}
 		.name {
@@ -607,13 +621,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// is_mut: is_mut
 			}
 		}
-		.key_unsafe {
-			// p.log('ast.Unsafe')
-			p.next()
-			lhs = ast.Unsafe{
-				stmts: p.block()
-			}
-		}
+		// selector (enum value), range. handled in loop below
+		.dot, .dotdot, .ellipsis {}
 		else {
 			if p.tok.is_prefix() {
 				op := p.tok()
@@ -622,11 +631,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					expr: p.expr(op.right_binding_power())
 				}
 			}
-			// TODO: perhaps re-arrange the expression chaning support
-			// below in a way which makes error conditions more stable
-			else if p.tok !in [.lpar, .lsbr, .dot, .dotdot, .ellipsis] {
-				p.error('expr: unexpected token `$p.tok`')
-			}
+			p.error('expr: unexpected token `$p.tok`')
 		}
 	}
 	
@@ -634,7 +639,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// call || generic call (TODO: proper, fix thsi fugly :-D)
 		if p.tok == .lpar || (p.tok == .lt && p.next_tok == .name && p.scanner.lit[0].is_capital()) {
 			// (*ptr_a) = *ptr_a - 1
-			if line_nr != p.line_nr {
+			if p.line_nr != line_nr {
 				return lhs
 			}
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
@@ -650,37 +655,28 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				lhs: lhs
 				args: args
 			}
-			// TODO: should make this part of call? see which way is more helpful for gen
-			// after more consideration, try impl using this method so later stages can
-			// hopefully use generalised code to handle all use cases (hoefully)
-			// if we need the conditional / other info based on node we can use helpers
-			// this the general concept im tryng to acheive with modifiers & comptime etc
-			if p.tok == .key_or {
-				// p.log('ast.Or')
-				p.next()
-				lhs = ast.Or{
-					expr: lhs
-					stmts: p.block()
-				}
-				// no need to continue
-				return lhs
-			}
 			// fncall()! | fncall()?
-			else if p.tok in [.not, .question] {
+			if p.tok in [.not, .question] {
 				p.next()
 				// TODO
 			}
+			continue
 		}
-		// everything below is excluded from binding power check
-
 		// index: `expr[i]`
 		// checking linr_nr so that this wont het parsed as index:
 		// `__global my_global = expr`
 		// `[someattr]`
 		// we could also check pos, making sure it's directly after
-		is_gated := p.tok == .hash && p.next_tok == .lsbr
-		if is_gated { p.next() }
-		if p.tok == .lsbr && p.line_nr == line_nr {
+		// is_gated := p.tok == .hash && p.next_tok == .lsbr
+		// if is_gated { p.next() }
+		else if p.tok in [.hash, .lsbr] && p.line_nr == line_nr {
+			is_gated := p.tok == .hash
+			if is_gated {
+				p.next()
+				if p.tok != .lsbr {
+					p.error('how did we end up here?')
+				}
+			}
 			p.next()
 			// p.log('ast.Index: $p.scanner.lit')
 			lhs = ast.Index{
@@ -689,14 +685,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				is_gated: is_gated
 			}
 			p.expect(.rsbr)
-			if p.tok == .key_or {
-				p.next()
-				lhs = ast.Or{
-					expr: lhs
-					stmts: p.block()
-				}
-				return lhs
-			}
 			// continue to allows `Index[1]Selector` with no regard to binding power 
 			continue
 		}
@@ -711,28 +699,29 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// continue to allow `Selector[1]` with no regard to binding power 
 			continue
 		}
+		else if p.tok == .key_or {
+			// p.log('ast.Or')
+			p.next()
+			lhs = ast.Or{
+				expr: lhs
+				stmts: p.block()
+			}
+			continue
+		}
 		// range
-		// else if p.tok == .dotdot {
-		// seriously wtf? why ... for range we alrady have 0..2 range. fooken
 		else if p.tok in [.dotdot, .ellipsis] {
+			// p.log('ast.Range')
 			op := p.tok
 			p.next()
-			// p.log('ast.Range')
-			if p.tok == .rsbr {
-				lhs = ast.Range{
-					op: op
-					start: lhs
-				}
-			}
-			else {
-				lhs = ast.Range{
-					op: op
-					start: lhs
-					end: p.expr(.lowest)
-				}
+			// no need to continue
+			return ast.Range{
+				op: op
+				start: lhs
+				end: if p.tok == .rsbr { ast.new_empty_expr() } else { p.expr(.lowest) }
 			}
 		}
-
+		// everything above is excluded from binding power check
+		
 		// pratt - from here on we will break on binding power
 		lbp := p.tok.left_binding_power()
 		if int(lbp) < int(min_bp) {
@@ -1090,6 +1079,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		p.next()
 		name += '.$p.name()'
 	}
+	// TODO: generics
 	if p.tok == .lt {
 		p.next()
 		for {
