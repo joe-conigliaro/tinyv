@@ -635,6 +635,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 	}
 	
+	// expr chaining
 	for {
 		// call || generic call (TODO: proper, fix thsi fugly :-D)
 		if p.tok == .lpar || (p.tok == .lt && p.next_tok == .name && p.scanner.lit[0].is_capital()) {
@@ -660,15 +661,12 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				// TODO
 			}
-			continue
 		}
 		// index: `expr[i]`
-		// checking linr_nr so that this wont het parsed as index:
+		// checking linr_nr so that this wont get parsed as index:
 		// `__global my_global = expr`
 		// `[someattr]`
 		// we could also check pos, making sure it's directly after
-		// is_gated := p.tok == .hash && p.next_tok == .lsbr
-		// if is_gated { p.next() }
 		else if p.tok in [.hash, .lsbr] && p.line_nr == line_nr {
 			is_gated := p.tok == .hash
 			if is_gated {
@@ -685,8 +683,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				is_gated: is_gated
 			}
 			p.expect(.rsbr)
-			// continue to allows `Index[1]Selector` with no regard to binding power 
-			continue
 		}
 		// Selector
 		else if p.tok == .dot {
@@ -696,8 +692,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				lhs: lhs
 				rhs: p.expr(.lowest)
 			}
-			// continue to allow `Selector[1]` with no regard to binding power 
-			continue
 		}
 		else if p.tok == .key_or {
 			// p.log('ast.Or')
@@ -706,7 +700,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				expr: lhs
 				stmts: p.block()
 			}
-			continue
 		}
 		// range
 		else if p.tok in [.dotdot, .ellipsis] {
@@ -720,9 +713,12 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				end: if p.tok == .rsbr { ast.new_empty_expr() } else { p.expr(.lowest) }
 			}
 		}
-		// everything above is excluded from binding power check
-		
-		// pratt - from here on we will break on binding power
+		else {
+			break
+		}
+	}
+	// pratt
+	for {
 		lbp := p.tok.left_binding_power()
 		if int(lbp) < int(min_bp) {
 			// p.log('breaking precedence: $p.tok ($lbp < $min_bp)')
@@ -739,7 +735,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// deref assign: `*a = b`
 			if p.tok == .mul && p.line_nr != line_nr {
 				// check that starts at start of line
-				// TODO: fix
+				// TODO: fix (what was this about?)
 				// if p.tok == .mul && p.scanner.line_offsets[p.line_nr-1]+1 == p.pos {
 					return lhs
 				// }
@@ -757,7 +753,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		else {
-			// return lhs
 			break
 		}
 	}
