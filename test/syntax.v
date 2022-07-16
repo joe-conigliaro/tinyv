@@ -84,14 +84,13 @@ fn main_a() {
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
 	mut struct_init_b := StructA{1, 'v'}
 	struct_init_b = {field_d: 222} // TODO: parsed as MapInit
-	// this is parsed as: StructInit{ExprList{Infix{'|'}}}, not intentional, remove?
-	assoc_old_a := {struct_a|field_a: 111}
+	// NOTE: no longer supported
+	// assoc_old_a := {struct_a|field_a: 111}
+	// assoc_old_b := {
+	// 	...struct_a
+	// 	field_a: 1
+	// }
 	assoc_current_a := StructA{
-		...struct_a
-		field_a: 1
-	}
-	// NOTE: is this supported any more?
-	assoc_current_b := {
 		...struct_a
 		field_a: 1
 	}

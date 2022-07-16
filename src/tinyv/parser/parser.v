@@ -445,9 +445,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// lhs = p.struct_init()
 				p.next()
 				// assoc
-				// TODO: check if this is still supported (without starting `TypeName{...`)
 				if p.tok == .ellipsis {
-					// p.error('# assoc missing type (old/mid syntax): $p.file_path: $p.line_nr')
+					if lhs is ast.EmptyExpr {
+						p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
+					}
 					return p.assoc(ast.new_empty_expr())
 				}
 				// empty map init `{}`
@@ -461,6 +462,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				mut vals := []ast.Expr{}
 				for p.tok != .rcbr {
 					key := p.expr(.lowest)
+					if key is ast.Infix {
+						if key.op == .pipe {
+							p.error('this assoc syntax is no longer supported `{MyType|`. Use `MyType{...` instead')
+						}
+					}
 					keys << key
 					p.expect(.colon)
 					val := p.expr(.lowest)
