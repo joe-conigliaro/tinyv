@@ -184,43 +184,41 @@ pub enum BindingPower {
 }
 
 pub fn (t Token) left_binding_power() BindingPower {
-	match t {
+	return match t {
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
 		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
-			return .five
+			.five
 		}
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor {
-			return .four
+			.four
 		}
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
 		.eq, .ne, .lt, .le, .gt, .ge {
-			return .three
+			.three
 		}
 		// `&&`
 		.and {
-			return .two
+			.two
 		}
 		// `||`
 		.logical_or {
-			return .one
+			.one
 		}
 		else {
-			return .lowest
+			.lowest
 		}
 	}
 }
-
-// NOTE: should we need, we could use different binding powers
-// depending on the operation at hand (infix/postfix)
-// eg. t.infix_rbp() or t.right_binding_power(op.infix/op.postfix)
+// TODO: double check / fix this. just use what is needed instead of this
 pub fn (t Token) right_binding_power() BindingPower {
-	match t {
-		.mul {
-			return .lowest
+	lbp := t.left_binding_power()
+	return match lbp {
+		.lowest {
+			.lowest
 		}
 		else {
-			return .lowest
+			BindingPower(int(lbp)+1)
 		}
 	}
 }

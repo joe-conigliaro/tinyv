@@ -168,7 +168,9 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_type {
 					return p.type_decl(true)
 				}
-				else {}
+				else {
+					p.error('TODO: impl pub $p.tok')
+				}
 			}
 		}
 		.key_struct, .key_union {
@@ -355,7 +357,6 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		}
 	}
 	p.error('unknown stmt: $p.tok')
-	panic('')
 }
 
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
@@ -625,13 +626,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.dot, .dotdot, .ellipsis {}
 		else {
 			if p.tok.is_prefix() {
-				op := p.tok()
-				return ast.Prefix{
-					op: op
-					expr: p.expr(op.right_binding_power())
+				// NOTE: just use .highest for now, later we might need to define for each op
+				lhs = ast.Prefix{
+					op: p.tok()
+					expr: p.expr(.highest)
 				}
+			} else {
+				p.error('expr: unexpected token `$p.tok`')
 			}
-			p.error('expr: unexpected token `$p.tok`')
 		}
 	}
 	
@@ -707,11 +709,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// range
 		else if p.tok in [.dotdot, .ellipsis] {
 			// p.log('ast.Range')
-			op := p.tok
-			p.next()
 			// no need to continue
 			return ast.Range{
-				op: op
+				op: p.tok()
 				start: lhs
 				end: if p.tok == .rsbr { ast.new_empty_expr() } else { p.expr(.lowest) }
 			}
@@ -721,8 +721,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 	}
 	// pratt
-	// TODO: right binding powers. Test (correct where needed) operator associativity
-	// we can even use different left & right bp's for infix/postfix should we need.
 	for {
 		lbp := p.tok.left_binding_power()
 		if int(lbp) < int(min_bp) {
@@ -745,10 +743,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					return lhs
 				// }
 			}
+			op := p.tok()
 			lhs = ast.Infix{
-				op: p.tok()
+				op: op
 				lhs: lhs
-				rhs: p.expr(p.tok.right_binding_power())
+				rhs: p.expr(op.right_binding_power())
 			}
 		}
 		else if p.tok.is_postfix() {

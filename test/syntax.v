@@ -118,6 +118,14 @@ fn main_a() {
 		int { array_init_a }
 		else { [5,6,7,8] }
 	}[0] or { 1 }
+	infix_a := 1 * 2
+	infix_b := 1 + 2 * 3 / 4 + 5
+	infix_c := infix_a * 4 * 2 + 11 / 2
+	infix_d := a == b && c == d
+	infix_and_par_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
+	prefix_a := &StructA{}
+	prefix_b := &&StructA{}
+	prefix_c := -infix_a + 2
 	if a == 1 {
 		println('a == $s')
 	}
@@ -173,12 +181,6 @@ fn main_a() {
 	for {
 		println('infinate loop')
 	}
-	prefix_a := &StructA{}
-	prefix_b := &&StructA{}
-	infix_a := 1 * 2
-	infix_b := infix_a * 4 * 2 + 11 / 2
-	infix_c := a == b && c == d
-	infix_and_par_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
 	mut ptr_a := &voidptr(0)
 	*ptr_a = 0
 	(*ptr_a) = *ptr_a - 1
