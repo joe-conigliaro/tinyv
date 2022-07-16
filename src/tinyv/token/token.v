@@ -211,7 +211,9 @@ pub fn (t Token) left_binding_power() BindingPower {
 	}
 }
 
-// TODO: prefix binding power
+// NOTE: should we need, we could use different binding powers
+// depending on the operation at hand (infix/postfix)
+// eg. t.infix_rbp() or t.right_binding_power(op.infix/op.postfix)
 pub fn (t Token) right_binding_power() BindingPower {
 	match t {
 		.mul {

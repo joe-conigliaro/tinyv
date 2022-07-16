@@ -636,8 +636,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	}
 	
 	// expr chaining
+	// for now I am doing this outside of the pratt loop 
+	// the pratt loop is currently just being used for basic infix & postfix operators
+	// I might decide to change this later.
 	for {
-		// call || generic call (TODO: proper, fix thsi fugly :-D)
+		// call || generic call (TODO: proper, fix this fugly :-D)
 		if p.tok == .lpar || (p.tok == .lt && p.next_tok == .name && p.scanner.lit[0].is_capital()) {
 			// (*ptr_a) = *ptr_a - 1
 			if p.line_nr != line_nr {
@@ -718,6 +721,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 	}
 	// pratt
+	// TODO: right binding powers. Test (correct where needed) operator associativity
+	// we can even use different left & right bp's for infix/postfix should we need.
 	for {
 		lbp := p.tok.left_binding_power()
 		if int(lbp) < int(min_bp) {
@@ -743,7 +748,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lhs = ast.Infix{
 				op: p.tok()
 				lhs: lhs
-				rhs: p.expr(p.tok.left_binding_power())
+				rhs: p.expr(p.tok.right_binding_power())
 			}
 		}
 		else if p.tok.is_postfix() {
