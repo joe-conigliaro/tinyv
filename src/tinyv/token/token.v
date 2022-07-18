@@ -183,6 +183,7 @@ pub enum BindingPower {
 	highest
 }
 
+[inline]
 pub fn (t Token) left_binding_power() BindingPower {
 	return match t {
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
@@ -210,17 +211,11 @@ pub fn (t Token) left_binding_power() BindingPower {
 		}
 	}
 }
+
 // TODO: double check / fix this. just use what is needed instead of this
+[inline]
 pub fn (t Token) right_binding_power() BindingPower {
-	lbp := t.left_binding_power()
-	return match lbp {
-		.lowest {
-			.lowest
-		}
-		else {
-			BindingPower(int(lbp)+1)
-		}
-	}
+	return BindingPower(int(t.left_binding_power())+1)
 }
 
 [inline]

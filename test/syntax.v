@@ -53,6 +53,18 @@ fn fn_c(arg_a [][]StructA, arg_b [4]StructA) [][]StructA {
 	return arg_a
 }
 
+fn fn_opt_a() ?int {
+	return 1
+}
+
+fn fn_opt_b() ?int {
+	return fn_opt_a()?
+}
+
+fn fn_opt_c() ?int {
+	return fn_opt_a()!
+}
+
 fn (rec &StructA) method_a(arg_a string, arg_b int) int {
 	println('StructA.method_a($arg_a, $arg_b)')
 	return 1
@@ -198,6 +210,10 @@ fn main_a() {
 		d := 1
 		d++
 		d
+	}
+	shared arr_string_shared := []String{}
+	lock arr_string_shared {
+		arr_string_shared << 'a'
 	}
 	fn_a('string', unsafe {*ptr_a})
 	{

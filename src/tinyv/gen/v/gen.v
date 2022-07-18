@@ -610,13 +610,14 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.writeln('{')
 				in_init := g.in_init
 				g.in_init = true
+				g.indent++
 				for i, field in expr.fields {
-					g.write('\t')
 					g.write(field.name)
 					g.write(': ')
 					g.expr(field.value)
 					if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
 				}
+				g.indent--
 				g.in_init = in_init
 			}
 			// without field names, or empty init `Struct{}`

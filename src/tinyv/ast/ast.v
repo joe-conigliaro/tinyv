@@ -363,8 +363,7 @@ pub:
 	stmts []Stmt
 }
 
-// TODO: this will just be used at the initializer for For
-// possibly split into its own loop stmt later, work out whats best
+// NOTE: used as the initializer for For
 pub struct ForIn {
 pub:
 	key   		 string

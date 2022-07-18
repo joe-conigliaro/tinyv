@@ -391,8 +391,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return p.@if(false)
 		}
 		.key_lock, .key_rlock {
-			kind := p.tok
-			p.next()
+			kind := p.tok()
 			// TODO: handle with in_init, or different solution? check .lcbr in expr()
 			in_init := p.in_init
 			p.in_init = true
@@ -430,7 +429,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return ast.ComptimeExpr{expr: p.expr(.lowest)}
 		}
 		.lpar {
-			// Paren
 			p.next()
 			// p.log('ast.Paren:')
 			lhs = ast.Paren{
@@ -667,7 +665,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				lhs: lhs
 				args: args
 			}
-			// fncall()! | fncall()?
+			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
 			if p.tok in [.not, .question] {
 				p.next()
 				// TODO
@@ -727,19 +725,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 	}
 	// pratt
-	for {
-		lbp := p.tok.left_binding_power()
-		if int(lbp) < int(min_bp) {
-			// p.log('breaking precedence: $p.tok ($lbp < $min_bp)')
-			break
-		}
-		// p.expr(lbp)
-		// TODO: use bp loop for infix & postifx instead		
-		// lbp2 := p.tok.infix_bp()
-		// if lbp2 < min_bp {
-		// 	break
-		// }
-		// p.next()
+	for int(min_bp) <= int(p.tok.left_binding_power()) {
 		if p.tok.is_infix() {
 			// deref assign: `*a = b`
 			if p.tok == .mul && p.line_nr != line_nr {
@@ -813,8 +799,7 @@ pub fn (mut p Parser) tok() token.Token {
 	return tok
 }
 
-// pub fn (mut p Parser) peek(pos int) scanner.Token {}
-
+[inline]
 pub fn (mut p Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
@@ -828,6 +813,7 @@ pub fn (mut p Parser) block() []ast.Stmt {
 	return stmts
 }
 
+[inline]
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {
@@ -908,6 +894,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 	return attributes
 }
 
+[inline]
 pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
@@ -990,7 +977,6 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	mut fields := []ast.FieldInit{}
 	for {
 		name := p.name()
-		// p.log('const: $name')
 		p.expect(.assign)
 		value := p.expr(.lowest)
 		fields << ast.FieldInit{
@@ -1366,7 +1352,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 	p.next()
 	mut fields := []ast.FieldInit{}
-	mut prev_field_name_len := 0
+	mut prev_has_name := false
 	for p.tok != .rcbr {
 		// could be name or init without field name
 		mut field_name := ''
@@ -1378,15 +1364,14 @@ pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 				ast.Ident { field_name = value.name }
 				else { p.error('struct_init: expected field name, got $value.type_name()') }
 			}
-			// field_name = (value as ast.Ident).name
 			p.next()
 			value = p.expr(.lowest)
 		}
-		// better way to do this?
-		if fields.len > 0 && ((prev_field_name_len == 0 && field_name.len > 0) || (prev_field_name_len > 0 && field_name.len == 0)) {
+		has_name := field_name.len > 0
+		if fields.len > 0 && (has_name != prev_has_name) {
 			p.error('struct_init: cant mix & match name & no name')
 		}
-		prev_field_name_len = field_name.len
+		prev_has_name = has_name
 		if p.tok == .comma {
 			p.next()
 		}
