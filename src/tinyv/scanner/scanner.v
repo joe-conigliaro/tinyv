@@ -99,7 +99,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		// name
 		s.name()
 		s.lit = s.text[s.pos..s.offset]
-		tok := token.key_tokens[s.lit]
+		tok := token.match_keyword_token(s.lit)
 		if tok != .unknown {
 			return tok
 		}

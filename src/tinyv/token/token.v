@@ -4,52 +4,6 @@
 module token
 
 pub const (
-	key_tokens = {
-		'assert': Token.key_assert,
-		'struct': Token.key_struct,
-		'if': Token.key_if,
-		// 'it': Token.key_it,
-		'else': Token.key_else,
-		'asm': Token.key_asm,
-		'return': Token.key_return,
-		'module': Token.key_module,
-		'sizeof': Token.key_sizeof,
-		'go': Token.key_go,
-		'goto': Token.key_goto,
-		'const': Token.key_const,
-		'mut': Token.key_mut,
-		'shared': Token.key_shared,
-		'type': Token.key_type,
-		'for': Token.key_for,
-		// 'switch': Token.key_switch,
-		'fn': Token.key_fn,
-		'true': Token.key_true,
-		'false': Token.key_false,
-		'continue': Token.key_continue,
-		'break': Token.key_break,
-		'import': Token.key_import,
-		// 'embed': Token.key_embed,
-		'unsafe': Token.key_unsafe,
-		'typeof': Token.key_typeof,
-		'enum': Token.key_enum,
-		'interface': Token.key_interface,
-		'pub': Token.key_pub,
-		'in': Token.key_in,
-		'atomic': Token.key_atomic,
-		'or': Token.key_or,
-		'__global': Token.key_global,
-		'union': Token.key_union,
-		'static': Token.key_static,
-		'as': Token.key_as,
-		'defer': Token.key_defer,
-		'match': Token.key_match,
-		'select': Token.key_select,
-		'none': Token.key_none,
-		'__offsetof': Token.key_offsetof,
-		'is': Token.key_is
-		'lock': Token.key_lock
-		'rlock': Token.key_rlock
-	}
 	tokens_str = build_tokens_str()
 )
 
@@ -185,29 +139,29 @@ pub enum BindingPower {
 
 [inline]
 pub fn (t Token) left_binding_power() BindingPower {
-	return match t {
+	match t {
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
 		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
-			.five
+			return .five
 		}
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor {
-			.four
+			return .four
 		}
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
 		.eq, .ne, .lt, .le, .gt, .ge {
-			.three
+			return .three
 		}
 		// `&&`
 		.and {
-			.two
+			return .two
 		}
 		// `||`
 		.logical_or {
-			.one
+			return .one
 		}
 		else {
-			.lowest
+			return .lowest
 		}
 	}
 }
@@ -215,7 +169,7 @@ pub fn (t Token) left_binding_power() BindingPower {
 // TODO: double check / fix this. just use what is needed instead of this
 [inline]
 pub fn (t Token) right_binding_power() BindingPower {
-	return BindingPower(int(t.left_binding_power())+1)
+	return BindingPower((int(t.left_binding_power()) + 1))
 }
 
 [inline]
@@ -225,11 +179,9 @@ pub fn (tok Token) is_prefix() bool {
 
 [inline]
 pub fn (tok Token) is_infix() bool {
-	return tok in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in,
-	//
-	.key_as, .ge, .le, .logical_or, .xor, .not_in, .key_is, .not_is,
-	//
-	.and, /*.dot,*/ .pipe, .amp, .left_shift, .right_shift, .right_shift_unsigned]
+	return tok in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in, .key_as, .ge,
+		.le, .logical_or, .xor, .not_in, .key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
+		.right_shift, .right_shift_unsigned]
 }
 
 [inline]
@@ -252,7 +204,7 @@ pub fn (tok Token) is_assignment() bool {
 		.and_assign,
 		.right_shift_assign,
 		.left_shift_assign,
-		.right_shift_unsigned_assign
+		.right_shift_unsigned_assign,
 	]
 }
 
@@ -262,12 +214,101 @@ pub fn (tok Token) is_overloadable() bool {
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor,
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge
+		.eq, .ne, .lt, .le, .gt, .ge,
 	]
 }
 
+// NOTE: add keyword tokens here
+pub fn match_keyword_token(name string) Token {
+	match name.len {
+		2 {
+			match name {
+				'if' { return .key_if }
+				'go' { return .key_go }
+				'fn' { return .key_fn }
+				'in' { return .key_in }
+				'or' { return .key_or }
+				'as' { return .key_as }
+				'is' { return .key_is }
+				else { return .unknown }
+			}
+		}
+		3 {
+			match name {
+				'asm' { return .key_asm }
+				'mut' { return .key_mut }
+				'for' { return .key_for }
+				'pub' { return .key_pub }
+				else { return .unknown }
+			}
+		}
+		4 {
+			match name {
+				'else' { return .key_else }
+				'goto' { return .key_goto }
+				'type' { return .key_type }
+				'true' { return .key_true }
+				'enum' { return .key_enum }
+				'lock' { return .key_lock }
+				else { return .unknown }
+			}
+		}
+		5 {
+			match name {
+				'const' { return .key_const }
+				'false' { return .key_false }
+				'break' { return .key_break }
+				'union' { return .key_union }
+				'defer' { return .key_defer }
+				'match' { return .key_match }
+				'rlock' { return .key_rlock }
+				else { return .unknown }
+			}
+		}
+		6 {
+			match name {
+				'assert' { return .key_assert }
+				'struct' { return .key_struct }
+				'return' { return .key_return }
+				'module' { return .key_module }
+				'sizeof' { return .key_sizeof }
+				'shared' { return .key_shared }
+				'import' { return .key_import }
+				'unsafe' { return .key_unsafe }
+				'typeof' { return .key_typeof }
+				'atomic' { return .key_atomic }
+				'static' { return .key_static }
+				'select' { return .key_select }
+				else { return .unknown }
+			}
+		}
+		8 {
+			match name {
+				'continue' { return .key_continue }
+				'__global' { return .key_global }
+				else { return .unknown }
+			}
+		}
+		9 {
+			match name {
+				'interface' { return .key_interface }
+				else { return .unknown }
+			}
+		}
+		10 {
+			match name {
+				'__offsetof' { return .key_offsetof }
+				else { return .unknown }
+			}
+		}
+		else {
+			return .unknown
+		}
+	}
+}
+
 fn build_tokens_str() []string {
-	mut s := []string{len:(int(Token._end_)+1)}
+	mut s := []string{len: (int(Token._end_) + 1)}
 	s[Token.unknown] = 'unknown'
 	s[Token.eof] = 'eof'
 	s[Token.name] = 'name'
@@ -382,5 +423,5 @@ fn build_tokens_str() []string {
 }
 
 pub fn (t Token) str() string {
-	return tokens_str[int(t)]
+	return tokens_str[t]
 }
