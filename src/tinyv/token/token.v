@@ -14,68 +14,66 @@ pub enum Token {
 	number // 123
 	string // 'foo'
 	str_inter // 'name=$user.name'
-	char // `A`
-	plus
-	minus
-	mul
-	div
-	mod
+	char // `A` - rune
+	plus // +
+	minus // -
+	mul // *
+	div // /
+	mod // %
 	xor // ^
 	pipe // |
 	inc // ++
 	dec // --
 	and // &&
-	logical_or
-	not
-	bit_not
-	question
-	comma
-	semicolon
-	colon
-	arrow // =>
-	amp
-	hash
-	dollar
+	logical_or // ||
+	not // !
+	bit_not // ~
+	question // ?
+	comma // ,
+	semicolon // ;
+	colon // :
+	arrow // <-
+	amp // &
+	hash // #
+	dollar // $
+	at // @
 	str_dollar
-	left_shift
-	right_shift
-	right_shift_unsigned
+	left_shift // <<
+	right_shift // >>
+	right_shift_unsigned // >>>
 	not_in // !in
 	not_is // !is
-	// at // @
 	assign // =
 	decl_assign // :=
 	plus_assign // +=
 	minus_assign // -=
-	div_assign
-	mul_assign
-	xor_assign
-	mod_assign
-	or_assign
-	and_assign
-	right_shift_assign
-	left_shift_assign
-	right_shift_unsigned_assign
-	// {}  () []
-	lcbr
-	rcbr
-	lpar
-	rpar
-	lsbr
-	rsbr
-	// == != <= < >= >
-	eq
-	ne
-	gt
-	lt
-	ge
-	le
+	div_assign // /=
+	mul_assign // *=
+	xor_assign // ^=
+	mod_assign // %=
+	or_assign // |=
+	and_assign // &=
+	right_shift_assign // <<=
+	left_shift_assign // >>=
+	right_shift_unsigned_assign // >>>=
+	lcbr // {
+	rcbr // }
+	lpar // (
+	rpar // )
+	lsbr // [
+	nilsbr // #[
+	rsbr // ]
+	eq // ==
+	ne // !=
+	gt // >
+	lt // <
+	ge // >=
+	le // <=
 	comment
 	nl
-	dot
-	dotdot
-	ellipsis
-	// keywords
+	dot // .
+	dotdot // ..
+	ellipsis // ...
 	keyword_beg
 	key_as
 	key_asm
@@ -86,7 +84,6 @@ pub enum Token {
 	key_continue
 	key_defer
 	key_else
-	// key_embed
 	key_enum
 	key_false
 	key_for
@@ -99,10 +96,10 @@ pub enum Token {
 	key_in
 	key_interface
 	key_is
-	// key_it
 	key_match
 	key_module
 	key_mut
+	key_nil
 	key_shared
 	key_lock
 	key_rlock
@@ -110,18 +107,20 @@ pub enum Token {
 	key_return
 	key_select
 	key_sizeof
+	key_isreftype
 	key_likely
 	key_unlikely
 	key_offsetof
 	key_struct
-	// key_switch
 	key_true
 	key_type
 	key_typeof
+	key_dump
 	key_or
 	key_union
 	key_pub
 	key_static
+	key_volatile
 	key_unsafe
 	keyword_end
 	_end_
@@ -224,60 +223,62 @@ pub fn match_keyword_token(name string) Token {
 		2 {
 			match name {
 				'if' { return .key_if }
-				'go' { return .key_go }
 				'fn' { return .key_fn }
 				'in' { return .key_in }
+				'is' { return .key_is }
 				'or' { return .key_or }
 				'as' { return .key_as }
-				'is' { return .key_is }
+				'go' { return .key_go }
 				else { return .unknown }
 			}
 		}
 		3 {
 			match name {
-				'asm' { return .key_asm }
 				'mut' { return .key_mut }
-				'for' { return .key_for }
 				'pub' { return .key_pub }
+				'for' { return .key_for }
+				'nil' { return .key_nil }
+				'asm' { return .key_asm }
 				else { return .unknown }
 			}
 		}
 		4 {
 			match name {
 				'else' { return .key_else }
-				'goto' { return .key_goto }
-				'type' { return .key_type }
 				'true' { return .key_true }
 				'enum' { return .key_enum }
+				'type' { return .key_type }
 				'lock' { return .key_lock }
+				'dump' { return .key_dump }
+				'goto' { return .key_goto }
 				else { return .unknown }
 			}
 		}
 		5 {
 			match name {
-				'const' { return .key_const }
 				'false' { return .key_false }
-				'break' { return .key_break }
-				'union' { return .key_union }
-				'defer' { return .key_defer }
 				'match' { return .key_match }
+				'break' { return .key_break }
+				'const' { return .key_const }
+				'defer' { return .key_defer }
+				'union' { return .key_union }
 				'rlock' { return .key_rlock }
 				else { return .unknown }
 			}
 		}
 		6 {
 			match name {
-				'assert' { return .key_assert }
-				'struct' { return .key_struct }
 				'return' { return .key_return }
+				'unsafe' { return .key_unsafe }
+				'struct' { return .key_struct }
+				'import' { return .key_import }
 				'module' { return .key_module }
 				'sizeof' { return .key_sizeof }
+				'assert' { return .key_assert }
 				'shared' { return .key_shared }
-				'import' { return .key_import }
-				'unsafe' { return .key_unsafe }
+				'static' { return .key_static }
 				'typeof' { return .key_typeof }
 				'atomic' { return .key_atomic }
-				'static' { return .key_static }
 				'select' { return .key_select }
 				else { return .unknown }
 			}
@@ -286,18 +287,22 @@ pub fn match_keyword_token(name string) Token {
 			match name {
 				'continue' { return .key_continue }
 				'__global' { return .key_global }
+				'_likely_' { return .key_likely }
+				'volatile' { return .key_volatile }
 				else { return .unknown }
 			}
 		}
 		9 {
 			match name {
 				'interface' { return .key_interface }
+				'isreftype' { return .key_isreftype }
 				else { return .unknown }
 			}
 		}
 		10 {
 			match name {
 				'__offsetof' { return .key_offsetof }
+				'_unlikely_' { return .key_unlikely }
 				else { return .unknown }
 			}
 		}
@@ -412,6 +417,7 @@ fn build_tokens_str() []string {
 	s[Token.key_global] = '__global'
 	s[Token.key_union] = 'union'
 	s[Token.key_static] = 'static'
+	s[Token.key_volatile] = 'volatile'
 	s[Token.key_as] = 'as'
 	s[Token.key_defer] = 'defer'
 	s[Token.key_match] = 'match'
@@ -419,6 +425,11 @@ fn build_tokens_str() []string {
 	s[Token.key_none] = 'none'
 	s[Token.key_offsetof] = '__offsetof'
 	s[Token.key_is] = 'is'
+	s[Token.key_nil] = 'nil'
+	s[Token.key_dump] = 'dump'
+	s[Token.key_likely] = '_likely_'
+	s[Token.key_unlikely] = '_unlikely_'
+	s[Token.key_isreftype] = 'isreftype'
 	return s
 }
 

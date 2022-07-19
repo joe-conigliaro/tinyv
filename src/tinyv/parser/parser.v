@@ -390,6 +390,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			return p.@if(false)
 		}
+		// TODO:
+		.key_likely, .key_unlikely, .key_isreftype, .key_dump {
+			// use std call for now
+			lhs = ast.Ident{
+				name: p.tok.str()
+			}
+			p.next()
+		}
 		.key_lock, .key_rlock {
 			kind := p.tok()
 			// TODO: handle with in_init, or different solution? check .lcbr in expr()
