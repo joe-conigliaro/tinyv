@@ -198,7 +198,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 					if attributes[0].name == 'has_globals' {
 						// TODO
 						// p.has_globals = true
-						return ast.new_empty_stmt()
+						return ast.empty_stmt
 					}
 					p.error('needs impl (pass attrs): $p.tok')
 				}
@@ -240,9 +240,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			in_init := p.in_init
 			p.in_init = true
-			mut init := ast.new_empty_stmt()
-			mut cond := ast.new_empty_expr()
-			mut post := ast.new_empty_stmt()
+			mut init := ast.empty_stmt
+			mut cond := ast.empty_expr
+			mut post := ast.empty_stmt
 			// for in `for x in vals {`
 			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
@@ -362,7 +362,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line_nr')
 	mut line_nr := p.line_nr
-	mut lhs := ast.new_empty_expr()
+	mut lhs := ast.empty_expr
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
 			lhs = ast.Literal{
@@ -373,7 +373,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_fn {
 			p.next()
 			args := p.fn_args()
-			mut return_type := ast.new_empty_expr()
+			mut return_type := ast.empty_expr
 			if p.tok != .lcbr {
 				return_type = p.typ()
 			}
@@ -455,7 +455,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					if lhs is ast.EmptyExpr {
 						p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
 					}
-					return p.assoc(ast.new_empty_expr())
+					return p.assoc(ast.empty_expr)
 				}
 				// empty map init `{}`
 				if p.tok == .rcbr {
@@ -506,8 +506,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// is_fixed =  true
 				p.next()
 			}
-			mut typ := ast.new_empty_expr()
-			mut cap, mut init, mut len := ast.new_empty_expr(), ast.new_empty_expr(), ast.new_empty_expr()
+			mut typ := ast.empty_expr
+			mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 			// [1,2,3,4]
 			if exprs.len > 0 && p.tok == .lsbr {
 				// continue with lhs as ArrayInit
@@ -725,7 +725,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return ast.Range{
 				op: p.tok()
 				start: lhs
-				end: if p.tok == .rsbr { ast.new_empty_expr() } else { p.expr(.lowest) }
+				end: if p.tok == .rsbr { ast.empty_expr } else { p.expr(.lowest) }
 			}
 		}
 		else {
@@ -841,7 +841,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 	for {
 		mut name := ''
 		mut value := ''
-		mut comptime_cond := ast.new_empty_expr()
+		mut comptime_cond := ast.empty_expr
 		mut comptime_cond_opt := false
 		// TODO: implement is_comptime
 		// mut is_comptime := false
@@ -917,7 +917,7 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 		p.in_init = true
 		// mut cond := p.expr(.lowest)
 		// NOTE: the line above works, but avoid calling p.expr()
-		mut cond := if p.tok == .lcbr { ast.new_empty_expr() }  else { p.expr(.lowest) }
+		mut cond := if p.tok == .lcbr { ast.empty_expr }  else { p.expr(.lowest) }
 		if p.tok == .question {
 			// TODO: use postfix for this? handle individual cases like this or globally add to token.is_postfix()?
 			cond = ast.Postfix{expr: cond, op: p.tok}
@@ -1046,7 +1046,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			}
 			_ = receiver2
 			p.expect(.rpar)
-			mut return_type := ast.new_empty_expr()
+			mut return_type := ast.empty_expr
 			_ = return_type
 			if p.tok != .lcbr && p.line_nr == line_nr {
 				return_type = p.typ()
@@ -1093,7 +1093,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	args := p.fn_args()
 	// TODO:
 	// mut return_type := types.void
-	mut return_type := ast.new_empty_expr()
+	mut return_type := ast.empty_expr
 	if p.tok != .lcbr && p.line_nr == line_nr {
 		return_type = p.typ() // return type
 	}
@@ -1119,7 +1119,7 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
-		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.new_empty_expr() }
+		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
 		if p.tok == .comma {
 			p.next()
 		}
@@ -1174,7 +1174,7 @@ pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		field_name := p.name()
-		mut value := ast.new_empty_expr()
+		mut value := ast.empty_expr
 		if p.tok == .assign {
 			p.next()
 			value = p.expr(.lowest)
@@ -1333,7 +1333,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		field_name := p.name()
 		typ := p.typ()
 		// default field value
-		mut value := ast.new_empty_expr()
+		mut value := ast.empty_expr
 		if p.tok == .assign {
 			p.next()
 			value = p.expr(.lowest)
@@ -1395,7 +1395,7 @@ pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
-	mut parent_type := ast.new_empty_expr()
+	mut parent_type := ast.empty_expr
 	// sum type (otherwise alias)
 	mut variants := []ast.Expr{}
 	if p.tok == .assign {

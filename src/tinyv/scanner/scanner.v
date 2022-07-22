@@ -462,7 +462,7 @@ fn (mut s Scanner) number() {
 			s.offset++
 			for {
 				c2 := s.text[s.offset]
-				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) || c2 == `_` {
+				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `f`) || (c2 >= `A` && c2 <= `F`) || c2 == `_` {
 					s.offset++
 					continue
 				}
@@ -492,7 +492,7 @@ fn (mut s Scanner) number() {
 			s.offset++
 			continue
 		}
-		// fracton
+		// fraction
 		else if !has_decimal && c == `.` && s.text[s.offset+1] != `.` /* range */ {
 			has_decimal = true
 			s.offset++

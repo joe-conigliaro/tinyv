@@ -101,7 +101,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 		if p.tok == .lpar {
 			args = p.fn_args()
 		}
-		return_type := if p.tok in [.amp, .lsbr, .name, .question] { p.typ() } else { ast.new_empty_expr() }
+		return_type := if p.tok in [.amp, .lsbr, .name, .question] { p.typ() } else { ast.empty_expr }
 		return ast.Type(ast.FnType{args: args, return_type: return_type})
 	}
 	p.error('typ: expected type, got `$p.tok`')

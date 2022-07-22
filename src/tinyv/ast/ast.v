@@ -5,6 +5,14 @@ module ast
 
 import tinyv.token
 
+pub const (
+	empty_expr = Expr(EmptyExpr(0))
+	empty_stmt = Stmt(EmptyStmt(0))
+)
+
+type EmptyExpr = u8
+type EmptyStmt = u8
+
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Go | Ident
 	| If | IfGuard | Index | Infix | List | Literal | Lock | MapInit | Match
@@ -20,20 +28,8 @@ pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 	| ComptimeStmt
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
-// this or add these directly to Exor until nesting is implemented?
+// this or add these directly to Expr until nesting is implemented?
 pub type Type = ArrayType | ArrayFixedType | MapType | FnType | OptionType | ResultType | TupleType
-
-pub struct EmptyExpr {}
-pub struct EmptyStmt {}
-
-[inline]
-pub fn new_empty_expr() Expr {
-	return Expr(EmptyExpr{})
-}
-[inline]
-pub fn new_empty_stmt() Stmt {
-	return Stmt(EmptyStmt{})
-}
 
 // File (main Ast container)
 pub struct File {
@@ -63,9 +59,9 @@ pub:
 	exprs []Expr
 	// TODO: don't use EmptyExpr, inits struct each time
 	// use bool, or ideally none or option when impl
-	init  Expr = EmptyExpr{}
-	cap   Expr = EmptyExpr{}
-	len   Expr = EmptyExpr{}
+	init  Expr = empty_expr
+	cap   Expr = empty_expr
+	len   Expr = empty_expr
 }
 
 pub struct Assoc {
@@ -102,7 +98,7 @@ pub struct FieldDecl {
 pub:
 	name  	   string
 	typ   	   Expr
-	value	   Expr = EmptyExpr{}
+	value	   Expr = empty_expr
 	attributes []Attribute
 }
 
@@ -189,8 +185,8 @@ pub:
 pub struct MapInit {
 pub:
 	lhs        Expr
-	key_type   Expr = EmptyExpr{}
-	value_type Expr = EmptyExpr{}
+	key_type   Expr = empty_expr
+	value_type Expr = empty_expr
 	keys 	   []Expr
 	vals 	   []Expr
 }
@@ -450,12 +446,12 @@ pub:
 
 pub struct OptionType {
 pub:
-	base_type Expr = EmptyExpr{}
+	base_type Expr = empty_expr
 }
 
 pub struct ResultType {
 pub:
-	base_type Expr = EmptyExpr{}
+	base_type Expr = empty_expr
 }
 
 pub struct TupleType {
