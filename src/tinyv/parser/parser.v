@@ -240,9 +240,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			p.next()
 			in_init := p.in_init
 			p.in_init = true
-			mut init := ast.empty_stmt
-			mut cond := ast.empty_expr
-			mut post := ast.empty_stmt
+			mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
 			// for in `for x in vals {`
 			if p.next_tok in [.comma, .key_in] {
 				mut key, mut value := '', p.name()
@@ -391,7 +389,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return p.@if(false)
 		}
 		// TODO:
-		.key_likely, .key_unlikely, .key_isreftype, .key_dump {
+		.key_likely, .key_unlikely, .key_isreftype, .key_dump, .key_nil {
 			// use std call for now
 			lhs = ast.Ident{
 				name: p.tok.str()

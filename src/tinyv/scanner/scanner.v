@@ -45,6 +45,7 @@ pub fn (mut s Scanner) reset() {
 	s.lit = ''
 }
 
+[direct_array_access]
 pub fn (mut s Scanner) scan() token.Token {
 	start:
 	s.whitespace()
@@ -99,7 +100,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		// name
 		s.name()
 		s.lit = s.text[s.pos..s.offset]
-		tok := token.match_keyword_token(s.lit)
+		tok := token.keyword_to_token(s.lit)
 		if tok != .unknown {
 			return tok
 		}
@@ -320,6 +321,7 @@ pub fn (mut s Scanner) scan() token.Token {
 }
 
 // skip whitespace
+[direct_array_access]
 fn (mut s Scanner) whitespace() {
 	for s.offset < s.text.len {
 		c := s.text[s.offset]
@@ -341,6 +343,7 @@ fn (mut s Scanner) whitespace() {
 	}
 }
 
+[direct_array_access]
 fn (mut s Scanner) line() {
 	// a newline reached here will get recorded by next whitespace call
 	// we could add them manually here, but whitepace is called anyway
@@ -356,6 +359,7 @@ fn (mut s Scanner) line() {
 	}
 }
 
+[direct_array_access]
 fn(mut s Scanner) comment() {
 	s.offset++
 	match s.text[s.offset] {
@@ -397,6 +401,7 @@ fn(mut s Scanner) comment() {
 	}
 }
 
+[direct_array_access]
 fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 	c := s.text[s.offset]
 	s.offset++
@@ -444,6 +449,7 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 	}
 }
 
+[direct_array_access]
 fn (mut s Scanner) number() {
 	if s.text[s.offset] == `0` {
 		s.offset++
@@ -508,6 +514,7 @@ fn (mut s Scanner) number() {
 	}
 }
 
+[direct_array_access]
 fn (mut s Scanner) name() {
 	s.offset++
 	for s.offset < s.text.len {

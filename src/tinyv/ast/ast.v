@@ -347,15 +347,15 @@ pub:
 	name        string
 	args        []Arg
 	stmts       []Stmt
-	return_type Expr
+	return_type Expr = empty_expr
 	language    Language
 }
 
 pub struct For {
 pub:
-	init  Stmt // initialization
-	cond  Expr // condition
-	post  Stmt // post iteration (afterthought)
+	init  Stmt = empty_stmt // initialization
+	cond  Expr = empty_expr // condition
+	post  Stmt = empty_stmt // post iteration (afterthought)
 	stmts []Stmt
 }
 
@@ -435,7 +435,7 @@ pub:
 pub struct FnType {
 pub:
 	args        []Arg
-	return_type Expr
+	return_type Expr = empty_expr
 }
 
 pub struct MapType {
