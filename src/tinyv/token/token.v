@@ -3,78 +3,32 @@
 // that can be found in the LICENSE file.
 module token
 
-pub const (
-	tokens_str = build_tokens_str()
-)
-
 pub enum Token {
-	unknown
-	eof
-	name // user
-	number // 123
-	string // 'foo'
-	str_inter // 'name=$user.name'
-	char // `A` - rune
-	plus // +
-	minus // -
-	mul // *
-	div // /
-	mod // %
-	xor // ^
-	pipe // |
-	inc // ++
-	dec // --
-	and // &&
-	logical_or // ||
-	not // !
-	bit_not // ~
-	question // ?
-	comma // ,
-	semicolon // ;
-	colon // :
-	arrow // <-
 	amp // &
-	hash // #
-	dollar // $
-	at // @
-	str_dollar
-	left_shift // <<
-	right_shift // >>
-	right_shift_unsigned // >>>
-	not_in // !in
-	not_is // !is
-	assign // =
-	decl_assign // :=
-	plus_assign // +=
-	minus_assign // -=
-	div_assign // /=
-	mul_assign // *=
-	xor_assign // ^=
-	mod_assign // %=
-	or_assign // |=
+	and // &&
 	and_assign // &=
-	right_shift_assign // <<=
-	left_shift_assign // >>=
-	right_shift_unsigned_assign // >>>=
-	lcbr // {
-	rcbr // }
-	lpar // (
-	rpar // )
-	lsbr // [
-	nilsbr // #[
-	rsbr // ]
-	eq // ==
-	ne // !=
-	gt // >
-	lt // <
-	ge // >=
-	le // <=
+	arrow // <-
+	assign // =
+	at // @
+	bit_not // ~
+	char // `A` - rune
+	colon // :
+	comma // ,
 	comment
-	nl
+	dec // --
+	decl_assign // :=
+	div // /
+	div_assign // /=
+	dollar // $
 	dot // .
 	dotdot // ..
 	ellipsis // ...
-	keyword_beg
+	eof
+	eq // ==
+	ge // >=
+	gt // >
+	hash // #
+	inc // ++
 	key_as
 	key_asm
 	key_assert
@@ -83,11 +37,12 @@ pub enum Token {
 	key_const
 	key_continue
 	key_defer
+	key_dump
 	key_else
 	key_enum
 	key_false
-	key_for
 	key_fn
+	key_for
 	key_global
 	key_go
 	key_goto
@@ -96,34 +51,72 @@ pub enum Token {
 	key_in
 	key_interface
 	key_is
+	key_isreftype
+	key_likely
+	key_lock
 	key_match
 	key_module
 	key_mut
 	key_nil
-	key_shared
-	key_lock
-	key_rlock
 	key_none
-	key_return
-	key_select
-	key_sizeof
-	key_isreftype
-	key_likely
-	key_unlikely
 	key_offsetof
+	key_or
+	key_pub
+	key_return
+	key_rlock
+	key_select
+	key_shared
+	key_sizeof
+	key_static
 	key_struct
 	key_true
 	key_type
 	key_typeof
-	key_dump
-	key_or
 	key_union
-	key_pub
-	key_static
-	key_volatile
+	key_unlikely
 	key_unsafe
-	keyword_end
-	_end_
+	key_volatile
+	lcbr // {
+	le // <=
+	left_shift // <<
+	left_shift_assign // >>=
+	logical_or // ||
+	lpar // (
+	lsbr // [
+	lt // <
+	minus // -
+	minus_assign // -=
+	mod // %
+	mod_assign // %=
+	mul // *
+	mul_assign // *=
+	name // user
+	ne // !=
+	// nilsbr // #[
+	nl
+	not // !
+	not_in // !in
+	not_is // !is
+	number // 123
+	or_assign // |=
+	pipe // |
+	plus // +
+	plus_assign // +=
+	question // ?
+	rcbr // }
+	right_shift // >>
+	right_shift_assign // <<=
+	right_shift_unsigned // >>>
+	right_shift_unsigned_assign // >>>=
+	rpar // )
+	rsbr // ]
+	semicolon // ;
+	// str_dollar
+	// str_inter // 'name=$user.name'
+	string // 'foo'
+	unknown
+	xor // ^
+	xor_assign // ^=
 }
 
 pub enum BindingPower {
@@ -217,127 +210,121 @@ pub fn (tok Token) is_overloadable() bool {
 	]
 }
 
-fn build_tokens_str() []string {
-	mut s := []string{len: (int(Token._end_) + 1)}
-	s[Token.unknown] = 'unknown'
-	s[Token.eof] = 'eof'
-	s[Token.name] = 'name'
-	s[Token.number] = 'number'
-	s[Token.string] = 'string'
-	s[Token.char] = 'char'
-	s[Token.plus] = '+'
-	s[Token.minus] = '-'
-	s[Token.mul] = '*'
-	s[Token.div] = '/'
-	s[Token.mod] = '%'
-	s[Token.xor] = '^'
-	s[Token.bit_not] = '~'
-	s[Token.pipe] = '|'
-	s[Token.hash] = '#'
-	s[Token.amp] = '&'
-	s[Token.inc] = '++'
-	s[Token.dec] = '--'
-	s[Token.and] = '&&'
-	s[Token.logical_or] = '||'
-	s[Token.not] = '!'
-	s[Token.dot] = '.'
-	s[Token.dotdot] = '..'
-	s[Token.ellipsis] = '...'
-	s[Token.comma] = ','
-	s[Token.not_in] = '!in'
-	s[Token.not_is] = '!is'
-	// s[Token.at] = '@'
-	s[Token.semicolon] = ';'
-	s[Token.colon] = ':'
-	s[Token.arrow] = '=>'
-	s[Token.assign] = '='
-	s[Token.decl_assign] = ':='
-	s[Token.plus_assign] = '+='
-	s[Token.minus_assign] = '-='
-	s[Token.mul_assign] = '*='
-	s[Token.div_assign] = '/='
-	s[Token.xor_assign] = '^='
-	s[Token.mod_assign] = '%='
-	s[Token.or_assign] = '|='
-	s[Token.and_assign] = '&='
-	s[Token.right_shift_assign] = '>>='
-	s[Token.left_shift_assign] = '<<='
-	s[Token.right_shift_unsigned_assign] = '>>>='
-	s[Token.lcbr] = '{'
-	s[Token.rcbr] = '}'
-	s[Token.lpar] = '('
-	s[Token.rpar] = ')'
-	s[Token.lsbr] = '['
-	s[Token.rsbr] = ']'
-	s[Token.eq] = '=='
-	s[Token.ne] = '!='
-	s[Token.gt] = '>'
-	s[Token.lt] = '<'
-	s[Token.ge] = '>='
-	s[Token.le] = '<='
-	s[Token.question] = '?'
-	s[Token.left_shift] = '<<'
-	s[Token.right_shift] = '>>'
-	s[Token.right_shift_unsigned] = '>>>'
-	s[Token.comment] = '// comment'
-	s[Token.nl] = 'NLL'
-	s[Token.dollar] = '$'
-	s[Token.str_dollar] = '$2'
-	s[Token.key_assert] = 'assert'
-	s[Token.key_struct] = 'struct'
-	s[Token.key_if] = 'if'
-	// s[Token.key_it] = 'it'
-	s[Token.key_else] = 'else'
-	s[Token.key_asm] = 'asm'
-	s[Token.key_return] = 'return'
-	s[Token.key_module] = 'module'
-	s[Token.key_sizeof] = 'sizeof'
-	s[Token.key_likely] = '_likely_'
-	s[Token.key_unlikely] = '_unlikely_'
-	s[Token.key_go] = 'go'
-	s[Token.key_goto] = 'goto'
-	s[Token.key_const] = 'const'
-	s[Token.key_mut] = 'mut'
-	s[Token.key_shared] = 'shared'
-	s[Token.key_lock] = 'lock'
-	s[Token.key_rlock] = 'rlock'
-	s[Token.key_type] = 'type'
-	s[Token.key_for] = 'for'
-	// s[Token.key_switch] = 'switch'
-	s[Token.key_fn] = 'fn'
-	s[Token.key_true] = 'true'
-	s[Token.key_false] = 'false'
-	s[Token.key_continue] = 'continue'
-	s[Token.key_break] = 'break'
-	s[Token.key_import] = 'import'
-	// s[Token.key_embed] = 'embed'
-	s[Token.key_unsafe] = 'unsafe'
-	s[Token.key_typeof] = 'typeof'
-	s[Token.key_enum] = 'enum'
-	s[Token.key_interface] = 'interface'
-	s[Token.key_pub] = 'pub'
-	s[Token.key_in] = 'in'
-	s[Token.key_atomic] = 'atomic'
-	s[Token.key_or] = 'or'
-	s[Token.key_global] = '__global'
-	s[Token.key_union] = 'union'
-	s[Token.key_static] = 'static'
-	s[Token.key_volatile] = 'volatile'
-	s[Token.key_as] = 'as'
-	s[Token.key_defer] = 'defer'
-	s[Token.key_match] = 'match'
-	s[Token.key_select] = 'select'
-	s[Token.key_none] = 'none'
-	s[Token.key_offsetof] = '__offsetof'
-	s[Token.key_is] = 'is'
-	s[Token.key_nil] = 'nil'
-	s[Token.key_dump] = 'dump'
-	s[Token.key_likely] = '_likely_'
-	s[Token.key_unlikely] = '_unlikely_'
-	s[Token.key_isreftype] = 'isreftype'
-	return s
-}
-
+// NOTE: probably switch back to map again later.
+// for dev this is easier to see if any tokens are missing.
 pub fn (t Token) str() string {
-	return tokens_str[t]
+	return match t {
+		.amp { '&' }
+		.and { '&&' }
+		.and_assign { '&=' }
+		.arrow { '=>' }
+		.assign { '=' }
+		.at { '@' }
+		.bit_not { '~' }
+		.char { 'char' }
+		.colon { ':' }
+		.comma { ',' }
+		.comment { '// comment' }
+		.dec { '--' }
+		.decl_assign { ':=' }
+		.div { '/' }
+		.div_assign { '/=' }
+		.dollar { '$' }
+		.dot { '.' }
+		.dotdot { '..' }
+		.ellipsis { '...' }
+		.eof { 'eof' }
+		.eq { '==' }
+		.ge { '>=' }
+		.gt { '>' }
+		.hash { '#' }
+		.inc { '++' }
+		.key_as { 'as' }
+		.key_asm { 'asm' }
+		.key_assert { 'assert' }
+		.key_atomic { 'atomic' }
+		.key_break { 'break' }
+		.key_const { 'const' }
+		.key_continue { 'continue' }
+		.key_defer { 'defer' }
+		.key_dump { 'dump' }
+		.key_else { 'else' }
+		.key_enum { 'enum' }
+		.key_false { 'false' }
+		.key_fn { 'fn' }
+		.key_for { 'for' }
+		.key_global { '__global' }
+		.key_go { 'go' }
+		.key_goto { 'goto' }
+		.key_if { 'if' }
+		.key_import { 'import' }
+		.key_in { 'in' }
+		.key_interface { 'interface' }
+		.key_is { 'is' }
+		.key_isreftype { 'isreftype' }
+		.key_likely { '_likely_' }
+		.key_lock { 'lock' }
+		.key_match { 'match' }
+		.key_module { 'module' }
+		.key_mut { 'mut' }
+		.key_nil { 'nil' }
+		.key_none { 'none' }
+		.key_offsetof { '__offsetof' }
+		.key_or { 'or' }
+		.key_pub { 'pub' }
+		.key_return { 'return' }
+		.key_rlock { 'rlock' }
+		.key_select { 'select' }
+		.key_shared { 'shared' }
+		.key_sizeof { 'sizeof' }
+		.key_static { 'static' }
+		.key_struct { 'struct' }
+		.key_true { 'true' }
+		.key_type { 'type' }
+		.key_typeof { 'typeof' }
+		.key_union { 'union' }
+		.key_unlikely { '_unlikely_' }
+		.key_unsafe { 'unsafe' }
+		.key_volatile { 'volatile' }
+		.lcbr { '{' }
+		.le { '<=' }
+		.left_shift { '<<' }
+		.left_shift_assign { '<<=' }
+		.logical_or { '||' }
+		.lpar { '(' }
+		.lsbr { '[' }
+		.lt { '<' }
+		.minus { '-' }
+		.minus_assign { '-=' }
+		.mod { '%' }
+		.mod_assign { '%=' }
+		.mul { '*' }
+		.mul_assign { '*=' }
+		.name { 'name' }
+		.ne { '!=' }
+		// .nilsbr { '#[' }
+		.nl { 'NLL' }
+		.not { '!' }
+		.not_in { '!in' }
+		.not_is { '!is' }
+		.number { 'number' }
+		.or_assign { '|=' }
+		.pipe { '|' }
+		.plus { '+' }
+		.plus_assign { '+=' }
+		.question { '?' }
+		.rcbr { '}' }
+		.right_shift { '>>' }
+		.right_shift_assign { '>>=' }
+		.right_shift_unsigned { '>>>' }
+		.right_shift_unsigned_assign { '>>>=' }
+		.rpar { ')' }
+		.rsbr { ']' }
+		.semicolon { ';' }
+		// .str_dollar { '$2' }
+		.string { 'string' }
+		.unknown { 'unknown' }
+		.xor { '^' }
+		.xor_assign { '^=' }
+	}
 }

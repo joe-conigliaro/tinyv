@@ -790,9 +790,10 @@ pub fn (mut p Parser) name() string {
 // return lit & go to next token
 [inline]
 pub fn (mut p Parser) lit() string {
-	// lit := p.lit
 	// TODO: check if there is a better way to handle this?
-	lit := if p.lit.len == 0 { p.tok.str() } else { p.lit }
+	// we should never use lit() in cases where p.lit is empty anyway
+	// lit := if p.lit.len == 0 { p.tok.str() } else { p.lit }
+	lit := p.lit
 	p.next()
 	return lit
 }
@@ -1116,6 +1117,7 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
+		// TODO: proper
 		name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
 		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
 		if p.tok == .comma {
@@ -1238,14 +1240,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 		p.next()
 		name += p.name()
 	}
-	// empty interface ?
-	if p.tok != .lcbr {
-		return ast.InterfaceDecl{
-			is_public: is_public
-			name: name
-		}
-	}
-	p.next()
+	p.expect(.lcbr)
 	// TODO: finish
 	// mut methods := []
 	for p.tok != .rcbr {
@@ -1267,6 +1262,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 			p.typ()
 		}
 	}
+	// rcbr
 	p.next()
 	return ast.InterfaceDecl{
 		is_public: is_public
