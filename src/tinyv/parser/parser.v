@@ -92,8 +92,10 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
+			// NOTE: expr() could handle this if we blindly return an ExprStmt.
+			// however it is being done this way for better error detection.
 			match p.tok {
-				.key_if { return ast.ExprStmt{expr: p.@if(true)} }
+				.key_if { return ast.ExprStmt{expr: ast.Comptime{expr: p.@if(true)}} }
 				else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
@@ -215,8 +217,12 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
+			// NOTE: we could remove this branch completely in which case it would be
+			// handled in the else branch below by expr() and returned as ExprStmt.
+			// expr() could also handle this if we blindly return an ExprStmt here.
+			// however it is being done this way for better error detection.
 			match p.tok {
-				.key_if { return ast.ExprStmt{expr: p.@if(true)} }
+				.key_if { return ast.ExprStmt{expr: ast.Comptime{expr: p.@if(true)}} }
 				else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
