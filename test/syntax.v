@@ -137,6 +137,9 @@ fn main_a() {
 	prefix_a := &StructA{}
 	prefix_b := &&StructA{}
 	prefix_c := -infix_a + 2
+	closure_a := fn [infix_a, infix_b] () int {
+		return infix_a+infix_b
+	}
 	if a == 1 {
 		println('a == $s')
 	}
@@ -156,7 +159,7 @@ fn main_a() {
 	$if linux {
 		println('linux')
 	}
-	$else if windows {
+	$else $if windows {
 		println('windows')
 	}
 	$else {

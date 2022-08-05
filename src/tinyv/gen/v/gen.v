@@ -95,10 +95,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
-		ast.ComptimeStmt {
-			g.write('$')
-			g.stmt(stmt.stmt)
-		}
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -405,7 +401,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write(')')
 		}
-		ast.ComptimeExpr {
+		ast.Comptime {
 			g.write('$')
 			g.expr(expr.expr)
 		}
@@ -425,9 +421,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				if i < expr.args.len-1 { g.write(', ') }
 			}
 			g.write(') ')
-			// TODO: if expr.return_type
-			g.expr(expr.return_type)
-			g.writeln(' {')
+			if expr.return_type !is ast.EmptyExpr {
+				g.expr(expr.return_type)
+				g.writeln(' {')
+			} else {
+				g.writeln('{')
+			}
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
@@ -446,7 +445,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				in_init := g.in_init
 				g.in_init = true
 				if i == 0 {
-					// if expr.is_comptime { g.write('$') }
 					g.write('if ')
 				} else {
 					if expr.is_comptime { g.write(' \$else') } else { g.write(' else') }

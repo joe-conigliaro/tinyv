@@ -62,7 +62,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	start_no_time:
 	p.file_path = file_path
 	text := os.read_file(file_path) or {
-		panic('error reading $file_path')
+		p.error('error reading $file_path')
 	}
 	p.scanner.set_text(text)
 	// start
@@ -92,11 +92,10 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			// NOTE: just for testing, will be removed (all cases)
-			if p.tok == .key_if {
-				return ast.ComptimeStmt{stmt: ast.ExprStmt{expr: p.@if(true)}}
+			match p.tok {
+				.key_if { return ast.ExprStmt{expr: p.@if(true)} }
+				else { p.error('unexpected comptime: $p.tok') }
 			}
-			return ast.ComptimeStmt{stmt: p.stmt()}
 		}
 		.hash {
 			return p.directive()
@@ -205,11 +204,10 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			}
 		}
 		else {
-			panic('X: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
+			p.error('unknown top stmt: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
 		}
 	}
-	p.error('unknown top stmt')
-	panic('')
+	
 }
 
 pub fn (mut p Parser) stmt() ast.Stmt {
@@ -217,10 +215,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			if p.tok == .key_if {
-				return ast.ComptimeStmt{stmt: ast.ExprStmt{expr: p.@if(true)}}
+			match p.tok {
+				.key_if { return ast.ExprStmt{expr: p.@if(true)} }
+				else { p.error('unexpected comptime: $p.tok') }
 			}
-			return ast.ComptimeStmt{stmt: p.stmt()}
 		}
 		.hash {
 			return p.directive()
@@ -264,7 +262,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 			// infinate `for {` and C style `for x:=1; x<=10; x++`
 			else {
-				if p.tok != .semicolon && p.tok != .lcbr {
+				if p.tok !in [.lcbr, .semicolon] {
 					init = p.stmt()
 				}
 				if p.tok == .semicolon {
@@ -307,10 +305,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
-			// stand alone exression in a statement list
-			// eg: `if x == 1 {`, `x++`, `break/continue`
-			// also: `mut x := 1`, `a,`b := 1,2`
 			expr := p.expr(.lowest)
+			// label `start:`
 			if p.tok == .colon {
 				if expr !is ast.Ident {
 					p.error('expecting identifier')
@@ -320,6 +316,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					name: (expr as ast.Ident).name
 				}
 			}
+			// stand alone exression in a statement list
+			// eg: `if x == 1 {`, `x++`, `break/continue`
+			// also: `mut x := 1`, `a,`b := 1,2`
 			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
 			if p.tok == .comma {
 				p.next()
@@ -370,6 +369,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_fn {
 			p.next()
+			// TODO: proper - closure vars
+			if p.tok == .lsbr {
+				p.next()
+				for p.tok != .rsbr {
+					p.expr(.lowest)
+					if p.tok == .comma {
+						p.next()
+					}
+				}
+				p.next()
+			}
 			args := p.fn_args()
 			mut return_type := ast.empty_expr
 			if p.tok != .lcbr {
@@ -429,10 +439,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.dollar {
 			p.next()
-			if p.tok == .key_if {
-				return ast.ComptimeExpr{expr: p.@if(true)}
+			match p.tok {
+				.key_if { return ast.Comptime{expr: p.@if(true)} }
+				else { return ast.Comptime{expr: p.expr(.lowest)} }
 			}
-			return ast.ComptimeExpr{expr: p.expr(.lowest)}
 		}
 		.lpar {
 			p.next()
@@ -934,18 +944,17 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			cond: [cond]
 			stmts: p.block()
 		}
-		if p.tok == .dollar && p.next_tok == .key_else {
-			p.next()
-		}
 		// else
-		if p.tok == .key_else {
-			p.next()
-			if p.tok == .dollar && p.next_tok == .key_if {
-				p.next()
-			}
+		if p.tok == .key_else || (p.tok == .dollar && p.next_tok == .key_else) {
+			// we are using expect instead of next to ensure we error when `is_comptime`
+			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
+			// the same applies for the `else if` condition directly below.
+			if is_comptime { p.expect(.dollar) }
+			p.expect(.key_else)
 			// else if
-			if p.tok == .key_if {
-				p.next()
+			if p.tok == .key_if || (p.tok == .dollar && p.next_tok == .key_if) {
+				if is_comptime { p.expect(.dollar) }
+				p.expect(.key_if)
 			}
 		} else {
 			break
@@ -1427,6 +1436,7 @@ pub fn (mut p Parser) log(msg string) {
 	}
 }
 
+[noreturn]
 pub fn (mut p Parser) error(msg string) {
 	// NOTE: use scanner.position()) when all we know is pos (later stages)
 	// since we already know line_nr here we use it instead

@@ -532,7 +532,7 @@ fn (mut s Scanner) name() {
 pub fn (s &Scanner) position(pos int) (int, int) {
 	mut min, mut max := 0, s.line_offsets.len
 	for min < max {
-		mid := min + (max-min)/2
+		mid := (min+max)/2
 		// println('# min: $min, mid: $mid, max: $max')
 		if s.line_offsets[mid] <= pos {
 			min = mid + 1

@@ -14,18 +14,16 @@ type EmptyExpr = u8
 type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Cast | Call | EmptyExpr | Fn | Go | Ident
-	| If | IfGuard | Index | Infix | List | Literal | Lock | MapInit | Match
-	| Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
+pub type Expr = ArrayInit | Assoc | Cast | Call | Comptime | EmptyExpr | Fn | Go
+	| Ident | If | IfGuard | Index | Infix | List | Literal | Lock | MapInit
+	| Match | Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
 	| SizeOf | StructInit | Type | TypeOf | Unsafe
-	| ComptimeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
 	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
-	| ComptimeStmt
 // TOOD: Fix nested sumtype like TS
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
@@ -89,7 +87,7 @@ pub:
 	args []Expr
 }
 
-pub struct ComptimeExpr {
+pub struct Comptime {
 pub:
 	expr Expr
 }
@@ -295,11 +293,6 @@ pub:
 pub struct Block {
 pub:
 	stmts []Stmt
-}
-
-pub struct ComptimeStmt {
-pub:
-	stmt Stmt
 }
 
 pub struct ConstDecl {

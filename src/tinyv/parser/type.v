@@ -105,5 +105,4 @@ pub fn (mut p Parser) typ() ast.Expr {
 		return ast.Type(ast.FnType{args: args, return_type: return_type})
 	}
 	p.error('typ: expected type, got `$p.tok`')
-	exit(1)
 }
