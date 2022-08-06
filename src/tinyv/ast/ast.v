@@ -14,20 +14,21 @@ type EmptyExpr = u8
 type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Cast | Call | Comptime | EmptyExpr | Fn | Go
-	| Ident | If | IfGuard | Index | Infix | List | Literal | Lock | MapInit
-	| Match | Modifier | None | Or | Paren | Postfix | Prefix | Range | Selector
-	| SizeOf | StructInit | Type | TypeOf | Unsafe
+pub type Expr = ArrayInit | Assoc | Cast | Call | Comptime | EmptyExpr
+	| Fn | Go | Ident | If | IfGuard | Index | Infix | KeywordOperator
+	| List | Literal | Lock | MapInit | Match | Modifier | Or | Paren
+	| Postfix | Prefix | Range | Selector | StructInit | Type | Unsafe
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
 	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
 	| StructDecl | TypeDecl
-// TOOD: Fix nested sumtype like TS
+// TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
-pub type Type = ArrayType | ArrayFixedType | MapType | FnType | OptionType | ResultType | TupleType
+pub type Type = ArrayType | ArrayFixedType | FnType | MapType
+	| NilType | NoneType | OptionType | ResultType | TupleType
 
 // File (main Ast container)
 pub struct File {
@@ -162,6 +163,12 @@ pub:
 	is_gated bool
 }
 
+pub struct KeywordOperator {
+pub:
+	op   token.Token
+	expr Expr
+}
+
 pub struct List {
 pub:
 	exprs []Expr
@@ -201,10 +208,6 @@ pub:
 	expr Expr
 }
 
-pub struct None {
-
-}
-
 pub struct Or {
 pub:
 	expr  Expr
@@ -241,20 +244,10 @@ pub:
 	rhs Expr
 }
 
-pub struct SizeOf {
-pub:
-	expr Expr
-}
-
 pub struct StructInit {
 pub:
 	fields []FieldInit
 	typ    Expr
-}
-
-pub struct TypeOf {
-pub:
-	expr Expr
 }
 
 pub struct Unsafe {
@@ -436,6 +429,10 @@ pub:
 	key_type   Expr
 	value_type Expr
 }
+
+pub struct NilType {}
+
+pub struct NoneType {}
 
 pub struct OptionType {
 pub:

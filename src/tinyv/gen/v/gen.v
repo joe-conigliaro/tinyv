@@ -476,6 +476,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(' ')
 			g.expr(expr.rhs)
 		}
+		ast.KeywordOperator {
+			g.write(expr.op.str())
+			g.write('(')
+			g.expr(expr.expr)
+			g.write(')')
+		}
 		ast.List {
 			for i, x in expr.exprs {
 				g.expr(x)
@@ -563,9 +569,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(' ')
 			g.expr(expr.expr)
 		}
-		ast.None {
-			g.write('none')
-		}
 		ast.Or {
 			g.expr(expr.expr)
 			g.writeln(' or {')
@@ -596,11 +599,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('.')
 			g.expr(expr.rhs)
 		}
-		ast.SizeOf {
-			g.write('sizeof(')
-			g.expr(expr.expr)
-			g.write(')')
-		}
 		ast.StructInit {
 			g.expr(expr.typ)
 			// with field names
@@ -627,11 +625,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 			}
 			g.write('}')
-		}
-		ast.TypeOf {
-			g.write('typeof(')
-			g.expr(expr.expr)
-			g.write(')')
 		}
 		ast.Unsafe {
 			// NOTE: use in_init or stmts.len? check vfmt
@@ -677,6 +670,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.expr(expr.key_type)
 					g.write(']')
 					g.expr(expr.value_type)
+				}
+				ast.NilType {
+					g.write('nil')
+				}
+				ast.NoneType {
+					g.write('none')
 				}
 				ast.OptionType {
 					g.write('?')

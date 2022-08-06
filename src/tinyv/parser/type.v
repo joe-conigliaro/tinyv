@@ -56,10 +56,13 @@ pub fn (mut p Parser) typ() ast.Expr {
 		}
 		return ident
 	}
-	else if p.tok == .key_none {
-		// TODO: remove/fix all uses of Ident in this file (temp hack)
+	else if p.tok == .key_nil {
 		p.next()
-		return ast.Ident{name: 'none'}
+		return ast.Type(ast.NilType{})
+	}
+	else if p.tok == .key_none {
+		p.next()
+		return ast.Type(ast.NoneType{})
 	}
 	// array
 	else if p.tok == .lsbr {

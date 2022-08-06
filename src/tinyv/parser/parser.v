@@ -151,27 +151,13 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_pub {
 			p.next()
 			match p.tok {
-				.key_const {
-					return p.const_decl(true)
-				}
-				.key_enum {
-					return p.enum_decl(true, [])
-				}
-				.key_fn {
-					return p.fn_decl(true, [])
-				}
-				.key_interface {
-					return p.interface_decl(true)
-				}
-				.key_struct, .key_union {
-					return p.struct_decl(true, [])
-				}
-				.key_type {
-					return p.type_decl(true)
-				}
-				else {
-					p.error('TODO: impl pub $p.tok')
-				}
+				.key_const { return p.const_decl(true) }
+				.key_enum { return p.enum_decl(true, []) }
+				.key_fn { return p.fn_decl(true, []) }
+				.key_interface { return p.interface_decl(true) }
+				.key_struct, .key_union { return p.struct_decl(true, []) }
+				.key_type { return p.type_decl(true) }
+				else { p.error('not implemented: pub $p.tok') }
 			}
 		}
 		.key_struct, .key_union {
@@ -188,7 +174,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				is_pub = true
 			}
 			match p.tok {
-				.key_enum { return p.enum_decl(false, attributes) }
+				.key_enum { return p.enum_decl(is_pub, attributes) }
 				.key_fn { return p.fn_decl(is_pub, attributes) }
 				.key_global { return p.global_decl(attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
@@ -304,8 +290,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.lcbr {
-			// TODO: see if this interferes with anything as
-			// I had to add a special check in For
+			// anonymous block `{ a := 1 }`
 			return ast.Block {
 				stmts: p.block()
 			}
@@ -404,13 +389,25 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			return p.@if(false)
 		}
-		// TODO:
-		.key_likely, .key_unlikely, .key_isreftype, .key_dump, .key_nil {
-			// use std call for now
-			lhs = ast.Ident{
-				name: p.tok.str()
-			}
+		// NOTE: handle all these using KeywordOperator for now, if or
+		// as needed later we can split them off into their own types.
+		// NOTE: I would much rather dump, likely, and unlikely were
+		// some type of comptime fn/macro's which come as part of the
+		// v stdlib, as apposed to being language keywords.
+		.key_dump, .key_likely, .key_unlikely, .key_isreftype, .key_sizeof, .key_typeof {
+			op := p.tok()
+			p.expect(.lpar)
+			expr := p.expr(.lowest)
+			p.expect(.rpar)
+			lhs = ast.KeywordOperator{op: op, expr: expr}
+		}
+		.key_nil {
 			p.next()
+			return ast.Type(ast.NilType{})
+		}
+		.key_none {
+			p.next()
+			return ast.Type(ast.NoneType{})
 		}
 		.key_lock, .key_rlock {
 			kind := p.tok()
@@ -424,24 +421,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				exprs: exprs
 				stmts: p.block()
 			}
-		}
-		.key_none {
-			p.next()
-			return ast.None{}
-		}
-		.key_sizeof {
-			p.next()
-			p.expect(.lpar)
-			expr := p.expr(.lowest)
-			p.expect(.rpar)
-			lhs = ast.SizeOf{expr: expr}
-		}
-		.key_typeof {
-			p.next()
-			p.expect(.lpar)
-			expr := p.expr(.lowest)
-			p.expect(.rpar)
-			lhs = ast.TypeOf{expr: expr}
 		}
 		.dollar {
 			p.next()
