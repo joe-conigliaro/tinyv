@@ -137,7 +137,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			for field in stmt.fields {
 				g.write('$field.name')
 				g.expr(field.typ)
-				// if field.value != none {
 				if field.value !is ast.EmptyExpr {
 					g.write(' = ')
 					g.expr(field.value)
@@ -173,8 +172,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write(stmt.name)
 			g.write('(')
 			for i,arg in stmt.args {
-				g.write(arg.name)
-				g.write(' ')
+				if arg.name.len > 0 {
+					g.write(arg.name)
+					g.write(' ')
+				}
 				g.expr(arg.typ)
 				if i < stmt.args.len-1 { g.write(', ') }
 			}
@@ -387,7 +388,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.indent--
 			g.write('}')
 		}
-		ast.Cast {}
+		ast.Cast {
+			g.expr(expr.typ)
+			g.write('(')
+			g.expr(expr.expr)
+			g.write(')')
+		}
 		ast.Call {
 			g.expr(expr.lhs)
 			// TODO: generic call

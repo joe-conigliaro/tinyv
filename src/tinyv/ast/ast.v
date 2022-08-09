@@ -78,6 +78,7 @@ pub:
 
 pub struct Cast {
 pub:
+	typ  Expr
 	expr Expr
 }
 
@@ -402,7 +403,7 @@ pub struct TypeDecl {
 pub:
 	is_public   bool
 	name        string
-	parent_type Expr
+	parent_type Expr = empty_expr
 	variants    []Expr
 }
 

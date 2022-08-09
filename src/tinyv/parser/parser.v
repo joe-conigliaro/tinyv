@@ -182,6 +182,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 					// I didnt want attributes as a statemment, but attached to things like fn/struct
 					// will have to rethink this now, it can be set on p.has_globals = true
 					// if not needed in later stages. otherwise add a stmt for it. come back to this
+					// TODO: attach these attributes to the file node itself?
 					if attributes[0].name == 'has_globals' {
 						// TODO
 						// p.has_globals = true
@@ -303,6 +304,10 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					p.error('expecting identifier')
 				}
 				p.next()
+				// TODO: labelled for
+				// if p.tok == .key_for {
+				// 	return p.@for()
+				// }
 				return ast.Label{
 					name: (expr as ast.Ident).name
 				}
@@ -484,6 +489,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.lsbr {
 			p.next()
+			// TODO: fix all this
 			// [1,2,3,4] or []int{} etc
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
@@ -494,15 +500,20 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// rsbr
 			p.next()
-			if p.tok == .not {
-				// TODO:
-				// is_fixed =  true
-				p.next()
-			}
 			mut typ := ast.empty_expr
 			mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
+			// `[1,2,3,4]!
+			if p.tok == .not {
+				if exprs.len == 0 {
+					p.error('expecting at lest one initialisation expr: `[expr, expr2]!`')
+				}
+				p.next()
+				len = ast.Literal{kind: .number, value: exprs.len.str()}
+			}
 			// [1,2,3,4]
+			// TODO: fix `[1,2,3,4][0]` <-- this is index after init. handle later
 			if exprs.len > 0 && p.tok == .lsbr {
+				// println('# index after init: $p.file_path:$p.line_nr')
 				// continue with lhs as ArrayInit
 				// TODO: tidy these if conditions up
 			}
@@ -510,29 +521,33 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// TODO: make sure we never end up here in for anything besides ArrayInit
 			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
 				typ = p.typ()
-				// init
-				if p.tok == .lcbr && !p.in_init {
-					p.next()
-					for p.tok != .rcbr {
-						key := p.name()
-						p.expect(.colon)
-						if key == 'cap' {
-							cap = p.expr(.lowest)
-						}
-						else if key == 'init' {
-							init = p.expr(.lowest)
-						}
-						else if key == 'len' {
-							init = p.expr(.lowest)
-						}
-						else {
-							p.error('expecting one of `cap, init, len`')
-						}
-						if p.tok == .comma {
-							p.next()
-						}
+				// cast `[]u8(x)` return early with the type
+				if p.tok == .lpar {
+					if exprs.len == 1 {
+						lhs = ast.Type(ast.ArrayFixedType{len: exprs[0], elem_type: typ})
 					}
-					p.next()
+					lhs = ast.Type(ast.ArrayType{elem_type: typ})
+				}
+				else {
+					// init
+					// if p.tok == .lcbr && !p.in_init {
+					if p.tok == .lcbr {
+						p.next()
+						for p.tok != .rcbr {
+							key := p.name()
+							p.expect(.colon)
+							match key {
+								'cap'  { cap = p.expr(.lowest) }
+								'init' { init = p.expr(.lowest) }
+								'len'  { len = p.expr(.lowest) }
+								else   { p.error('expecting one of `cap, init, len`') }
+							}
+							if p.tok == .comma {
+								p.next()
+							}
+						}
+						p.next()
+					}
 				}
 			}
 			lhs = ast.ArrayInit{
@@ -590,11 +605,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.name {
-		// .name, .key_mut {
-			// is_mut := p.tok == .key_mut
-			// if is_mut {
-			// 	p.next()
-			// }
+			// TODO: proper
 			if p.next_tok == .lcbr && !p.in_init {
 				typ := p.typ()
 				if p.next_tok == .ellipsis {
@@ -653,6 +664,15 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if p.line_nr != line_nr {
 				return lhs
 			}
+			// TODO: call or cast
+			// this will currently only be type from ArrayInit `[]u8(x)`
+			// if lhs is ast.Type {
+			// 	lhs = ast.Cast{
+			// 		typ: lhs
+			// 		expr: p.expr(.lowest)
+			// 	}
+			// 	continue
+			// }
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
 			// generic call
 			if p.tok == .lt {
@@ -1112,8 +1132,14 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		// TODO: proper
-		name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
-		typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
+		mut typ := p.typ()
+		mut name := ''
+		if p.tok == .name {
+			name = (typ as ast.Ident).name
+			typ = p.typ()
+		}
+		// name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
+		// typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
 		if p.tok == .comma {
 			p.next()
 		}
@@ -1155,7 +1181,6 @@ pub fn (mut p Parser) call_args() []ast.Expr {
 			p.next()
 		}
 	}
-	// p.expect(.rpar)
 	p.next()
 	return args
 }
@@ -1383,29 +1408,28 @@ pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.name()
-	mut parent_type := ast.empty_expr
-	// sum type (otherwise alias)
-	mut variants := []ast.Expr{}
-	if p.tok == .assign {
-		p.next()
-		for {
-			variant := p.typ()
-			variants << variant
-			if p.tok != .pipe {
-				break
-			}
-			p.next()
+	// p.log('ast.TypeDecl: $name')
+	p.expect(.assign)
+	typ := p.typ()
+	// alias `type MyType = int`
+	if p.tok != .pipe {
+		return ast.TypeDecl{
+			is_public: is_public
+			name: name
+			parent_type: typ
 		}
 	}
-	else {
-		parent_type = p.typ()
+	// sum type `type MyType = int | string`
+	p.next()
+	mut variants := [typ, p.typ()]
+	for p.tok == .pipe {
+		p.next()
+		variants << p.typ()
 	}
-	// p.log('ast.TypeDecl: $name')
 	// TODO: consider seperate node for alias / sum type ?
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name
-		parent_type: parent_type
 		variants: variants
 	}
 }

@@ -65,6 +65,10 @@ fn fn_opt_c() ?int {
 	return fn_opt_a()!
 }
 
+fn fn_mulit_return_a() (int, int) {
+	1,2
+}
+
 fn (rec &StructA) method_a(arg_a string, arg_b int) int {
 	println('StructA.method_a($arg_a, $arg_b)')
 	return 1
@@ -112,6 +116,9 @@ fn main_a() {
 	call_d := struct_a.method_a('string', 1)
 	call_e := struct_a.field_c(1)
 	call_generic_a := fn_generic_a<StructA>('string', 1)
+	cast_a := u8(1)
+	cast_b := []u8([1,2,3,4])
+	cast_c := &[]u8([1,2,3,4])
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
@@ -194,6 +201,16 @@ fn main_a() {
 	}
 	for {
 		println('infinate loop')
+	}
+	for_label_a: for i := 4; true; i++ {
+		println(i)
+		for {
+			if i < 7 {
+				continue outer
+			} else {
+				break outer
+			}
+		}
 	}
 	mut ptr_a := &voidptr(0)
 	*ptr_a = 0

@@ -21,12 +21,10 @@ pub fn (mut p Parser) typ() ast.Expr {
 	}
 	// pointer
 	else if p.tok == .amp {
-		// TODO: bug
-		// return ast.Prefix{op: p.tok(), expr: p.typ()?}
 		return ast.Prefix{op: p.tok(), expr: p.typ()}
 	}
 	// atomic | shared
-	// TODO: proper
+	// eg. typespec in struct field with modifier. other cases handled in expr()
 	else if p.tok in [.key_atomic, .key_shared] {
 		kind := p.tok
 		p.next()
@@ -39,7 +37,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 			p.next()
 			// map[string]string
 			if p.tok == .lsbr {
-				p.expect(.lsbr)
+				p.next()
 				key_type := p.typ()
 				p.expect(.rsbr)
 				return ast.Type(ast.MapType{key_type: key_type, value_type: p.typ()})
@@ -67,27 +65,27 @@ pub fn (mut p Parser) typ() ast.Expr {
 	// array
 	else if p.tok == .lsbr {
 		p.next()
-		// if p.tok == .number {
-		// 	p.next()
-		// }
-		// fixed array length
-		if p.tok != .rsbr {
-			len_expr := p.expr(.lowest)
-			p.expect(.rsbr)
-			return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.typ()})
+		// dynamic array
+		if p.tok == .rsbr {
+			p.next()
+			return ast.Type(ast.ArrayType{elem_type: p.typ()})
 		}
+		// fixed array
+		len_expr := p.expr(.lowest)
 		p.expect(.rsbr)
-		return ast.Type(ast.ArrayType{elem_type: p.typ()})
+		return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.typ()})
 	}
 	// Tuple (multi return)
 	else if p.tok == .lpar {
 		p.next()
-		mut types := []ast.Expr{}
-		for p.tok != .rpar {
+		// expect at least two (so we otherwise error)
+		mut types := [p.typ()]
+		p.expect(.comma)
+		types << p.typ()
+		// more than two
+		for p.tok == .comma {
+			p.next()
 			types << p.typ()
-			if p.tok == .comma {
-				p.next()
-			}
 		}
 		p.expect(.rpar)
 		return ast.Type(ast.TupleType{types: types})
@@ -100,10 +98,7 @@ pub fn (mut p Parser) typ() ast.Expr {
 	}
 	else if p.tok == .key_fn {
 		p.next()
-		mut args := []ast.Arg{}
-		if p.tok == .lpar {
-			args = p.fn_args()
-		}
+		args := p.fn_args()
 		return_type := if p.tok in [.amp, .lsbr, .name, .question] { p.typ() } else { ast.empty_expr }
 		return ast.Type(ast.FnType{args: args, return_type: return_type})
 	}
