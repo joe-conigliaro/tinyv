@@ -86,9 +86,10 @@ fn main_a() {
 	array_init_b := [array_init_a]
 	array_init_c := []string{len: 2, cap :2}
 	array_init_d := [][]string{}
-	array_init_e := [['a','b','c','d']]
-	array_init_f := []&StructA{}
-	array_init_g := [fn(arg_a int) int {
+	array_init_e := [2][]int{init:[1]}
+	array_init_f := [['a','b','c','d']]
+	array_init_g := []&StructA{}
+	array_init_h := [fn(arg_a int) int {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]
@@ -117,12 +118,12 @@ fn main_a() {
 	call_e := struct_a.field_c(1)
 	call_generic_a := fn_generic_a<StructA>('string', 1)
 	cast_a := u8(1)
-	cast_b := []u8([1,2,3,4])
+	cast_b := [4]u8([1,2,3,4])
 	cast_c := &[]u8([1,2,3,4])
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
-	index_d := [[StructA{}]][0][0] // unlimited chaining (add more examples)
+	index_d := [[1,2,3,4]][0][1] // unlimited chaining (add more examples)
 	index_e := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
 	index_f := fn() []string { return ['a', 'b'] }()[0]
 	index_g := array_init_e[0] or { ['e', 'f'] }[0]

@@ -349,7 +349,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(']')
 			}
 			else {
-				g.write('[]')
 				g.expr(expr.typ)
 				g.write('{')
 				// if expr.init != none {

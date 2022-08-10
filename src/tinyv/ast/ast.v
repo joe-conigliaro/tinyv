@@ -54,10 +54,8 @@ pub:
 
 pub struct ArrayInit {
 pub:
-	typ   Expr
+	typ   Expr = empty_expr
 	exprs []Expr
-	// TODO: don't use EmptyExpr, inits struct each time
-	// use bool, or ideally none or option when impl
 	init  Expr = empty_expr
 	cap   Expr = empty_expr
 	len   Expr = empty_expr

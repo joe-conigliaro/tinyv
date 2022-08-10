@@ -489,8 +489,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.lsbr {
 			p.next()
-			// TODO: fix all this
-			// [1,2,3,4] or []int{} etc
+			// exprs in first `[]` eg. (`1,2,3,4` in `[1,2,3,4]) | (`2` in `[2]int{}`)
 			mut exprs := []ast.Expr{}
 			for p.tok != .rsbr {
 				exprs << p.expr(.lowest)
@@ -498,64 +497,136 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 				}
 			}
-			// rsbr
 			p.next()
-			mut typ := ast.empty_expr
-			mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 			// `[1,2,3,4]!
 			if p.tok == .not {
 				if exprs.len == 0 {
 					p.error('expecting at lest one initialisation expr: `[expr, expr2]!`')
 				}
 				p.next()
-				len = ast.Literal{kind: .number, value: exprs.len.str()}
-			}
-			// [1,2,3,4]
-			// TODO: fix `[1,2,3,4][0]` <-- this is index after init. handle later
-			if exprs.len > 0 && p.tok == .lsbr {
-				// println('# index after init: $p.file_path:$p.line_nr')
-				// continue with lhs as ArrayInit
-				// TODO: tidy these if conditions up
-			}
-			// []int{} | [][]string{} | []&Foo{} ...
-			// TODO: make sure we never end up here in for anything besides ArrayInit
-			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
-				typ = p.typ()
-				// cast `[]u8(x)` return early with the type
-				if p.tok == .lpar {
-					if exprs.len == 1 {
-						lhs = ast.Type(ast.ArrayFixedType{len: exprs[0], elem_type: typ})
-					}
-					lhs = ast.Type(ast.ArrayType{elem_type: typ})
+				lhs = ast.ArrayInit{
+					exprs: exprs
+					len: ast.Literal{kind: .number, value: exprs.len.str()}
 				}
-				else {
-					// init
-					// if p.tok == .lcbr && !p.in_init {
-					if p.tok == .lcbr {
-						p.next()
-						for p.tok != .rcbr {
+			}
+			// `[2][]int{}` | `[1,2,3,4][0]` <-- index directly after init
+			// NOTE: this is tricky to do without looking far ahead because of the following:
+			// fixed size array: `[2]int`, array of fixed size arrays: `[][2][2]int`
+			// index directly after array init: [1,2,3,4][0]
+			// its vary hard to tell the difference between a multi dimenensional array including
+			// fixed array(s) and array index directly after initialisation
+			// so only in this case we collect the following `[x] `exprs then decide what to 
+			else if exprs.len > 0 && p.tok == .lsbr {
+				// collect all the exprs in folowing `[x][x]`
+				mut exprs_arr := [exprs]
+				for p.tok == .lsbr {
+					p.next()
+					mut exprs2 := []ast.Expr{}
+					for p.tok != .rsbr {
+						exprs2 << p.expr(.lowest)
+						if p.tok == .comma {
+							p.next()
+						}
+					}
+					p.next()
+					exprs_arr << exprs2
+				}
+				// `[2][]int{}`
+				if p.tok in [.amp, .name] && p.line_nr == line_nr {
+					mut typ := p.typ()
+					for i:=exprs_arr.len-1; i>=0; i-- {
+						exprs2 := exprs_arr[i]
+						if exprs2.len == 0  {
+							typ = ast.Type(ast.ArrayType{elem_type: typ})
+						}
+						else if exprs2.len == 1 {
+							typ = ast.Type(ast.ArrayFixedType{elem_type: typ, len: exprs2[0]})
+						}
+						else {
+							p.error('we should never end up here')
+						}
+					}
+					// cast `[2]u8(x)` we know this is a cast
+					// set lhs as the type, cast handled later in expr loop
+					if p.tok == .lpar {
+						lhs = typ
+					}
+					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{}`
+					else {
+						p.expect(.lcbr)
+						mut init := ast.empty_expr
+						if p.tok != .rcbr {
 							key := p.name()
 							p.expect(.colon)
 							match key {
-								'cap'  { cap = p.expr(.lowest) }
-								'init' { init = p.expr(.lowest) }
-								'len'  { len = p.expr(.lowest) }
-								else   { p.error('expecting one of `cap, init, len`') }
-							}
-							if p.tok == .comma {
-								p.next()
+								'init'  { init = p.expr(.lowest) }
+								else   { p.error('expecting `init`, got `$key`') }
 							}
 						}
 						p.next()
+						lhs = ast.ArrayInit{
+							typ: typ
+							init: init
+						}
+					}
+				}
+				// `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
+				else {
+					lhs = ast.ArrayInit{
+						exprs: exprs
+					}
+					for i:= 1; i<exprs_arr.len; i++ {
+						exprs2 := exprs_arr[i]
+						if exprs2.len != 1 {
+							p.error('we should never end up here')
+						}
+						lhs = ast.Index{
+							lhs: lhs
+							expr: exprs2[0]
+						}
 					}
 				}
 			}
-			lhs = ast.ArrayInit{
-				typ: typ
-				exprs: exprs
-				init: init
-				cap: cap
-				len: len
+			// `[]int{}` | `[][]string{}` | `[]&Foo{}` | `[]u8(x)`
+			// TODO: make sure we never end up here in for anything besides ArrayInit
+			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
+				typ := ast.Type(ast.ArrayType{elem_type: p.typ()})
+				// cast `[]u8(x)` we know this is a cast
+				// set lhs as the type, cast handled later in expr loop
+				if p.tok == .lpar {
+					lhs = typ
+				}
+				// `[]int{}` | `[][]string{}` | `[]&Foo{}`
+				else {
+					p.expect(.lcbr)
+					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
+					for p.tok != .rcbr {
+						key := p.name()
+						p.expect(.colon)
+						match key {
+							'cap'  { cap = p.expr(.lowest) }
+							'init' { init = p.expr(.lowest) }
+							'len'  { len = p.expr(.lowest) }
+							else   { p.error('expecting one of `cap, init, len`, got `$key`') }
+						}
+						if p.tok == .comma {
+							p.next()
+						}
+					}
+					p.next()
+					lhs = ast.ArrayInit{
+						typ: typ
+						init: init
+						cap: cap
+						len: len
+					}
+				}
+			}
+			// `[1,2,3,4]`
+			else {
+				lhs = ast.ArrayInit{
+					exprs: exprs
+				}
 			}
 		}
 		.key_match {
