@@ -506,6 +506,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				lhs = ast.ArrayInit{
 					exprs: exprs
+					// TODO: don't need this, we do need some way to indicate `!` though
 					len: ast.Literal{kind: .number, value: exprs.len.str()}
 				}
 			}
@@ -515,9 +516,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// index directly after array init: [1,2,3,4][0]
 			// its vary hard to tell the difference between a multi dimenensional array including
 			// fixed array(s) and array index directly after initialisation
-			// so only in this case we collect the following `[x] `exprs then decide what to 
+			// only in this case we collect the exprs in following `[x][x]` then decide what to do
 			else if exprs.len > 0 && p.tok == .lsbr {
-				// collect all the exprs in folowing `[x][x]`
+				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
 				for p.tok == .lsbr {
 					p.next()
@@ -1230,6 +1231,8 @@ pub fn (mut p Parser) call_args() []ast.Expr {
 	// NOTE: I'm doing this manually now instead of using p.expr_list()
 	// because I need to support the config syntax. I think this is only
 	// allowed in call args, need to double check.
+	// TODO: config syntax is getting deprecated, will become maps 
+	// eventually use named default params instead (once implemented)
 	mut args := []ast.Expr{}
 	for p.tok != .rpar  {
 		mut expr := p.expr(.lowest)
