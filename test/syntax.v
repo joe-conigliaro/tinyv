@@ -17,7 +17,7 @@ const (
 enum EnumA {
 	value_a
 	value_b
-	value_c = 111
+	value_c = 2
 }
 
 [attribute_a: 'attribute_a_val'; attribute_b]
@@ -31,6 +31,7 @@ struct StructA {
 	field_e int [attribute_a]
 }
 
+type AliasA = int
 type SumTypeA = StructA | int | string
 
 fn C.external_fn_a(arg_a int) int
@@ -66,7 +67,11 @@ fn fn_opt_c() ?int {
 }
 
 fn fn_mulit_return_a() (int, int) {
-	1,2
+	return 1,2
+}
+
+fn fn_generic_a<T>(arg_a T, arg_b string, arg_c int) {
+	println('fn_generic_a: $arg_a.type')
 }
 
 fn (rec &StructA) method_a(arg_a string, arg_b int) int {
@@ -118,14 +123,13 @@ fn main_a() {
 	call_c := array_init_g[0](1)
 	call_d := struct_a.method_a('string', 1)
 	call_e := struct_a.field_c(1)
-	call_generic_a := fn_generic_a<StructA>('string', 1)
+	call_generic_a := fn_generic_a<StructA>(StructA{}, 'string', 1)
 	cast_a := u8(1)
 	cast_b := &[]u8([1,2,3,4])
-	// the folowing casts should error later about not being
+	// the following casts should error later about not being
 	// able to cast array types, unless it gets implemented.
 	cast_c := []u8([1,2,3,4])
 	cast_d := [][][]u8([[[1,2,3,4]]])
-	cast_e := [][][]u8([[[1,2,3,4]]])
 	index_a := array_init_a[1]
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init

@@ -488,6 +488,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.lsbr {
+			// ArrayInit: `[1,2,3,4]` | `[]int{}` | `[]int{len: 4}` | `[2]int{init: 0}` etc...
+			// ArrayInit->Index: `[1,2,3,4][0]` handled here for reasons listed in comment below
+			// ArrayType in Cast: `[]u8` in `[]u8(x)` set type as it's known, cast handled later
 			p.next()
 			// exprs in first `[]` eg. (`1,2,3,4` in `[1,2,3,4]) | (`2` in `[2]int{}`)
 			mut exprs := []ast.Expr{}
@@ -498,10 +501,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			p.next()
-			// `[1,2,3,4]!
+			// `[1,2,3,4]!`
 			if p.tok == .not {
 				if exprs.len == 0 {
-					p.error('expecting at lest one initialisation expr: `[expr, expr2]!`')
+					p.error('expecting at least one initialisation expr: `[expr, expr2]!`')
 				}
 				p.next()
 				lhs = ast.ArrayInit{
@@ -510,13 +513,12 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					len: ast.Literal{kind: .number, value: exprs.len.str()}
 				}
 			}
-			// `[2][]int{}` | `[1,2,3,4][0]` <-- index directly after init
-			// NOTE: this is tricky to do without looking far ahead because of the following:
-			// fixed size array: `[2]int`, array of fixed size arrays: `[][2][2]int`
-			// index directly after array init: [1,2,3,4][0]
-			// its vary hard to tell the difference between a multi dimenensional array including
-			// fixed array(s) and array index directly after initialisation
-			// only in this case we collect the exprs in following `[x][x]` then decide what to do
+			// (`[2]int{}` | `[2][2]int{}` | `[2][]int{}`) | `[1,2,3,4][0]` | `[2]u8(x)`
+			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
+			// and an index directly after initialisation. for example, the following:
+			// a) fixed array of fixed array(s): `[2][2]int{}` | `[2][2][2]int{}`
+			// b) index directly after init: `[1][0]` | `[x][2][2]` <- vs (a) above
+			// only in this case collect exprs in following `[x][x]` then decide what to do
 			else if exprs.len > 0 && p.tok == .lsbr {
 				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
@@ -532,7 +534,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 					exprs_arr << exprs2
 				}
-				// `[2][]int{}`
+				// (`[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`) | `[2]u8(x)`
 				if p.tok in [.amp, .name] && p.line_nr == line_nr {
 					mut typ := p.typ()
 					for i:=exprs_arr.len-1; i>=0; i-- {
@@ -552,7 +554,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					if p.tok == .lpar {
 						lhs = typ
 					}
-					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{}`
+					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
@@ -571,7 +573,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						}
 					}
 				}
-				// `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
+				// `[1][0]` | `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
 				else {
 					lhs = ast.ArrayInit{
 						exprs: exprs
@@ -588,8 +590,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// `[]int{}` | `[][]string{}` | `[]&Foo{}` | `[]u8(x)`
-			// TODO: make sure we never end up here in for anything besides ArrayInit
+			// (`[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`) | `[]u8(x)`
 			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
 				typ := ast.Type(ast.ArrayType{elem_type: p.typ()})
 				// cast `[]u8(x)` we know this is a cast
@@ -597,7 +598,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				if p.tok == .lpar {
 					lhs = typ
 				}
-				// `[]int{}` | `[][]string{}` | `[]&Foo{}`
+				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
