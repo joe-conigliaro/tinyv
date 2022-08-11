@@ -501,25 +501,13 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			p.next()
-			// `[1,2,3,4]!`
-			if p.tok == .not {
-				if exprs.len == 0 {
-					p.error('expecting at least one initialisation expr: `[expr, expr2]!`')
-				}
-				p.next()
-				lhs = ast.ArrayInit{
-					exprs: exprs
-					// TODO: don't need this, we do need some way to indicate `!` though
-					len: ast.Literal{kind: .number, value: exprs.len.str()}
-				}
-			}
 			// (`[2]int{}` | `[2][2]int{}` | `[2][]int{}`) | `[1,2,3,4][0]` | `[2]u8(x)`
 			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
 			// and an index directly after initialisation. for example, the following:
 			// a) fixed array of fixed array(s): `[2][2]int{}` | `[2][2][2]int{}`
 			// b) index directly after init: `[1][0]` | `[x][2][2]` <- vs (a) above
 			// only in this case collect exprs in following `[x][x]` then decide what to do
-			else if exprs.len > 0 && p.tok == .lsbr {
+			if exprs.len > 0 && p.tok == .lsbr {
 				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
 				for p.tok == .lsbr {
@@ -546,7 +534,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 							typ = ast.Type(ast.ArrayFixedType{elem_type: typ, len: exprs2[0]})
 						}
 						else {
-							p.error('we should never end up here')
+							p.error('expecting single expr for fixed array length')
 						}
 					}
 					// cast `[2]u8(x)` we know this is a cast
@@ -581,7 +569,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					for i:= 1; i<exprs_arr.len; i++ {
 						exprs2 := exprs_arr[i]
 						if exprs2.len != 1 {
-							p.error('we should never end up here')
+							p.error('invalid index expr')
 						}
 						lhs = ast.Index{
 							lhs: lhs
@@ -624,8 +612,19 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// `[1,2,3,4]`
-			else {
+			// `[1,2,3,4]!`
+			else if p.tok == .not {
+				if exprs.len == 0 {
+					p.error('expecting at least one initialisation expr: `[expr, expr2]!`')
+				}
+				p.next()
+				lhs = ast.ArrayInit{
+					exprs: exprs
+					// TODO: don't need this, we do need some way to indicate `!` though
+					len: ast.Literal{kind: .number, value: exprs.len.str()}
+				}
+			// `[]` | `[1,2,3,4]`
+			} else {
 				lhs = ast.ArrayInit{
 					exprs: exprs
 				}

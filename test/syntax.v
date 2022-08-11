@@ -88,15 +88,16 @@ fn main_a() {
 	a := 1
 	b, c := 1, 2
 	array_init_a := [1,2,3,4]
-	array_init_b := [array_init_a]
-	array_init_c := []string{len: 2, cap :2}
-	array_init_d := [][]string{}
-	array_init_e := [2][]int{init:[1]}
-	array_init_f := [2][][][][]int{}
-	array_init_g := [2][][][][2]int{}
-	array_init_h := [['a','b','c','d']]
-	array_init_i := []&StructA{}
-	array_init_j := [fn(arg_a int) int {
+	array_init_b := [1,2,3,4]!
+	array_init_c := [array_init_a]
+	array_init_d := []string{len: 2, cap :2}
+	array_init_e := [][]string{}
+	array_init_f := [2][]int{init:[1]}
+	array_init_g := [2][][][][]int{}
+	array_init_h := [2][][][][2]int{}
+	array_init_i := [['a','b','c','d']]
+	array_init_j := []&StructA{}
+	array_init_k := [fn(arg_a int) int {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]

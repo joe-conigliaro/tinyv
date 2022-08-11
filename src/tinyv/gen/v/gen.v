@@ -347,6 +347,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					if i < expr.exprs.len-1 { g.write(', ') }
 				}
 				g.write(']')
+				// TODO: better way to handle this
+				if expr.len !is ast.EmptyExpr {
+					g.write('!')
+				}
 			}
 			else {
 				g.expr(expr.typ)
