@@ -13,6 +13,9 @@ const (
 	const_b = 'two'
 )
 
+type AliasA = int
+type SumTypeA = StructA | int | string
+
 [attribute_a]
 enum EnumA {
 	value_a
@@ -31,8 +34,7 @@ struct StructA {
 	field_e int [attribute_a]
 }
 
-type AliasA = int
-type SumTypeA = StructA | int | string
+struct C.StructA {}
 
 fn C.external_fn_a(arg_a int) int
 
@@ -72,6 +74,15 @@ fn fn_mulit_return_a() (int, int) {
 
 fn fn_generic_a<T>(arg_a T, arg_b string, arg_c int) {
 	println('fn_generic_a: $arg_a.type')
+}
+
+fn fn_variadic_a(arb_a int, arg_b ...string) {
+	fn_variadic_b(...arg_b)
+	fn_variadic_b(...['a', 'b', 'c', 'd'])
+}
+
+fn fn_variadic_b(arg_a ...string) {
+	println(arg_a)
 }
 
 fn (rec &StructA) method_a(arg_a string, arg_b int) int {
@@ -135,9 +146,10 @@ fn main_a() {
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
 	index_d := [[1,2,3,4]][0][1] // unlimited chaining (add more examples)
-	index_e := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
-	index_f := fn() []string { return ['a', 'b'] }()[0]
-	index_g := array_init_e[0] or { ['e', 'f'] }[0]
+	index_e := [[1,2,3,4]][0][2..4]
+	index_f := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
+	index_g := fn() []string { return ['a', 'b'] }()[0]
+	index_h := array_init_e[0] or { ['e', 'f'] }[0]
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]

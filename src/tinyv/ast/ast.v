@@ -39,13 +39,21 @@ pub:
 }
 
 pub enum Language {
-	c
 	v
+	c
 	js
 }
 
+pub fn(lang Language) str() string {
+	return match lang {
+		.v { 'V' }
+		.c { 'C' }
+		.js { 'JS' }
+	}
+}
+
 // Expressions
-pub struct Arg {
+pub struct Parameter {
 pub:
 	name   string
 	typ    Expr
@@ -83,7 +91,6 @@ pub:
 pub struct Call {
 pub:
 	lhs  Expr
-	// args []Arg
 	args []Expr
 }
 
@@ -109,7 +116,7 @@ pub:
 // anon fn
 pub struct Fn {
 pub:
-	args        []Arg
+	params      []Parameter
 	stmts       []Stmt
 	return_type Expr
 }
@@ -325,19 +332,21 @@ pub:
 
 pub struct FnDecl {
 pub:
-	attributes  []Attribute
-	is_public   bool
-	is_method   bool
-	receiver    Arg
-	name        string
-	args        []Arg
-	stmts       []Stmt
-	return_type Expr = empty_expr
-	language    Language
+	attributes    []Attribute
+	is_public     bool
+	is_method     bool
+	receiver      Parameter
+	language      Language = .v
+	name          string
+	generic_types []Expr
+	params        []Parameter
+	stmts         []Stmt
+	return_type   Expr = empty_expr
 }
 
 pub struct For {
 pub:
+	label string
 	init  Stmt = empty_stmt // initialization
 	cond  Expr = empty_expr // condition
 	post  Stmt = empty_stmt // post iteration (afterthought)
@@ -393,6 +402,7 @@ pub:
 	attributes []Attribute
 	is_public  bool
 	embedded   []Expr
+	language   Language = .v
 	name       string
 	fields     []FieldDecl
 }
@@ -419,7 +429,7 @@ pub:
 
 pub struct FnType {
 pub:
-	args        []Arg
+	params      []Parameter
 	return_type Expr = empty_expr
 }
 

@@ -169,15 +169,27 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.expr(stmt.receiver.typ)
 				g.write(') ')
 			}
+			if stmt.language != .v {
+				g.write(stmt.language.str())
+				g.write('.')
+			}
 			g.write(stmt.name)
+			if stmt.generic_types.len > 0 {
+				g.write('<')
+				for i, generic_type in stmt.generic_types {
+					g.expr(generic_type)
+					if i < stmt.generic_types.len-1 { g.write(', ') }
+				}
+				g.write('>')
+			}
 			g.write('(')
-			for i,arg in stmt.args {
+			for i,arg in stmt.params {
 				if arg.name.len > 0 {
 					g.write(arg.name)
 					g.write(' ')
 				}
 				g.expr(arg.typ)
-				if i < stmt.args.len-1 { g.write(', ') }
+				if i < stmt.params.len-1 { g.write(', ') }
 			}
 			g.write(') ')
 			if stmt.return_type !is ast.EmptyExpr {
@@ -294,8 +306,12 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('pub ')
 			}
 			g.write('struct ')
+			if stmt.language != .v {
+				g.write(stmt.language.str())
+				g.write('.')
+			}
 			g.write(stmt.name)
-			g.writeln(' {')
+			if stmt.fields.len > 0 { g.writeln(' {') } else { g.write(' {') }
 			g.indent++
 			for field in stmt.fields {
 				g.write(field.name)
@@ -423,11 +439,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.Fn {
 			g.write('fn(')
-			for i, arg in expr.args {
+			for i, arg in expr.params {
 				g.write(arg.name)
 				g.write(' ')
 				g.expr(arg.typ)
-				if i < expr.args.len-1 { g.write(', ') }
+				if i < expr.params.len-1 { g.write(', ') }
 			}
 			g.write(') ')
 			if expr.return_type !is ast.EmptyExpr {
@@ -667,9 +683,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				ast.FnType {
 					g.write('fn(')
-					for i, arg in expr.args {
+					for i, arg in expr.params {
 						g.expr(arg.typ)
-						if i < expr.args.len-1 { g.write(', ') }
+						if i < expr.params.len-1 { g.write(', ') }
 					}
 					g.write(')')
 					g.expr(expr.return_type)

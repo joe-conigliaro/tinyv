@@ -228,56 +228,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			return ast.Defer{stmts: p.block()}
 		}
 		.key_for {
-			p.next()
-			in_init := p.in_init
-			p.in_init = true
-			mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
-			// for in `for x in vals {`
-			if p.next_tok in [.comma, .key_in] {
-				mut key, mut value := '', p.name()
-				mut value_is_mut := false
-				if p.tok == .comma {
-					p.next()
-					key = value
-					if p.tok == .key_mut {
-						value_is_mut = true
-						p.next()
-					}
-					value = p.name()
-				}
-				p.expect(.key_in)
-				init = ast.ForIn{
-					key: key
-					value: value
-					value_is_mut: value_is_mut
-					expr: p.expr(.lowest)
-				}
-			}
-			// infinate `for {` and C style `for x:=1; x<=10; x++`
-			else {
-				if p.tok !in [.lcbr, .semicolon] {
-					init = p.stmt()
-				}
-				if p.tok == .semicolon {
-					p.next()
-				}
-				if p.tok != .semicolon {
-					cond = p.expr(.lowest)
-				}
-				if p.tok == .semicolon {
-					p.next()
-				}
-				if p.tok != .lcbr {
-					post = p.stmt()
-				}
-			}
-			p.in_init = in_init
-			return ast.For{
-				init: init
-				cond: cond
-				post: post
-				stmts: p.block()
-			}
+			return p.@for('')
 		}
 		.key_return {
 			// p.log('ast.Return')
@@ -300,16 +251,16 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			expr := p.expr(.lowest)
 			// label `start:`
 			if p.tok == .colon {
-				if expr !is ast.Ident {
-					p.error('expecting identifier')
+				name := match expr {
+					ast.Ident { expr.name }
+					else { p.error('expecting identifier') }
 				}
 				p.next()
-				// TODO: labelled for
-				// if p.tok == .key_for {
-				// 	return p.@for()
-				// }
+				if p.tok == .key_for {
+					return p.@for(name)
+				}
 				return ast.Label{
-					name: (expr as ast.Ident).name
+					name: name
 				}
 			}
 			// stand alone exression in a statement list
@@ -376,13 +327,13 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.next()
 			}
-			args := p.fn_args()
+			params := p.fn_parameters()
 			mut return_type := ast.empty_expr
 			if p.tok != .lcbr {
 				return_type = p.typ()
 			}
 			lhs = ast.Fn{
-				args: args
+				params: params
 				stmts: p.block()
 				return_type: return_type
 			}
@@ -534,6 +485,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 							typ = ast.Type(ast.ArrayFixedType{elem_type: typ, len: exprs2[0]})
 						}
 						else {
+							// TODO: use same error message as typ() `expect(.rsbr)`
 							p.error('expecting single expr for fixed array length')
 						}
 					}
@@ -569,6 +521,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					for i:= 1; i<exprs_arr.len; i++ {
 						exprs2 := exprs_arr[i]
 						if exprs2.len != 1 {
+							// TODO: use same error message as Index in expr loop `expect(.rsbr)` 
 							p.error('invalid index expr')
 						}
 						lhs = ast.Index{
@@ -752,7 +705,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.typ()
 				p.expect(.gt)
 			}
-			args := p.call_args()
+			args := p.fn_arguments()
 			// lhs = ast.Cast{
 			lhs = ast.Call{
 				lhs: lhs
@@ -952,17 +905,13 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		}
 		if p.tok == .colon {
 			p.next()
-			if p.tok == .name {
-				// kind = .plain
-				value = p.name()
-			} else if p.tok == .number {
-				// kind = .number
-				value = p.lit()
-			} else if p.tok == .string { // `name: 'arg'`
-				// kind = .string
-				value = p.lit()
-			} else {
-				p.error('unexpected $p.tok, an argument is expected after `:`')
+			// NOTE: use tok instead of defining AttributeKind
+			// kind := p.tok
+			// TODO: do we need the match below or should we use:
+			// if p.tok in [.semicolon, .rsbr] { p.error('...') }
+			value = match p.tok {
+				.name, .number, .string { p.lit() }
+				else { p.error('unexpected $p.tok, an argument is expected after `:`') }
 			}
 		}
 		attributes << ast.Attribute{
@@ -975,22 +924,77 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 			p.next()
 			continue
 		}
-		else if p.next_tok == .lsbr {
-			p.expect(.rsbr)
+		p.expect(.rsbr)
+		// [attribute_a]
+		// [attribute_b]
+		if p.tok == .lsbr {
 			p.next()
 			continue
 		}
 		break
 	}
-	// name := p.name()
 	// p.log('ast.Attribute: $name')
-	p.expect(.rsbr)
 	return attributes
 }
 
 [inline]
 pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
+}
+
+// TODO: should we use string or Label/Ident
+pub fn (mut p Parser) @for(label string) ast.For {
+	p.next()
+	in_init := p.in_init
+	p.in_init = true
+	mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
+	// for in `for x in vals {`
+	if p.next_tok in [.comma, .key_in] {
+		mut key, mut value := '', p.name()
+		mut value_is_mut := false
+		if p.tok == .comma {
+			p.next()
+			key = value
+			if p.tok == .key_mut {
+				value_is_mut = true
+				p.next()
+			}
+			value = p.name()
+		}
+		p.expect(.key_in)
+		init = ast.ForIn{
+			key: key
+			value: value
+			value_is_mut: value_is_mut
+			expr: p.expr(.lowest)
+		}
+	}
+	// infinate `for {` and C style `for x:=1; x<=10; x++`
+	else {
+		if p.tok !in [.lcbr, .semicolon] {
+			init = p.stmt()
+		}
+		if p.tok == .semicolon {
+			p.next()
+		}
+		if p.tok != .semicolon {
+			cond = p.expr(.lowest)
+		}
+		if p.tok == .semicolon {
+			p.next()
+		}
+		if p.tok != .lcbr {
+			post = p.stmt()
+		}
+	}
+	p.in_init = in_init
+	return ast.For{
+		label: label
+		init: init
+		cond: cond
+		post: post
+		stmts: p.block()
+	}
 }
 
 pub fn (mut p Parser) @if(is_comptime bool) ast.If {
@@ -1095,7 +1099,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	line_nr := p.line_nr
 	// method
 	mut is_method := false
-	mut receiver := ast.Arg{}
+	mut receiver := ast.Parameter{}
 	if p.tok == .lpar {
 		is_method = true
 		p.next()
@@ -1105,7 +1109,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		if is_mut {
 			p.next()
 		}
-		receiver = ast.Arg{
+		receiver = ast.Parameter{
 			name: p.name()
 			typ: p.typ()
 			is_mut: is_mut
@@ -1124,7 +1128,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			if is_mut {
 				p.next()
 			}
-			receiver2 := ast.Arg{
+			receiver2 := ast.Parameter{
 				name: p.name()
 				typ: p.typ()
 				is_mut: is_mut
@@ -1141,33 +1145,12 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			return ast.FnDecl{}
 		}
 	}
-	mut name := p.name()
-	// TODO: think if we use string or selector/ident
-	// is_c := p.tok == .dot && name == 'C'
-	// if is_c {
-	// 	p.next()
-	// 	name = 
-	// }
-	mut language := ast.Language.v
-	// TODO: use module namespaces
-	if p.tok == .dot {
-		if name.len == 1 && name[0] == `C` {
-			language = .c
-		}
-		else if name.len == 2 && name == 'JS' {
-			language = .js
-		}
-	}
-	// do we do this or always idents
-	for p.tok == .dot {
-		p.next()
-		name += '.$p.name()'
-	}
-	// TODO: generics
+	language, name := p.decl_lang_and_name()
+	mut generic_types := []ast.Expr{}
 	if p.tok == .lt {
 		p.next()
 		for {
-			p.typ()
+			generic_types << p.typ()
 			if p.tok != .comma {
 				break
 			}
@@ -1175,13 +1158,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		}
 		p.expect(.gt)
 	}
-	args := p.fn_args()
-	// TODO:
-	// mut return_type := types.void
-	mut return_type := ast.empty_expr
-	if p.tok != .lcbr && p.line_nr == line_nr {
-		return_type = p.typ() // return type
-	}
+	params := p.fn_parameters()
+	return_type := if p.tok != .lcbr && p.line_nr == line_nr { p.typ() } else { ast.empty_expr }
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.next_tok')
 	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
 	return ast.FnDecl{
@@ -1190,16 +1168,17 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		is_method: is_method
 		receiver: receiver
 		name: name
-		args: args
+		language: language
+		generic_types: generic_types
+		params: params
 		stmts: stmts
 		return_type: return_type
-		language: language
 	}
 }
 
-pub fn (mut p Parser) fn_args() []ast.Arg {
+pub fn (mut p Parser) fn_parameters() []ast.Parameter {
 	p.expect(.lpar)
-	mut args := []ast.Arg{}
+	mut params := []ast.Parameter{}
 	for p.tok != .rpar {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
@@ -1210,22 +1189,22 @@ pub fn (mut p Parser) fn_args() []ast.Arg {
 			name = (typ as ast.Ident).name
 			typ = p.typ()
 		}
-		// name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'arg_$args.len' }
+		// name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'param_$params.len' }
 		// typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
 		if p.tok == .comma {
 			p.next()
 		}
-		args << ast.Arg{
+		params << ast.Parameter{
 			name: name
 			typ: typ
 			is_mut: is_mut
 		}
 	}
 	p.next()
-	return args
+	return params
 }
 
-pub fn (mut p Parser) call_args() []ast.Expr {
+pub fn (mut p Parser) fn_arguments() []ast.Expr {
 	p.expect(.lpar)
 	// args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
 	// NOTE: I'm doing this manually now instead of using p.expr_list()
@@ -1345,7 +1324,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 		line_nr := p.line_nr
 		p.name() // method/field name
 		if p.tok == .lpar {
-			p.fn_args()
+			p.fn_parameters()
 			if p.line_nr == line_nr {
 				p.typ() // method return type
 			}
@@ -1389,17 +1368,13 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	// TODO: union
 	// is_union := p.tok == .key_union
 	p.next()
-	mut name := p.name()
-	language := if name == 'C' && p.tok == .dot { ast.Language.c } else { ast.Language.v }
-	for p.tok == .dot {
-		p.next()
-		name += p.name()
-	}
+	language, name := p.decl_lang_and_name()
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
 	if p.tok != .lcbr {
 		return ast.StructDecl{
 			is_public: is_public
+			language: language
 			name: name
 		}
 	}
@@ -1438,6 +1413,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		attributes: attributes
 		is_public: is_public
 		embedded: embedded
+		language: language
 		name: name
 		fields: fields
 	}
@@ -1506,6 +1482,21 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		name: name
 		variants: variants
 	}
+}
+
+[inline]
+[direct_array_access]
+pub fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
+	name := p.name()
+	if p.tok == .dot {
+		p.next()
+		if name.len == 1 && name[0] == `C` {
+			return ast.Language.c, p.name()
+		} else if name.len == 2 && name[0] == `J` && name[1] == `S` {
+			return ast.Language.js, p.name()
+		}
+	}
+	return ast.Language.v, name
 }
 
 [inline]
