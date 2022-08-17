@@ -92,7 +92,7 @@ pub fn (mut s Scanner) scan() token.Token {
 				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
 			s.offset++
 			// TODO: need a way to use the correct quote when string includes quotes
-			// best done before gen so it wont neet to worry about it (prob parser)
+			// best done before gen so it wont need to worry about it (prob parser)
 			s.string_literal(string_lit_kind)
 			s.lit = s.text[s.pos+2..s.offset-1]
 			return .string
@@ -346,7 +346,7 @@ fn (mut s Scanner) whitespace() {
 [direct_array_access]
 fn (mut s Scanner) line() {
 	// a newline reached here will get recorded by next whitespace call
-	// we could add them manually here, but whitepace is called anyway
+	// we could add them manually here, but whitespace is called anyway
 	for s.offset < s.text.len {
 		c := s.text[s.offset]
 		if c == `\n` {
@@ -435,7 +435,7 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		}
 		// TODO: I will probably store replacement positions in scanner
 		// for efficiency rather than doing it later in parser, I still
-		// dont think I want to break strings apart in scanner though
+		// don't think I want to break strings apart in scanner though
 		// else if c2 == `$` {}
 		// TODO: since support for non escaped quotes inside ${} was added
 		// i will need to do some checking here, I still would prefer to store
@@ -490,7 +490,7 @@ fn (mut s Scanner) number() {
 	}
 	mut has_decimal := false
 	mut has_exponent := false
-	// TODO: proper impl of fraction / expoent
+	// TODO: proper impl of fraction / exponent
 	// continue decimal (and also completion of bin/octal)
 	for s.offset < s.text.len {
 		c := s.text[s.offset]

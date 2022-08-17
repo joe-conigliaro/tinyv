@@ -3,7 +3,7 @@
 // that can be found in the LICENSE file.
 module types
 
-// TODO: this MIGHT be moved to anohter module, here for now
+// TODO: this MIGHT be moved to another module, here for now
 
 // pub type Object = Module | Type
 pub type Object = Module | Primitive | Array | Enum | Map | Pointer | Struct

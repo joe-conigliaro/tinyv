@@ -16,7 +16,7 @@ mut:
 	file_path string
 	scanner   &scanner.Scanner
 	in_init   bool // for/if/match eg. `for x in vals {`
-	in_pgctl  bool // in (p)osible (g)eneric (c)all (t)ype (l)ist
+	in_pgctl  bool // in (p)ossible (g)eneric (c)all (t)ype (l)ist
 	// start token info
 	// the following are for tok, for next_tok get directly from scanner
 	line_nr   int
@@ -180,7 +180,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_global { return p.global_decl(attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
 				else {
-					// I didnt want attributes as a statemment, but attached to things like fn/struct
+					// I didn't want attributes as a statement, but attached to things like fn/struct
 					// will have to rethink this now, it can be set on p.has_globals = true
 					// if not needed in later stages. otherwise add a stmt for it. come back to this
 					// TODO: attach these attributes to the file node itself?
@@ -264,7 +264,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					name: name
 				}
 			}
-			// stand alone exression in a statement list
+			// stand alone expression in a statement list
 			// eg: `if x == 1 {`, `x++`, `break/continue`
 			// also: `mut x := 1`, `a,`b := 1,2`
 			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
@@ -344,8 +344,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// return_type := p.try_type() or { ast.empty_expr }
 			return_type := p.try_type()
 			// this only occurs if parsing generic fn in generic call `fn_generic_b<fn<int>(int),int>()`
-			// since we need to use expr() isntead of typ() because we dont yet know what we are parsing.
-			// take a look at expr chaining loop branch `if p.tok in [.lpar, .lt]`
+			// since we need to use expr() instead of typ() because we don't yet know what we are parsing.
+			// take a look at expr chaining loop branch `if p.tok == .lt`
 			if p.in_pgctl && p.tok != .lcbr {
 				return ast.Type(ast.FnType{generic_types: generic_types, params: params, return_type: return_type})
 			}
@@ -429,7 +429,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 					return ast.MapInit{}
 				}
-				// TODO: dfferentiate short map / struct init (if possible at this stage)
+				// TODO: differentiate short map / struct init (if possible at this stage)
 				// map init
 				mut keys := []ast.Expr{}
 				mut vals := []ast.Expr{}
@@ -472,7 +472,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.next()
 			// (`[2]int{}` | `[2][2]int{}` | `[2][]int{}`) | `[1,2,3,4][0]` | `[2]u8(x)`
 			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
-			// and an index directly after initialisation. for example, the following:
+			// and an index directly after initialization. for example, the following:
 			// a) fixed array of fixed array(s): `[2][2]int{}` | `[2][2][2]int{}`
 			// b) index directly after init: `[1][0]` | `[x][2][2]` <- vs (a) above
 			// only in this case collect exprs in following `[x][x]` then decide what to do
@@ -588,7 +588,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// `[1,2,3,4]!`
 			else if p.tok == .not {
 				if exprs.len == 0 {
-					p.error('expecting at least one initialisation expr: `[expr, expr2]!`')
+					p.error('expecting at least one initialization expr: `[expr, expr2]!`')
 				}
 				p.next()
 				lhs = ast.ArrayInit{
@@ -721,7 +721,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
 			args := p.fn_arguments()
-			// definately a call since we have `!` | `?`
+			// definitely a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
 			if p.tok in [.not, .question] {
 				lhs = ast.Postfix{expr: lhs, op: p.tok()}
@@ -732,7 +732,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// could be a call or a cast (1 arg)
 			else if args.len == 1 {
-				// definately a cast
+				// definitely a cast
 				if lhs is ast.Type {
 					lhs = ast.Cast{
 						typ: lhs
@@ -747,7 +747,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// definately a call (0 args, or more than 1 arg)
+			// definitely a call (0 args, or more than 1 arg)
 			else {
 				lhs = ast.Call{
 					lhs: lhs
@@ -770,13 +770,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			op := p.tok()
 			mut exprs := []ast.Expr{}
 			mut has_gt := false
-			mut has_comma := false
 			p.in_pgctl = true
 			expr := p.expr(op.right_binding_power())
 			exprs << expr
 			for p.tok == .comma {
 				p.next()
-				has_comma = true
 				expr2 := p.expr(op.right_binding_power())
 				// multiple possible (ended up not being) generic type lists in a row
 				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
@@ -800,7 +798,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// NOTE: oops we are inside expr called from fn arg or multi return expr
 			// which has a infix expr, eg: `a<b,c` in `fn_call(a<b,c)` or `return a<b,c`
-			else if has_comma {
+			else if exprs.len > 1 {
 				for x in exprs {
 					// TODO: error with position
 					if x is ast.Type {
@@ -814,11 +812,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// no need to use Tuple for single expr
 				if exprs.len == 1 { return infix_expr }
-				// we've already parsed ahead mulitple exprs, use Tuple 
+				// we've already parsed ahead multiple exprs, use Tuple 
 				// this means we will need to unwrap it in those cases
 				exprs[0] = infix_expr
 				// looked like end of type list, but was really `>` infix
-				// eg: `a<b,c>d` in `fn_call(a<b,c)` or `return a<b,c>d`
+				// eg: `a<b,c>d` in `fn_call(a<b,c>d)` or `return a<b,c>d`
 				if has_gt {
 					exprs[1] = ast.Infix {
 						op: op
@@ -981,7 +979,7 @@ pub fn (mut p Parser) expr_list() []ast.Expr {
 	for {
 		// exprs << p.expr(.lowest)
 		// NOTE: see `.lt` in expr chaining loop, expand Tuple
-		// that came from posible generic call `return a < b, c` 
+		// that came from possible generic call `return a < b, c` 
 		expr := p.expr(.lowest)
 		if expr is ast.Tuple { exprs << expr.exprs } else { exprs << expr }
 		if p.tok != .comma {
@@ -1088,7 +1086,7 @@ pub fn (mut p Parser) @for(label string) ast.For {
 			expr: p.expr(.lowest)
 		}
 	}
-	// infinate `for {` and C style `for x:=1; x<=10; x++`
+	// infinite `for {` and C style `for x:=1; x<=10; x++`
 	else {
 		if p.tok !in [.lcbr, .semicolon] {
 			init = p.stmt()
@@ -1345,7 +1343,7 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 			}
 			expr2 := p.expr(.lowest)
 			// NOTE: see `.lt` in expr chaining loop, expand Tuple
-			// that came from posible generic call `fn(foo: a < b, c)` 
+			// that came from possible generic call `fn(foo: a < b, c)` 
 			if expr2 is ast.Tuple {
 				expr = ast.FieldInit{
 					name: (expr as ast.Ident).name
@@ -1363,7 +1361,7 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 			}
 		} else {
 			// NOTE: see `.lt` in expr chaining loop, expand Tuple
-			// that came from posible generic call `fn(a < b, c)` 
+			// that came from possible generic call `fn(a < b, c)` 
 			if mut expr is ast.Tuple { args << expr.exprs } else { args << expr }
 		}
 		// args << expr
@@ -1631,7 +1629,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		p.next()
 		variants << p.expect_type()
 	}
-	// TODO: consider seperate node for alias / sum type ?
+	// TODO: consider separate node for alias / sum type ?
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name

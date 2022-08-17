@@ -18,11 +18,11 @@ const (
 type AliasA = int
 type SumTypeA = StructA | int | string
 
-// we dont want this to be parsed as:
+// we don't want this to be parsed as:
 // `type FnA = fn() fn...`
 type FnA = fn()
 fn fn_after_type_fn_a() int {}
-// we dont want this to be parsed as:
+// we don't want this to be parsed as:
 // `type FnA = fn() ?fn...`
 type FnB = fn() ?
 fn fn_after_type_fn_b() int {}
