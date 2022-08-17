@@ -14,10 +14,10 @@ type EmptyExpr = u8
 type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Cast | Call | Comptime | EmptyExpr
-	| Fn | Go | Ident | If | IfGuard | Index | Infix | KeywordOperator
-	| List | Literal | Lock | MapInit | Match | Modifier | Or | Paren
-	| Postfix | Prefix | Range | Selector | StructInit | Type | Unsafe
+pub type Expr = ArrayInit | Assoc | Call | CallOrCast | Cast | Comptime
+	| EmptyExpr | Fn | Go | Ident | If | IfGuard | Index | Infix | KeywordOperator
+	| Literal | Lock | MapInit | Match | Modifier | Or | Paren | Postfix | Prefix
+	| Range | Selector | StructInit | Tuple | Type | Unsafe
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
@@ -82,16 +82,23 @@ pub:
 	stmts []Stmt
 }
 
+pub struct Call {
+pub:
+	lhs  		  Expr
+	generic_types []Expr
+	args 		  []Expr
+}
+
+pub struct CallOrCast {
+pub:
+	lhs  Expr
+	expr Expr
+}
+
 pub struct Cast {
 pub:
 	typ  Expr
 	expr Expr
-}
-
-pub struct Call {
-pub:
-	lhs  Expr
-	args []Expr
 }
 
 pub struct Comptime {
@@ -116,9 +123,10 @@ pub:
 // anon fn
 pub struct Fn {
 pub:
-	params      []Parameter
-	stmts       []Stmt
-	return_type Expr
+	generic_types []Expr
+	params        []Parameter
+	stmts         []Stmt
+	return_type   Expr
 }
 
 pub struct Go {
@@ -175,7 +183,7 @@ pub:
 	expr Expr
 }
 
-pub struct List {
+pub struct Tuple {
 pub:
 	exprs []Expr
 }
@@ -195,11 +203,9 @@ pub:
 
 pub struct MapInit {
 pub:
-	lhs        Expr
-	key_type   Expr = empty_expr
-	value_type Expr = empty_expr
-	keys 	   []Expr
-	vals 	   []Expr
+	typ  Expr = empty_expr
+	keys []Expr
+	vals []Expr
 }
 
 pub struct Match {
@@ -429,8 +435,9 @@ pub:
 
 pub struct FnType {
 pub:
-	params      []Parameter
-	return_type Expr = empty_expr
+	generic_types []Expr
+	params        []Parameter
+	return_type   Expr = empty_expr
 }
 
 pub struct MapType {

@@ -16,6 +16,7 @@ mut:
 	file_path string
 	scanner   &scanner.Scanner
 	in_init   bool // for/if/match eg. `for x in vals {`
+	in_pgctl  bool // in (p)osible (g)eneric (c)all (t)ype (l)ist
 	// start token info
 	// the following are for tok, for next_tok get directly from scanner
 	line_nr   int
@@ -118,17 +119,17 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			p.next()
 			// NOTE: we can also use SelectorExpr if we like
 			// mod := p.expr(.lowest)
-			mut name := p.name()
+			mut name := p.expect_name()
 			mut alias := name
 			for p.tok == .dot {
 				p.next()
-				alias = p.name()
+				alias = p.expect_name()
 				name += '.$alias'
 			}
 			is_aliased := p.tok == .key_as
 			if is_aliased {
 				p.next()
-				alias = p.name()
+				alias = p.expect_name()
 			}
 			// p.log('ast.Import: $name as $alias')
 			return ast.Import{
@@ -142,7 +143,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		}
 		.key_module {
 			p.next()
-			name := p.name()
+			name := p.expect_name()
 			// p.log('ast.Module: $name')
 			return ast.Module{
 				name: name
@@ -285,7 +286,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					return p.assign(exprs)
 				}
 				return ast.ExprStmt{
-					ast.List{exprs: exprs}
+					ast.Tuple{exprs: exprs}
 				}
 			}
 			if p.tok.is_assignment() {
@@ -316,6 +317,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_fn {
 			p.next()
+			mut generic_types := []ast.Expr{}
+			if p.tok == .lt {
+				p.next()
+				generic_types << p.expect_type()
+				for p.tok == .comma {
+					p.next()
+					generic_types << p.expect_type()
+				}
+				p.expect(.gt)
+			}
 			// TODO: proper - closure vars
 			if p.tok == .lsbr {
 				p.next()
@@ -328,11 +339,18 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 			}
 			params := p.fn_parameters()
-			mut return_type := ast.empty_expr
-			if p.tok != .lcbr {
-				return_type = p.typ()
+			// NOTE: we may need to check line_nr due to the generic call case listed below
+			// return_type := if line_nr == p.line_nr { p.try_type() } else { ast.empty_expr }
+			// return_type := p.try_type() or { ast.empty_expr }
+			return_type := p.try_type()
+			// this only occurs if parsing generic fn in generic call `fn_generic_b<fn<int>(int),int>()`
+			// since we need to use expr() isntead of typ() because we dont yet know what we are parsing.
+			// take a look at expr chaining loop branch `if p.tok in [.lpar, .lt]`
+			if p.in_pgctl && p.tok != .lcbr {
+				return ast.Type(ast.FnType{generic_types: generic_types, params: params, return_type: return_type})
 			}
 			lhs = ast.Fn{
+				generic_types: generic_types
 				params: params
 				stmts: p.block()
 				return_type: return_type
@@ -475,7 +493,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// (`[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`) | `[2]u8(x)`
 				if p.tok in [.amp, .name] && p.line_nr == line_nr {
-					mut typ := p.typ()
+					mut typ := p.expect_type()
 					for i:=exprs_arr.len-1; i>=0; i-- {
 						exprs2 := exprs_arr[i]
 						if exprs2.len == 0  {
@@ -496,10 +514,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
+						if p.in_pgctl && p.tok != .lcbr { return typ }
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
-							key := p.name()
+							key := p.expect_name()
 							p.expect(.colon)
 							match key {
 								'init'  { init = p.expr(.lowest) }
@@ -533,7 +552,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// (`[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`) | `[]u8(x)`
 			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
-				typ := ast.Type(ast.ArrayType{elem_type: p.typ()})
+				typ := ast.Type(ast.ArrayType{elem_type: p.expect_type()})
 				// cast `[]u8(x)` we know this is a cast
 				// set lhs as the type, cast handled later in expr loop
 				if p.tok == .lpar {
@@ -541,10 +560,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
+					if p.in_pgctl && p.tok != .lcbr { return typ }
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
-						key := p.name()
+						key := p.expect_name()
 						p.expect(.colon)
 						match key {
 							'cap'  { cap = p.expr(.lowest) }
@@ -630,37 +650,46 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.name {
-			// TODO: proper
-			if p.next_tok == .lcbr && !p.in_init {
-				typ := p.typ()
-				if p.next_tok == .ellipsis {
+			// NOTE: we could also use expect_type() here since it also returns
+			// ident & selector, but we are repeating some code for efficiency
+			// if there ends up being many more cases like this then just switch
+			// to using expect_type(), it wont be worth maintaining duplicate code
+			match p.lit {
+				'map' {
 					p.next()
-					return p.assoc(typ)
+					if p.tok == .lsbr {
+						p.next()
+						key_type := p.expect_type()
+						p.expect(.rsbr)
+						value_type := p.expect_type()
+						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
+						if p.in_pgctl && p.tok != .lcbr { return map_type }
+						p.expect(.lcbr)
+						p.expect(.rcbr)
+						return ast.MapInit{typ: map_type}
+					}
+					lhs = ast.Ident{name: 'map'}
 				}
-				// NOTE: we can allow this if wanted also for assoc
-				// lhs = p.struct_init(typ)
-				return p.struct_init(typ)
+				'nil' {
+					p.next()
+					lhs = ast.Type(ast.NilType{})
+				}
+				'none' {
+					p.next()
+					lhs = ast.Type(ast.NilType{})
+				}
+				else { lhs = p.ident() }
 			}
-			name := p.name()
-			// long map init: map[string]string{}
-			if name == 'map' && p.tok == .lsbr {
-				// p.expect(.lsbr)
+			// NOTE: since we're returning struct init here, we complete the selector
+			// but if we move the init to expr loop then we can use if instead of for
+			// if p.tok == .dot {
+			for p.tok == .dot {
 				p.next()
-				key_type := p.typ()
-				p.expect(.rsbr)
-				value_type := p.typ()
-				p.expect(.lcbr)
-				// TODO: init stuffs (check support)
-				p.expect(.rcbr)
-				return ast.MapInit{
-					lhs: lhs
-					key_type: key_type
-					value_type: value_type
-				}
+				lhs = ast.Selector{lhs:lhs, rhs: p.ident()}
 			}
-			lhs = ast.Ident{
-				name: name
-				// is_mut: is_mut
+			// TODO: move inits to expr loop
+			if p.tok == .lcbr && !p.in_init {
+				return p.struct_init_or_assoc(lhs)
 			}
 		}
 		// selector (enum value), range. handled in loop below
@@ -683,54 +712,143 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// the pratt loop is currently just being used for basic infix & postfix operators
 	// I might decide to change this later.
 	for {
-		// call || generic call (TODO: proper, fix this fugly :-D)
-		if p.tok == .lpar || (p.tok == .lt && p.next_tok == .name && p.scanner.lit[0].is_capital()) {
+		// call | cast
+		if p.tok == .lpar {
+			// TODO: handle by checking expr?
 			// (*ptr_a) = *ptr_a - 1
 			if p.line_nr != line_nr {
 				return lhs
 			}
-			// TODO: call or cast
-			// this will currently only be type from ArrayInit `[]u8(x)`
-			// if lhs is ast.Type {
-			// 	lhs = ast.Cast{
-			// 		typ: lhs
-			// 		expr: p.expr(.lowest)
-			// 	}
-			// 	continue
-			// }
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
-			// generic call
-			if p.tok == .lt {
-				p.next()
-				p.typ()
-				p.expect(.gt)
-			}
 			args := p.fn_arguments()
-			// lhs = ast.Cast{
-			lhs = ast.Call{
-				lhs: lhs
-				args: args
-			}
+			// definately a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
 			if p.tok in [.not, .question] {
-				p.next()
-				// TODO
+				lhs = ast.Postfix{expr: lhs, op: p.tok()}
+				lhs = ast.Call{
+					lhs: lhs
+					args: args
+				}
+			}
+			// could be a call or a cast (1 arg)
+			else if args.len == 1 {
+				// definately a cast
+				if lhs is ast.Type {
+					lhs = ast.Cast{
+						typ: lhs
+						expr: args[0]
+					}
+				}
+				// work this out after type checking
+				else {
+					lhs = ast.CallOrCast{
+						lhs: lhs
+						expr: args[0]
+					}
+				}
+			}
+			// definately a call (0 args, or more than 1 arg)
+			else {
+				lhs = ast.Call{
+					lhs: lhs
+					args: args
+				}
 			}
 		}
-		// index: `expr[i]`
-		// checking linr_nr so that this wont get parsed as index:
-		// `__global my_global = expr`
-		// `[someattr]`
-		// we could also check pos, making sure it's directly after
+		// generic call | infix `<`
+		else if p.tok == .lt {
+			// NOTE: why all of this? because I don't want the parser to need
+			// to know anything at all about types, such as builtin type names
+			// or if user defined types start with a capital letter etc.
+			// I also don't want to introduce unlimited token look ahead.
+			// when we reach an expr that is `name<name,name` we need to check
+			// if it's actually the start of a generic call, or something else.
+			// NOTE: using `[]` instead of `<>` would solve this issue as well
+			// as nested generic types, which is currently not possible unless
+			// you force spaces for `type<T>>`, or some other workaround
+			// TODO: better errors in these conditions
+			op := p.tok()
+			mut exprs := []ast.Expr{}
+			mut has_gt := false
+			mut has_comma := false
+			p.in_pgctl = true
+			expr := p.expr(op.right_binding_power())
+			exprs << expr
+			for p.tok == .comma {
+				p.next()
+				has_comma = true
+				expr2 := p.expr(op.right_binding_power())
+				// multiple possible (ended up not being) generic type lists in a row
+				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
+			}
+			if p.tok == .gt {
+				p.next()
+				has_gt = true
+			}
+			p.in_pgctl = false
+			// generic call
+			if has_gt && p.tok == .lpar {
+				lhs = ast.Call{
+					lhs: lhs
+					args: p.fn_arguments()
+					generic_types: exprs
+				}
+				// fncall()! (Propagate Result) | fncall()? (Propagate Option)
+				if p.tok in [.not, .question] {
+					lhs = ast.Postfix{expr: lhs, op: p.tok()}
+				}
+			}
+			// NOTE: oops we are inside expr called from fn arg or multi return expr
+			// which has a infix expr, eg: `a<b,c` in `fn_call(a<b,c)` or `return a<b,c`
+			else if has_comma {
+				for x in exprs {
+					// TODO: error with position
+					if x is ast.Type {
+						p.error('unexpected type, expecting expr. are you missing `{}` after type name?')
+					}
+				}
+				infix_expr := ast.Infix {
+					op: op
+					lhs: lhs
+					rhs: expr
+				}
+				// no need to use Tuple for single expr
+				if exprs.len == 1 { return infix_expr }
+				// we've already parsed ahead mulitple exprs, use Tuple 
+				// this means we will need to unwrap it in those cases
+				exprs[0] = infix_expr
+				// looked like end of type list, but was really `>` infix
+				// eg: `a<b,c>d` in `fn_call(a<b,c)` or `return a<b,c>d`
+				if has_gt {
+					exprs[1] = ast.Infix {
+						op: op
+						lhs: exprs[1]
+						rhs: p.expr(op.right_binding_power())
+					}
+				}
+				return ast.Tuple{exprs: exprs}
+			}
+			// infix `<`
+			// this is a normal infix
+			else {
+				lhs = ast.Infix{
+					lhs: lhs
+					op: op
+					rhs: expr
+				}
+				// continue at pratt loop
+				break
+			}
+		}
+		// index: `expr[i]` | `expr#[i]` 
 		else if p.tok in [.hash, .lsbr] && p.line_nr == line_nr {
 			is_gated := p.tok == .hash
 			if is_gated {
 				p.next()
-				if p.tok != .lsbr {
-					p.error('how did we end up here?')
-				}
+				p.expect(.lsbr)
+			} else {
+				p.next()
 			}
-			p.next()
 			// p.log('ast.Index: $p.scanner.lit')
 			lhs = ast.Index{
 				lhs: lhs
@@ -773,13 +891,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// pratt
 	for int(min_bp) <= int(p.tok.left_binding_power()) {
 		if p.tok.is_infix() {
+			// TODO: handle by checking expr?
 			// deref assign: `*a = b`
 			if p.tok == .mul && p.line_nr != line_nr {
-				// check that starts at start of line
-				// TODO: fix (what was this about?)
-				// if p.tok == .mul && p.scanner.line_offsets[p.line_nr-1]+1 == p.pos {
-					return lhs
-				// }
+				return lhs
 			}
 			op := p.tok()
 			lhs = ast.Infix{
@@ -813,7 +928,7 @@ pub fn (mut p Parser) next() {
 
 [inline]
 pub fn (mut p Parser) expect(tok token.Token) {
-	if tok != p.tok {
+	if p.tok != tok {
 		p.error('unexpected token. expecting `$tok`, got `$p.tok`')
 	}
 	p.next()
@@ -821,8 +936,10 @@ pub fn (mut p Parser) expect(tok token.Token) {
 
 // expect name & return lit & go to next token
 [inline]
-pub fn (mut p Parser) name() string {
+pub fn (mut p Parser) expect_name() string {
 	name := p.lit
+	// NOTE: if we do the checking in here instead if using expect it will
+	// give us a minuscule speed gain, but for convenience I'm using expect
 	p.expect(.name)
 	return name
 }
@@ -851,9 +968,7 @@ pub fn (mut p Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
 	for p.tok != .rcbr {
-		// p.log('BLOCK STMT START')
 		stmts << p.stmt()
-		// p.log('BLOCK STMT END')
 	}
 	// rcbr
 	p.next()
@@ -864,7 +979,11 @@ pub fn (mut p Parser) block() []ast.Stmt {
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {
-		exprs << p.expr(.lowest)
+		// exprs << p.expr(.lowest)
+		// NOTE: see `.lt` in expr chaining loop, expand Tuple
+		// that came from posible generic call `return a < b, c` 
+		expr := p.expr(.lowest)
+		if expr is ast.Tuple { exprs << expr.exprs } else { exprs << expr }
 		if p.tok != .comma {
 			break
 		}
@@ -893,7 +1012,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		// consider using normal if expr
 		else if p.tok == .key_if {
 			p.next()
-			// name = 'if ' + p.name()
+			// name = 'if ' + p.expect_name()
 			comptime_cond = p.expr(.lowest)
 			comptime_cond_opt = p.tok == .question
 			if comptime_cond_opt {
@@ -901,7 +1020,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 			}
 		}
 		else {
-			name = p.name()
+			name = p.expect_name()
 		}
 		if p.tok == .colon {
 			p.next()
@@ -950,7 +1069,7 @@ pub fn (mut p Parser) @for(label string) ast.For {
 	mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
 	// for in `for x in vals {`
 	if p.next_tok in [.comma, .key_in] {
-		mut key, mut value := '', p.name()
+		mut key, mut value := '', p.expect_name()
 		mut value_is_mut := false
 		if p.tok == .comma {
 			p.next()
@@ -959,7 +1078,7 @@ pub fn (mut p Parser) @for(label string) ast.For {
 				value_is_mut = true
 				p.next()
 			}
-			value = p.name()
+			value = p.expect_name()
 		}
 		p.expect(.key_in)
 		init = ast.ForIn{
@@ -1051,7 +1170,7 @@ pub fn (mut p Parser) directive() ast.Directive {
 	// value := p.lit() // if we scan whole line see scanner
 	p.next()
 	line_nr := p.line_nr
-	name := p.name()
+	name := p.expect_name()
 	// TODO: handle properly
 	mut value := p.lit()
 	for p.line_nr == line_nr {
@@ -1073,7 +1192,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	}
 	mut fields := []ast.FieldInit{}
 	for {
-		name := p.name()
+		name := p.expect_name()
 		p.expect(.assign)
 		value := p.expr(.lowest)
 		fields << ast.FieldInit{
@@ -1110,8 +1229,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			p.next()
 		}
 		receiver = ast.Parameter{
-			name: p.name()
-			typ: p.typ()
+			name: p.expect_name()
+			typ: p.expect_type()
 			is_mut: is_mut
 		}
 		p.expect(.rpar)
@@ -1129,8 +1248,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 				p.next()
 			}
 			receiver2 := ast.Parameter{
-				name: p.name()
-				typ: p.typ()
+				name: p.expect_name()
+				typ: p.expect_type()
 				is_mut: is_mut
 			}
 			_ = receiver2
@@ -1138,7 +1257,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			mut return_type := ast.empty_expr
 			_ = return_type
 			if p.tok != .lcbr && p.line_nr == line_nr {
-				return_type = p.typ()
+				return_type = p.expect_type()
 			}
 			p.block()
 			// TODO
@@ -1150,7 +1269,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	if p.tok == .lt {
 		p.next()
 		for {
-			generic_types << p.typ()
+			generic_types << p.expect_type()
 			if p.tok != .comma {
 				break
 			}
@@ -1159,7 +1278,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		p.expect(.gt)
 	}
 	params := p.fn_parameters()
-	return_type := if p.tok != .lcbr && p.line_nr == line_nr { p.typ() } else { ast.empty_expr }
+	return_type := if p.tok != .lcbr && p.line_nr == line_nr { p.expect_type() } else { ast.empty_expr }
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.next_tok')
 	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
 	return ast.FnDecl{
@@ -1183,14 +1302,14 @@ pub fn (mut p Parser) fn_parameters() []ast.Parameter {
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		// TODO: proper
-		mut typ := p.typ()
+		mut typ := p.expect_type()
 		mut name := ''
 		if p.tok == .name {
 			name = (typ as ast.Ident).name
-			typ = p.typ()
+			typ = p.expect_type()
 		}
-		// name := if p.tok == .name && p.next_tok != .dot { p.name() } else { 'param_$params.len' }
-		// typ := if p.tok !in [.comma, .rpar] { p.typ() } else { ast.empty_expr }
+		// name := if p.tok == .name && p.next_tok != .dot { p.expect_name() } else { 'param_$params.len' }
+		// typ := if p.tok !in [.comma, .rpar] { p.expect_type() } else { ast.empty_expr }
 		if p.tok == .comma {
 			p.next()
 		}
@@ -1224,12 +1343,30 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 			if expr !is ast.Ident {
 				p.error('expecting ident for struct config syntax?')
 			}
-			expr = ast.FieldInit{
-				name: (expr as ast.Ident).name
-				value: p.expr(.lowest)
+			expr2 := p.expr(.lowest)
+			// NOTE: see `.lt` in expr chaining loop, expand Tuple
+			// that came from posible generic call `fn(foo: a < b, c)` 
+			if expr2 is ast.Tuple {
+				expr = ast.FieldInit{
+					name: (expr as ast.Ident).name
+					value: expr2.exprs[0]
+				}
+				args << expr
+				args << expr2.exprs[1..]
+			} else {
+				expr = ast.FieldInit{
+					name: (expr as ast.Ident).name
+					// value: p.expr(.lowest)
+					value: expr2
+				}
+				args << expr
 			}
+		} else {
+			// NOTE: see `.lt` in expr chaining loop, expand Tuple
+			// that came from posible generic call `fn(a < b, c)` 
+			if mut expr is ast.Tuple { args << expr.exprs } else { args << expr }
 		}
-		args << expr
+		// args << expr
 		if p.tok == .comma {
 			p.next()
 		}
@@ -1240,12 +1377,12 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 
 pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.EnumDecl {
 	p.next()
-	name := p.name()
+	name := p.expect_name()
 	// p.log('ast.EnumDecl: $name')
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
-		field_name := p.name()
+		field_name := p.expect_name()
 		mut value := ast.empty_expr
 		if p.tok == .assign {
 			p.next()
@@ -1278,7 +1415,7 @@ pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 	}
 	mut fields := []ast.FieldDecl{}
 	for {
-		name := p.name()
+		name := p.expect_name()
 		if p.tok == .assign {
 			p.next()
 			fields << ast.FieldDecl{
@@ -1289,7 +1426,7 @@ pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 		else {
 			fields << ast.FieldDecl{
 				name: name
-				typ: p.typ()
+				typ: p.expect_type()
 			}
 		}
 		if !is_grouped {
@@ -1307,10 +1444,10 @@ pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 
 pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	p.next()
-	mut name := p.name()
+	mut name := p.expect_name()
 	for p.tok == .dot {
 		p.next()
-		name += p.name()
+		name += p.expect_name()
 	}
 	p.expect(.lcbr)
 	// TODO: finish
@@ -1322,16 +1459,16 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 			p.expect(.colon)	
 		}
 		line_nr := p.line_nr
-		p.name() // method/field name
+		p.expect_name() // method/field name
 		if p.tok == .lpar {
 			p.fn_parameters()
 			if p.line_nr == line_nr {
-				p.typ() // method return type
+				p.expect_type() // method return type
 			}
 			// methods <<
 		} else {
 			// fields <<
-			p.typ()
+			p.expect_type()
 		}
 	}
 	// rcbr
@@ -1345,11 +1482,11 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 }
 
 pub fn (mut p Parser) assoc(typ ast.Expr) ast.Assoc {
-	p.next()
+	p.next() // .ellipsis
 	lx := p.expr(.lowest)
 	mut fields := []ast.FieldInit{}
 	for p.tok != .rcbr {
-		field_name := p.name()
+		field_name := p.expect_name()
 		p.expect(.colon)
 		fields << ast.FieldInit{
 			name: field_name
@@ -1388,23 +1525,29 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
-		if language == .v && (p.next_tok == .dot || p.lit[0].is_capital()) {
-			embedded << p.typ()
+		line_nr := p.line_nr
+		embed_or_name := p.expect_type()
+		// embedded struct
+		if p.line_nr != line_nr {
+			if language != .v {
+				p.error('$language structs do not support embedding')
+			}
+			embedded << embed_or_name
 			continue
 		}
-		field_name := p.name()
-		typ := p.typ()
-		// default field value
-		mut value := ast.empty_expr
-		if p.tok == .assign {
-			p.next()
-			value = p.expr(.lowest)
+		// field
+		field_name := match embed_or_name {
+			ast.Ident { embed_or_name.name }
+			else { p.error('invalid field name') }
 		}
+		field_type := p.expect_type()
+		// field - default value
+		field_value := if p.tok == .assign { p.next() p.expr(.lowest) } else { ast.empty_expr }
 		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
 		fields << ast.FieldDecl{
 			name: field_name
-			typ: typ
-			value: value
+			typ: field_type
+			value: field_value
 			attributes: field_attributes
 		}
 	}
@@ -1419,9 +1562,21 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	}
 }
 
-// TODO: consider parsing type in here (same for assoc)
-pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
-	p.next()
+pub fn (mut p Parser) struct_init_or_assoc(typ ast.Expr) ast.Expr {
+	mut generic_types := []ast.Expr{}
+	if p.tok == .lt {
+		p.next()
+		generic_types << p.expect_type()
+		for p.tok == .comma {
+			p.next()
+			generic_types << p.expect_type()
+		}
+		p.expect(.gt)
+	}
+	p.next() // .lcbr
+	if p.tok == .ellipsis {
+		return p.assoc(typ)
+	}
 	mut fields := []ast.FieldInit{}
 	mut prev_has_name := false
 	for p.tok != .rcbr {
@@ -1457,10 +1612,10 @@ pub fn (mut p Parser) struct_init(typ ast.Expr) ast.StructInit {
 
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
-	name := p.name()
+	name := p.expect_name()
 	// p.log('ast.TypeDecl: $name')
 	p.expect(.assign)
-	typ := p.typ()
+	typ := p.expect_type()
 	// alias `type MyType = int`
 	if p.tok != .pipe {
 		return ast.TypeDecl{
@@ -1471,10 +1626,10 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	}
 	// sum type `type MyType = int | string`
 	p.next()
-	mut variants := [typ, p.typ()]
+	mut variants := [typ, p.expect_type()]
 	for p.tok == .pipe {
 		p.next()
-		variants << p.typ()
+		variants << p.expect_type()
 	}
 	// TODO: consider seperate node for alias / sum type ?
 	return ast.TypeDecl{
@@ -1487,13 +1642,15 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 [inline]
 [direct_array_access]
 pub fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
-	name := p.name()
+	name := p.expect_name()
 	if p.tok == .dot {
 		p.next()
 		if name.len == 1 && name[0] == `C` {
-			return ast.Language.c, p.name()
+			return ast.Language.c, p.expect_name()
 		} else if name.len == 2 && name[0] == `J` && name[1] == `S` {
-			return ast.Language.js, p.name()
+			return ast.Language.js, p.expect_name()
+		} else {
+			p.error('invalid language prefix `$name`')
 		}
 	}
 	return ast.Language.v, name
@@ -1501,7 +1658,7 @@ pub fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
 
 [inline]
 pub fn (mut p Parser) ident() ast.Ident {
-	return ast.Ident{name: p.name()}
+	return ast.Ident{name: p.expect_name()}
 }
 
 pub fn (mut p Parser) log(msg string) {

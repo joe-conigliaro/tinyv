@@ -5,102 +5,138 @@ module parser
 
 import tinyv.ast
 
-// TODO:
-pub fn (mut p Parser) typ() ast.Expr {
-	// optional
-	if p.tok == .question {
-		line_nr := p.line_nr
-		p.next()
-		if p.tok == .lcbr || line_nr != p.line_nr { return ast.Type(ast.OptionType{}) }
-		return ast.Type(ast.OptionType{ base_type: p.typ() })
+[inline]
+pub fn (mut p Parser) expect_type() ast.Expr {
+	// return p.try_type() or {
+	// 	p.error(err.msg())
+	// }
+	typ := p.try_type()
+	if typ is ast.EmptyExpr {
+		p.error('expecting type, got `$p.tok`')
 	}
-	// result
-	else if p.tok == .not {
-		p.next()
-		return ast.Type(ast.ResultType{ base_type: p.typ() })
-	}
-	// pointer
-	else if p.tok == .amp {
-		return ast.Prefix{op: p.tok(), expr: p.typ()}
-	}
-	// atomic | shared
-	// eg. typespec in struct field with modifier. other cases handled in expr()
-	else if p.tok in [.key_atomic, .key_shared] {
-		kind := p.tok
-		p.next()
-		return ast.Modifier{kind: kind, expr: p.typ()}
-	}
-	// name OR map
-	else if p.tok == .name {
-		// map
-		if p.lit == 'map' {
+	return typ
+}
+
+// TODO: use optional or stick with empty expr?
+// pub fn (mut p Parser) try_type() ?ast.Expr {
+pub fn (mut p Parser) try_type() ast.Expr {
+	match p.tok {
+		// pointer
+		.amp {
+			return ast.Prefix{op: p.tok(), expr: p.expect_type()}
+		}
+		// TODO: variadic
+		.ellipsis {
 			p.next()
-			// map[string]string
-			if p.tok == .lsbr {
+			return p.expect_type()
+		}
+		// atomic | shared
+		// eg. typespec in struct field with modifier. other cases handled in expr()
+		.key_atomic, .key_shared {
+			kind := p.tok
+			p.next()
+			return ast.Modifier{kind: kind, expr: p.expect_type()}
+		}
+		// function `fn(int) int`
+		.key_fn {
+			line_nr := p.line_nr
+			p.next()
+			mut generic_types := []ast.Expr{}
+			if p.tok == .lt {
 				p.next()
-				key_type := p.typ()
-				p.expect(.rsbr)
-				return ast.Type(ast.MapType{key_type: key_type, value_type: p.typ()})
+				generic_types << p.expect_type()
+				for p.tok == .comma {
+					p.next()
+					generic_types << p.expect_type()
+				}
+				p.expect(.gt)
 			}
-			// there is just struct called map in builtin
-			return ast.Ident{name: 'map'}
+			params := p.fn_parameters()
+			return ast.Type(ast.FnType{
+				generic_types: generic_types,
+				params: params,
+				return_type: if p.line_nr == line_nr { p.try_type() } else { ast.empty_expr }
+				// return_type: if p.line_nr == line_nr { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+			})
 		}
-		// name
-		ident := p.ident()
-		if p.tok == .dot {
+		// nil
+		.key_nil {
 			p.next()
-			// p.name()
-			return ast.Selector{lhs: ident, rhs: p.ident()}
+			return ast.Type(ast.NilType{})
 		}
-		return ident
-	}
-	else if p.tok == .key_nil {
-		p.next()
-		return ast.Type(ast.NilType{})
-	}
-	else if p.tok == .key_none {
-		p.next()
-		return ast.Type(ast.NoneType{})
-	}
-	// array
-	else if p.tok == .lsbr {
-		p.next()
-		// dynamic array
-		if p.tok == .rsbr {
+		// none
+		.key_none {
 			p.next()
-			return ast.Type(ast.ArrayType{elem_type: p.typ()})
+			return ast.Type(ast.NoneType{})
 		}
-		// fixed array
-		len_expr := p.expr(.lowest)
-		p.expect(.rsbr)
-		return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.typ()})
-	}
-	// Tuple (multi return)
-	else if p.tok == .lpar {
-		p.next()
-		// expect at least two (so we otherwise error)
-		mut types := [p.typ()]
-		p.expect(.comma)
-		types << p.typ()
-		// more than two
-		for p.tok == .comma {
+		// Tuple (multi return)
+		.lpar {
 			p.next()
-			types << p.typ()
+			// expect at least two (so we otherwise error)
+			mut types := [p.expect_type()]
+			p.expect(.comma)
+			types << p.expect_type()
+			// more than two
+			for p.tok == .comma {
+				p.next()
+				types << p.expect_type()
+			}
+			p.expect(.rpar)
+			return ast.Type(ast.TupleType{types: types})
 		}
-		p.expect(.rpar)
-		return ast.Type(ast.TupleType{types: types})
+		// array
+		.lsbr {
+			p.next()
+			// dynamic array
+			if p.tok == .rsbr {
+				p.next()
+				return ast.Type(ast.ArrayType{elem_type: p.expect_type()})
+			}
+			// fixed array
+			len_expr := p.expr(.lowest)
+			p.expect(.rsbr)
+			return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.expect_type()})
+		}
+		// name OR map
+		.name {
+			// map
+			if p.lit == 'map' {
+				p.next()
+				// map[string]string
+				if p.tok == .lsbr {
+					p.next()
+					key_type := p.expect_type()
+					p.expect(.rsbr)
+					return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
+				}
+				// there is just struct called map in builtin
+				return ast.Ident{name: 'map'}
+			}
+			// name
+			ident := p.ident()
+			if p.tok == .dot {
+				p.next()
+				return ast.Selector{lhs: ident, rhs: p.ident()}
+			}
+			return ident
+		}
+		// result
+		.not {
+			p.next()
+			return ast.Type(ast.ResultType{ base_type: p.expect_type() })
+		}
+		// optional
+		.question {
+			line_nr := p.line_nr
+			p.next()
+			return ast.Type(ast.OptionType{
+				base_type: if p.line_nr == line_nr { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.line_nr == line_nr { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+			})
+		}
+		else {
+			// return error('expecting type, got `$p.tok`')
+			return ast.empty_expr
+		}
 	}
-	// variadic
-	// TODO:
-	else if p.tok == .ellipsis {
-		p.next()
-		return p.typ()
-	}
-	else if p.tok == .key_fn {
-		p.next()
-		params := p.fn_parameters()
-		return_type := if p.tok in [.amp, .lsbr, .name, .question] { p.typ() } else { ast.empty_expr }
-		return ast.Type(ast.FnType{params: params, return_type: return_type})
-	}
-	p.error('typ: expected type, got `$p.tok`')
 }

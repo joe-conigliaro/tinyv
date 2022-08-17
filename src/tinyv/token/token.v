@@ -178,6 +178,9 @@ pub fn (tok Token) is_infix() bool {
 
 [inline]
 pub fn (tok Token) is_postfix() bool {
+	// If we want pratt loop to handle `fn()!` | `fn()?`
+	// I will most likely continue doing this manually.
+	// return tok in [.inc, .dec, .not, .question]
 	return tok in [.inc, .dec]
 }
 

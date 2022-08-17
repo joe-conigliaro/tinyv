@@ -1,7 +1,10 @@
 // Copyright (c) 2020-2021 Joe Conigliaro. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
+// [has_globals]
 module types
+
+// __global universe = &Scope{parent: 0}
 
 const(
 	// TODO: v: allow initialising flags like so: `.integer | .unsigned`
@@ -12,8 +15,9 @@ const(
 	// i32_ = Primitive{props: .integer}
 	int_  = Primitive{props: Properties.integer}
 	i64_  = Primitive{props: Properties.integer}
-	// u8_ = Primitive{props: .integer | .unsigned}
-	byte_ = Primitive{props: Properties.integer | Properties.unsigned}
+	u8_   = Primitive{props: Properties.integer | Properties.unsigned}
+	// byte_ = Primitive{props: Properties.integer | Properties.unsigned}
+	// byte_ = Alias{parent_type: u8_}
 	u16_  = Primitive{props: Properties.integer | Properties.unsigned}
 	u32_  = Primitive{props: Properties.integer | Properties.unsigned}
 	u64_  = Primitive{props: Properties.integer | Properties.unsigned}
@@ -29,7 +33,8 @@ pub fn init_universe() &Scope {
 	universe.register('i16', i16_)
 	universe.register('int', int_)
 	universe.register('i64', i64_)
-	universe.register('byte', byte_)
+	universe.register('u8', u8_)
+	// universe.register('byte', byte_)
 	universe.register('u16', u16_)
 	universe.register('u64', u64_)
 	universe.register('f16', f16_)

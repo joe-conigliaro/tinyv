@@ -1,3 +1,5 @@
+// this file is just to test the parser so there may be a
+// bunch of stuff in here that does not really make sense
 module main
 
 #include <header_a.h>
@@ -16,6 +18,15 @@ const (
 type AliasA = int
 type SumTypeA = StructA | int | string
 
+// we dont want this to be parsed as:
+// `type FnA = fn() fn...`
+type FnA = fn()
+fn fn_after_type_fn_a() int {}
+// we dont want this to be parsed as:
+// `type FnA = fn() ?fn...`
+type FnB = fn() ?
+fn fn_after_type_fn_b() int {}
+
 [attribute_a]
 enum EnumA {
 	value_a
@@ -33,6 +44,12 @@ struct StructA {
 	field_d int = 111
 	field_e int [attribute_a]
 }
+
+// struct GenericStructA<T> {
+// 	field_a T
+// 	field_b int
+// 	field_c string
+// }
 
 struct C.StructA {}
 
@@ -72,8 +89,26 @@ fn fn_mulit_return_a() (int, int) {
 	return 1,2
 }
 
-fn fn_generic_a<T>(arg_a T, arg_b string, arg_c int) {
+fn fn_generic_a<T>(arg_a T, arg_b string, arg_c int) int {
 	println('fn_generic_a: $arg_a.type')
+}
+
+fn fn_generic_b<T,Y>(arg_a T, arg_b Y) int {
+	fn_generic_c<fn<U,I>(U, I) U,int>(fn<U,I>(param_a U, param_b I) U {}, 1)
+	fn_generic_c<[]string,map[string]string>(1, 1)
+	fn_('a', a < b, a < b, c)
+	fn_('a', foo: a < b, a < b, c)
+	fn_b('a', fn_generic_b<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2),fn_generic_b<int,int>(1,2))
+	fn_b('a', fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1,2) < (fn_generic_b<int,int>(1,2) - 2), 2)),fn_generic_b<int,int>(1,2))
+	return if x < 64 { fn_generic_b<int,int>(1,2) } else { fn_generic_b<int,int>(1, 2) < (fn_generic_b<int,int>(1, 2) - 2) }
+	return a < b, c > d, e < f, g > h, i > j, k < l, m
+	return a < []string{}, a < b, c
+	return fn_generic_b<int, string>(1), 2
+}
+
+fn fn_generic_c<fn<U,I>(U, I) U ,Y>(arg_a T, arg_b Y) int {
+	println('fn_generic_c')
+	return 1
 }
 
 fn fn_variadic_a(arb_a int, arg_b ...string) {
@@ -112,14 +147,16 @@ fn main_a() {
 		println('array_init_c[0]($arg_a)')
 		return 1
 	}]
+	expr_a expr_b // TODO: error
 	map_init_long_string_string := map[string]string{}
 	map_init_long_string_array_string := map[string][]string{}
 	mut map_init_short_string_string := {'key_a': 'value_a'}
 	map_init_short_string_string = {} // test empty
 	map_init_short_string_array_string := {'key_a': ['value_a', 'value_b']}
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
-	mut struct_init_b := StructA{1, 'v'}
-	struct_init_b = {field_d: 222} // TODO: parsed as MapInit
+	struct_init_b := foo.StructA{field_a: 1, field_b: 'v'}
+	mut struct_init_c := StructA{1, 'v'}
+	struct_init_c = {field_d: 222} // TODO: parsed as MapInit
 	// NOTE: no longer supported
 	// assoc_old_a := {struct_a|field_a: 111}
 	// assoc_old_b := {
@@ -239,6 +276,7 @@ fn main_a() {
 	mut ptr_a := &voidptr(0)
 	*ptr_a = 0
 	(*ptr_a) = *ptr_a - 1
+	((*ptr_a)) = *ptr_a - 1
 	sumtype_a := SumTypeA(111)
 	match sumtype_a {
 		StructA { println('StructA') }

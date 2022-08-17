@@ -407,23 +407,28 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.indent--
 			g.write('}')
 		}
-		ast.Cast {
-			g.expr(expr.typ)
+		ast.Call {
+			g.expr(expr.lhs)
+			if expr.generic_types.len > 0 {
+				g.generic_type_list(expr.generic_types)
+			}
+			g.write('(')
+			for i, arg in expr.args {
+				g.expr(arg)
+				if i < expr.args.len-1 { g.write(', ') }
+			}
+			g.write(')')
+		}
+		ast.CallOrCast {
+			g.expr(expr.lhs)
 			g.write('(')
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.Call {
-			g.expr(expr.lhs)
-			// TODO: generic call
+		ast.Cast {
+			g.expr(expr.typ)
 			g.write('(')
-			for i, arg in expr.args {
-				// if arg.is_mut {
-				// 	g.write('mut ')
-				// }
-				g.expr(arg)
-				if i < expr.args.len-1 { g.write(', ') }
-			}
+			g.expr(expr.expr)
 			g.write(')')
 		}
 		ast.Comptime {
@@ -438,7 +443,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.value)
 		}
 		ast.Fn {
-			g.write('fn(')
+			g.write('fn')
+			if expr.generic_types.len > 0 {
+				g.generic_type_list(expr.generic_types)
+			}
+			g.write('(')
 			for i, arg in expr.params {
 				g.write(arg.name)
 				g.write(' ')
@@ -507,7 +516,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.List {
+		ast.Tuple {
 			for i, x in expr.exprs {
 				g.expr(x)
 				if i < expr.exprs.len-1 { g.write(', ') }
@@ -541,13 +550,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.writeln('}')
 		}
 		ast.MapInit {
-			//g.writeln('// mapinit: $expr.keys.len')
 			// long syntax
-			if expr.key_type !is ast.EmptyExpr {
-				g.write('map[')
-				g.expr(expr.key_type)
-				g.write(']')
-				g.expr(expr.value_type)
+			if expr.typ !is ast.EmptyExpr {
+				g.expr(expr.typ)
 				g.write('{}')
 			}
 			// shorthand syntax
@@ -682,7 +687,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.expr(expr.elem_type)
 				}
 				ast.FnType {
-					g.write('fn(')
+					g.write('fn')
+					if expr.generic_types.len > 0 {
+						g.generic_type_list(expr.generic_types)
+					}
+					g.write('(')
 					for i, arg in expr.params {
 						g.expr(arg.typ)
 						if i < expr.params.len-1 { g.write(', ') }
@@ -744,6 +753,15 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 		}
 	}
 	g.write(']')
+}
+
+fn (mut g Gen) generic_type_list(generic_types []ast.Expr) {
+	g.write('<')
+	for i, generic_type in generic_types {
+		g.expr(generic_type)
+		if i < generic_types.len-1 { g.write(',') }
+	}
+	g.write('>')
 }
 
 [inline]
