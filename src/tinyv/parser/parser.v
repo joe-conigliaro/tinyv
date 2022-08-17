@@ -652,8 +652,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.name {
 			// NOTE: we could also use expect_type() here since it also returns
 			// ident & selector, but we are repeating some code for efficiency
-			// if there ends up being many more cases like this then just switch
-			// to using expect_type(), it wont be worth maintaining duplicate code
 			match p.lit {
 				'map' {
 					p.next()
@@ -669,14 +667,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						return ast.MapInit{typ: map_type}
 					}
 					lhs = ast.Ident{name: 'map'}
-				}
-				'nil' {
-					p.next()
-					lhs = ast.Type(ast.NilType{})
-				}
-				'none' {
-					p.next()
-					lhs = ast.Type(ast.NilType{})
 				}
 				else { lhs = p.ident() }
 			}
