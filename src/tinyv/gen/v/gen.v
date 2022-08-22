@@ -754,11 +754,11 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 }
 
 [inline]
-fn (mut g Gen) generic_type_list(generic_params []ast.Expr) {
+fn (mut g Gen) generic_type_list(generic_types []ast.Expr) {
 	g.write('<')
-	for i, generic_type in generic_params {
+	for i, generic_type in generic_types {
 		g.expr(generic_type)
-		if i < generic_params.len-1 { g.write(',') }
+		if i < generic_types.len-1 { g.write(',') }
 	}
 	g.write('>')
 }
