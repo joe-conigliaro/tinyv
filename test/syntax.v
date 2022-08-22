@@ -45,11 +45,14 @@ struct StructA {
 	field_e int [attribute_a]
 }
 
-// struct GenericStructA<T> {
-// 	field_a T
-// 	field_b int
-// 	field_c string
-// }
+struct GenericStructA<T> {
+	field_a T
+}
+
+struct GenericStructB<T,U> {
+	field_a T
+	field_b U
+}
 
 struct C.StructA {}
 
@@ -86,6 +89,8 @@ fn fn_opt_c() ?int {
 }
 
 fn fn_mulit_return_a() (int, int) {
+	a := StructA<Y,U>{}
+
 	return 1,2
 }
 
@@ -94,16 +99,36 @@ fn fn_generic_a<T>(arg_a T, arg_b string, arg_c int) int {
 }
 
 fn fn_generic_b<T,Y>(arg_a T, arg_b Y) int {
-	fn_generic_c<fn<U,I>(U, I) U,int>(fn<U,I>(param_a U, param_b I) U {}, 1)
-	fn_generic_c<[]string,map[string]string>(1, 1)
+	fn_generic_b<int,int>(1,2)
+	fn_generic_c<fn<U,I>(U, I) U, I>(fn<U,I>(param_a U, param_b I) U {}, 1)
+
+	fn_generic_b<StructA<Y>,int>(StructA<int>{}, 1)
+	fn_generic_b<StructA<Y>,StructA<Y> >(StructA<int>{}, 1)
+	struct_a := GenericStructA<int>{field_a: 1}
+	struct_b := GenericStructB<int,int>{field_a: 1, field_b: 2}
+
+	fn_generic_b<[]string,map[string]string{}>(1, 1)
 	fn_('a', a < b, a < b, c)
 	fn_('a', foo: a < b, a < b, c)
-	fn_b('a', fn_generic_b<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2),fn_generic_b<int,int>(1,2))
-	fn_b('a', fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1,2) < (fn_generic_b<int,int>(1,2) - 2), 2)),fn_generic_b<int,int>(1,2))
+	fn_b('a', fn_generic_c<fn<T,Y>(int),int>(1))
+	fn_b('a', fn_generic_c<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2), 1)
+	fn_b('a', moda.fn_generic_b<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2), fn_generic_b<int,int>(1,2))
+	fn_b('a', modb.fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1,2) < (fn_generic_b<int,int>(1,2) - 2), 2)),fn_generic_b<int,int>(1,2))
+	
+	fna(fn_generic_b<GenericStructB<Y,X> >{}, moda.fn_generic_b<GenericStructB<Y,X> >(1, 1))
+	fna(a < fn_generic_b<GenericStructB<GenericStructA<Y>,X>>{}, moda.fn_generic_b<GenericStructB<Y,X> >(1, 1))
+	
 	return if x < 64 { fn_generic_b<int,int>(1,2) } else { fn_generic_b<int,int>(1, 2) < (fn_generic_b<int,int>(1, 2) - 2) }
+	return fn_generic_b<int,int>(1, 2) < b, c > d, e < f, g > h, fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1, 2), 2), 2) > j, k < l, m
+	
+	return a < b, a < fn_generic_b<GenericStructB<int,string>,StructB<int,StructB<u32,u64>>>(1, 1) // TOOD: `>>>` kind of works but messes up `a<b`
+	return a < b, c < d, GenericStructB<int,int>{field_a: 1, field_b: 2}
+	return a < b, c > d, e, f
+	return f < g, h < i, j > k 
+	return a < b, c, d > e, f < g, h < i, j > k
 	return a < b, c > d, e < f, g > h, i > j, k < l, m
 	return a < []string{}, a < b, c
-	return fn_generic_b<int, string>(1), 2
+	return fn_generic_b<int, string>(1, 2), 2
 }
 
 fn fn_generic_c<fn<U,I>(U, I) U ,Y>(arg_a T, arg_b Y) int {

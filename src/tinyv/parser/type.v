@@ -41,19 +41,19 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		.key_fn {
 			line_nr := p.line_nr
 			p.next()
-			mut generic_types := []ast.Expr{}
+			mut generic_params := []ast.Expr{}
 			if p.tok == .lt {
 				p.next()
-				generic_types << p.expect_type()
+				generic_params << p.expect_type()
 				for p.tok == .comma {
 					p.next()
-					generic_types << p.expect_type()
+					generic_params << p.expect_type()
 				}
 				p.expect(.gt)
 			}
 			params := p.fn_parameters()
 			return ast.Type(ast.FnType{
-				generic_types: generic_types,
+				generic_params: generic_params,
 				params: params,
 				return_type: if p.line_nr == line_nr { p.try_type() } else { ast.empty_expr }
 				// return_type: if p.line_nr == line_nr { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }

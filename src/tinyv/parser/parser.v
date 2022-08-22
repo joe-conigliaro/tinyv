@@ -16,7 +16,7 @@ mut:
 	file_path string
 	scanner   &scanner.Scanner
 	in_init   bool // for/if/match eg. `for x in vals {`
-	in_pgctl  bool // in (p)ossible (g)eneric (c)all (t)ype (l)ist
+	in_pgi    bool // in (p)ossible (g)eneric (i)nstantiation `ident<type,type>`
 	// start token info
 	// the following are for tok, for next_tok get directly from scanner
 	line_nr   int
@@ -317,13 +317,13 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_fn {
 			p.next()
-			mut generic_types := []ast.Expr{}
+			mut generic_params := []ast.Expr{}
 			if p.tok == .lt {
 				p.next()
-				generic_types << p.expect_type()
+				generic_params << p.expect_type()
 				for p.tok == .comma {
 					p.next()
-					generic_types << p.expect_type()
+					generic_params << p.expect_type()
 				}
 				p.expect(.gt)
 			}
@@ -346,11 +346,12 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// this only occurs if parsing generic fn in generic call `fn_generic_b<fn<int>(int),int>()`
 			// since we need to use expr() instead of typ() because we don't yet know what we are parsing.
 			// take a look at expr chaining loop branch `if p.tok == .lt`
-			if p.in_pgctl && p.tok != .lcbr {
-				return ast.Type(ast.FnType{generic_types: generic_types, params: params, return_type: return_type})
+			// TODO: are we using ast.GenericInst in this case?
+			if p.in_pgi && p.tok != .lcbr {
+				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
 			}
 			lhs = ast.Fn{
-				generic_types: generic_types
+				generic_params: generic_params
 				params: params
 				stmts: p.block()
 				return_type: return_type
@@ -514,7 +515,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
-						if p.in_pgctl && p.tok != .lcbr { return typ }
+						if p.in_pgi && p.tok != .lcbr { return typ }
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
@@ -560,7 +561,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
-					if p.in_pgctl && p.tok != .lcbr { return typ }
+					if p.in_pgi && p.tok != .lcbr { return typ }
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
@@ -661,7 +662,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						p.expect(.rsbr)
 						value_type := p.expect_type()
 						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
-						if p.in_pgctl && p.tok != .lcbr { return map_type }
+						if p.in_pgi && p.tok != .lcbr { return map_type }
 						p.expect(.lcbr)
 						p.expect(.rcbr)
 						return ast.MapInit{typ: map_type}
@@ -745,6 +746,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 		}
+		// NOTE: if we want we can handle init like this
+		// else if p.tok == .lcbr && p.line_nr == line_nr && !p.in_init {
+		// 	lhs = p.struct_init_or_assoc(lhs)
+		// }
 		// generic call | infix `<`
 		else if p.tok == .lt {
 			// NOTE: why all of this? because I don't want the parser to need
@@ -760,58 +765,72 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			op := p.tok()
 			mut exprs := []ast.Expr{}
 			mut has_gt := false
-			p.in_pgctl = true
-			expr := p.expr(op.right_binding_power())
+			in_pgi := p.in_pgi
+			p.in_pgi = true
+			// TODO: we can break early here if we want, should we?
+			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.Infix{...} break }
+			// expr := p.expr(op.right_binding_power())
+			expr := p.expr(.highest)
 			exprs << expr
 			for p.tok == .comma {
 				p.next()
-				expr2 := p.expr(op.right_binding_power())
+				// expr2 := p.expr(op.right_binding_power())
+				expr2 := p.expr(.highest)
 				// multiple possible (ended up not being) generic type lists in a row
 				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
-			}
+			}			
+			p.in_pgi = in_pgi
 			if p.tok == .gt {
 				p.next()
 				has_gt = true
 			}
-			p.in_pgctl = false
-			// generic call
-			if has_gt && p.tok == .lpar {
-				lhs = ast.Call{
-					lhs: lhs
-					args: p.fn_arguments()
-					generic_types: exprs
+			// nested generic type list `foo<int,Bar<int,string>>` etc
+			// TODO: support or abandon?
+			else if p.tok in [.right_shift, .right_shift_unsigned] {
+				if !p.in_pgi {
+					// println('should be eating `$p.tok`')
+					p.next()
 				}
-				// fncall()! (Propagate Result) | fncall()? (Propagate Option)
-				if p.tok in [.not, .question] {
-					lhs = ast.Postfix{expr: lhs, op: p.tok()}
+				has_gt = true
+			}
+			// error in these conditions since we are expecting `{}` or `()`
+			if (has_gt || exprs.len > 1) && !in_pgi && p.tok !in [.lcbr, .lpar] {
+				for x in exprs {
+					// TODO: error with position
+					if x is ast.GenericInst {
+						p.error('unexpected token `$p.tok`. are you missing `{}` or `()`')
+					}
+				}
+			}
+			// println('#### A) $p.file_path:$p.line_nr - $p.in_pgi - $p.pgi_depth:$pgi_depth')
+			// generic struct init or assoc
+			// TODO: do we need some more qualifiers?
+			if has_gt && (p.tok in [.comma, .gt, .lpar, .lcbr, .right_shift, .right_shift_unsigned]) {
+			// if has_gt && (p.pgi_depth == pgi_depth && p.tok in [.lpar, .lcbr, .gt, .comma]) {
+			// if has_gt && ((!p.in_pgi && (p.tok == .lpar || p.tok == .lcbr)) || (p.in_pgi && p.pgi_depth == pgi_depth)) {
+				lhs = ast.GenericInst{lhs: lhs, generic_args: exprs}
+				if p.tok == .lcbr {
+					lhs = p.struct_init_or_assoc(lhs)
 				}
 			}
 			// NOTE: oops we are inside expr called from fn arg or multi return expr
 			// which has a infix expr, eg: `a<b,c` in `fn_call(a<b,c)` or `return a<b,c`
 			else if exprs.len > 1 {
-				for x in exprs {
-					// TODO: error with position
-					if x is ast.Type {
-						p.error('unexpected type, expecting expr. are you missing `{}` after type name?')
-					}
-				}
-				infix_expr := ast.Infix {
+				// we've already parsed ahead multiple exprs, use Tuple 
+				// this means we will need to unwrap it in those cases
+				exprs[0] = ast.Infix {
 					op: op
 					lhs: lhs
 					rhs: expr
 				}
-				// no need to use Tuple for single expr
-				if exprs.len == 1 { return infix_expr }
-				// we've already parsed ahead multiple exprs, use Tuple 
-				// this means we will need to unwrap it in those cases
-				exprs[0] = infix_expr
 				// looked like end of type list, but was really `>` infix
 				// eg: `a<b,c>d` in `fn_call(a<b,c>d)` or `return a<b,c>d`
 				if has_gt {
-					exprs[1] = ast.Infix {
-						op: op
-						lhs: exprs[1]
-						rhs: p.expr(op.right_binding_power())
+					exprs[exprs.len-1] = ast.Infix {
+						op: .gt
+						lhs: exprs[exprs.len-1]
+						// rhs: p.expr(op.right_binding_power())
+						rhs: p.expr(.highest)
 					}
 				}
 				return ast.Tuple{exprs: exprs}
@@ -1253,11 +1272,11 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		}
 	}
 	language, name := p.decl_lang_and_name()
-	mut generic_types := []ast.Expr{}
+	mut generic_params := []ast.Expr{}
 	if p.tok == .lt {
 		p.next()
 		for {
-			generic_types << p.expect_type()
+			generic_params << p.expect_type()
 			if p.tok != .comma {
 				break
 			}
@@ -1276,7 +1295,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		receiver: receiver
 		name: name
 		language: language
-		generic_types: generic_types
+		generic_params: generic_params
 		params: params
 		stmts: stmts
 		return_type: return_type
@@ -1494,6 +1513,16 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	// is_union := p.tok == .key_union
 	p.next()
 	language, name := p.decl_lang_and_name()
+	mut generic_params := []ast.Expr{}
+	if p.tok == .lt {
+		p.next()
+		generic_params << p.expect_type()
+		for p.tok == .comma {
+			p.next()
+			generic_params << p.expect_type()
+		}
+		p.expect(.gt)
+	}
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
 	if p.tok != .lcbr {
@@ -1546,6 +1575,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		embedded: embedded
 		language: language
 		name: name
+		generic_params: generic_params
 		fields: fields
 	}
 }

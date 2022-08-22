@@ -15,9 +15,9 @@ type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Assoc | Call | CallOrCast | Cast | Comptime
-	| EmptyExpr | Fn | Go | Ident | If | IfGuard | Index | Infix | KeywordOperator
-	| Literal | Lock | MapInit | Match | Modifier | Or | Paren | Postfix | Prefix
-	| Range | Selector | StructInit | Tuple | Type | Unsafe
+	| EmptyExpr | Fn | GenericInst | Go | Ident | If | IfGuard | Index | Infix
+	| KeywordOperator | Literal | Lock | MapInit | Match | Modifier | Or | Paren
+	| Postfix | Prefix | Range | Selector | StructInit | Tuple | Type | Unsafe
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
@@ -84,9 +84,8 @@ pub:
 
 pub struct Call {
 pub:
-	lhs  		  Expr
-	generic_types []Expr
-	args 		  []Expr
+	lhs  Expr
+	args []Expr
 }
 
 pub struct CallOrCast {
@@ -123,10 +122,17 @@ pub:
 // anon fn
 pub struct Fn {
 pub:
-	generic_types []Expr
+	generic_params []Expr
 	params        []Parameter
 	stmts         []Stmt
 	return_type   Expr
+}
+
+pub struct GenericInst {
+pub:
+	lhs           Expr
+	generic_args []Expr // concrete types
+
 }
 
 pub struct Go {
@@ -258,8 +264,8 @@ pub:
 
 pub struct StructInit {
 pub:
-	fields []FieldInit
-	typ    Expr
+	typ    		   Expr
+	fields        []FieldInit
 }
 
 pub struct Unsafe {
@@ -344,7 +350,7 @@ pub:
 	receiver      Parameter
 	language      Language = .v
 	name          string
-	generic_types []Expr
+	generic_params []Expr
 	params        []Parameter
 	stmts         []Stmt
 	return_type   Expr = empty_expr
@@ -405,12 +411,13 @@ pub:
 
 pub struct StructDecl {
 pub:
-	attributes []Attribute
-	is_public  bool
-	embedded   []Expr
-	language   Language = .v
-	name       string
-	fields     []FieldDecl
+	attributes 	   []Attribute
+	is_public  	   bool
+	embedded   	   []Expr
+	language  	   Language = .v
+	name       	   string
+	generic_params []Expr
+	fields         []FieldDecl
 }
 
 pub struct TypeDecl {
@@ -435,7 +442,7 @@ pub:
 
 pub struct FnType {
 pub:
-	generic_types []Expr
+	generic_params []Expr
 	params        []Parameter
 	return_type   Expr = empty_expr
 }

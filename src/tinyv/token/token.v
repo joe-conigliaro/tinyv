@@ -132,25 +132,25 @@ pub enum BindingPower {
 [inline]
 pub fn (t Token) left_binding_power() BindingPower {
 	match t {
-		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
-		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
-			return .five
-		}
-		// `+` |  `-` |  `|` | `^`
-		.plus, .minus, .pipe, .xor {
-			return .four
-		}
-		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge {
-			return .three
+		// `||`
+		.logical_or {
+			return .one
 		}
 		// `&&`
 		.and {
 			return .two
 		}
-		// `||`
-		.logical_or {
-			return .one
+		// `==` | `!=` | `<` | `<=` | `>` | `>=`
+		.eq, .ne, .lt, .le, .gt, .ge {
+			return .three
+		}
+		// `+` |  `-` |  `|` | `^`
+		.plus, .minus, .pipe, .xor {
+			return .four
+		}
+		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
+		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
+			return .five
 		}
 		else {
 			return .lowest

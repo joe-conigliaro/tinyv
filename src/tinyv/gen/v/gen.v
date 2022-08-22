@@ -174,13 +174,8 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('.')
 			}
 			g.write(stmt.name)
-			if stmt.generic_types.len > 0 {
-				g.write('<')
-				for i, generic_type in stmt.generic_types {
-					g.expr(generic_type)
-					if i < stmt.generic_types.len-1 { g.write(', ') }
-				}
-				g.write('>')
+			if stmt.generic_params.len > 0 {
+				g.generic_type_list(stmt.generic_params)
 			}
 			g.write('(')
 			for i,arg in stmt.params {
@@ -311,6 +306,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('.')
 			}
 			g.write(stmt.name)
+			if stmt.generic_params.len > 0 {
+				g.generic_type_list(stmt.generic_params)
+			}
 			if stmt.fields.len > 0 { g.writeln(' {') } else { g.write(' {') }
 			g.indent++
 			for field in stmt.fields {
@@ -409,9 +407,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.Call {
 			g.expr(expr.lhs)
-			if expr.generic_types.len > 0 {
-				g.generic_type_list(expr.generic_types)
-			}
 			g.write('(')
 			for i, arg in expr.args {
 				g.expr(arg)
@@ -444,8 +439,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.Fn {
 			g.write('fn')
-			if expr.generic_types.len > 0 {
-				g.generic_type_list(expr.generic_types)
+			if expr.generic_params.len > 0 {
+				g.generic_type_list(expr.generic_params)
 			}
 			g.write('(')
 			for i, arg in expr.params {
@@ -464,14 +459,15 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
+		ast.GenericInst {
+			g.expr(expr.lhs)
+			g.generic_type_list(expr.generic_args)
+		}
 		ast.Go {
 			g.write('go ')
 			g.expr(expr.expr)
 		}
 		ast.Ident {
-			// if expr.is_mut {
-			// 	g.write('mut ')
-			// }
 			g.write(expr.name)
 		}
 		ast.If {
@@ -517,10 +513,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(')')
 		}
 		ast.Tuple {
+			g.write('/*tuple:start*/')
 			for i, x in expr.exprs {
 				g.expr(x)
 				if i < expr.exprs.len-1 { g.write(', ') }
 			}
+			g.write('/*tuple:end*/')
 		}
 		ast.Literal {
 			if expr.kind == .char {
@@ -688,8 +686,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				ast.FnType {
 					g.write('fn')
-					if expr.generic_types.len > 0 {
-						g.generic_type_list(expr.generic_types)
+					if expr.generic_params.len > 0 {
+						g.generic_type_list(expr.generic_params)
 					}
 					g.write('(')
 					for i, arg in expr.params {
@@ -755,11 +753,12 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 	g.write(']')
 }
 
-fn (mut g Gen) generic_type_list(generic_types []ast.Expr) {
+[inline]
+fn (mut g Gen) generic_type_list(generic_params []ast.Expr) {
 	g.write('<')
-	for i, generic_type in generic_types {
+	for i, generic_type in generic_params {
 		g.expr(generic_type)
-		if i < generic_types.len-1 { g.write(',') }
+		if i < generic_params.len-1 { g.write(',') }
 	}
 	g.write('>')
 }
