@@ -325,17 +325,12 @@ pub fn (mut s Scanner) scan() token.Token {
 fn (mut s Scanner) whitespace() {
 	for s.offset < s.text.len {
 		c := s.text[s.offset]
-		if c in [` `, `\t`] {
+		if c in [` `, `\t`, `\r`] {
 			s.offset++
 			continue
 		}
 		else if c == `\n` {
 			s.offset++
-			s.line_offsets << s.offset
-			continue
-		}
-		else if c == `\r` && s.text[s.offset+1] == `\n` {
-			s.offset+=2
 			s.line_offsets << s.offset
 			continue
 		}
@@ -350,9 +345,6 @@ fn (mut s Scanner) line() {
 	for s.offset < s.text.len {
 		c := s.text[s.offset]
 		if c == `\n` {
-			break
-		}
-		else if c == `\r` && s.text[s.offset+1] == `\n` {
 			break
 		}
 		s.offset++
@@ -373,11 +365,7 @@ fn(mut s Scanner) comment() {
 			for s.offset < s.text.len {
 				c := s.text[s.offset]
 				c2 := s.text[s.offset+1]
-				if c == `\r` && c2 == `\n` {
-					s.offset+=2
-					s.line_offsets << s.offset
-				}
-				else if c == `\n` {
+				if c == `\n` {
 					s.offset++
 					s.line_offsets << s.offset
 				}
@@ -416,12 +404,6 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		}
 		else if c2 == `\n` && kind != .raw {
 			s.offset++
-			s.line_offsets << s.offset
-			continue
-		}
-		// else if c2 == `\r` && s.text[s.offset+1] == `\n` {
-		else if c2 == `\r` && c3 == `\n` && kind != .raw {
-			s.offset+=2
 			s.line_offsets << s.offset
 			continue
 		}

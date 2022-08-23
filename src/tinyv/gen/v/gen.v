@@ -400,8 +400,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(field.name)
 				g.write(': ')
 				g.expr(field.value)
+				g.writeln('')
 			}
-			g.writeln('')
 			g.indent--
 			g.write('}')
 		}

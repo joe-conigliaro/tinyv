@@ -105,6 +105,12 @@ fn fn_generic_b<T,Y>(arg_a T, arg_b Y) int {
 	fn_generic_b<StructA<Y>,StructA<Y> >(StructA<int>{}, 1)
 	struct_a := GenericStructA<int>{field_a: 1}
 	struct_b := GenericStructB<int,int>{field_a: 1, field_b: 2}
+	// possible should we need
+	assoc_struct_b := GenericStructB<int,int>{
+		...struct_b
+		field_a: 10
+		field_b: 20
+	}
 
 	fn_generic_b<[]string,map[string]string{}>(1, 1)
 	fn_('a', a < b, a < b, c)

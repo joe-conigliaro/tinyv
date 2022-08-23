@@ -415,22 +415,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.lcbr {
 			// shorthand map / struct init
 			if !p.in_init {
-				// TODO: options struct
+				// TODO: options struct - what?
 				// lhs = p.struct_init()
 				p.next()
-				// assoc
 				if p.tok == .ellipsis {
-					if lhs is ast.EmptyExpr {
-						p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
-					}
-					return p.assoc(ast.empty_expr)
+					p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
 				}
 				// empty map init `{}`
 				if p.tok == .rcbr {
 					p.next()
 					return ast.MapInit{}
 				}
-				// TODO: differentiate short map / struct init (if possible at this stage)
 				// map init
 				mut keys := []ast.Expr{}
 				mut vals := []ast.Expr{}
@@ -680,7 +675,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// TODO: move inits to expr loop
 			if p.tok == .lcbr && !p.in_init {
-				return p.struct_init_or_assoc(lhs)
+				return p.assoc_or_struct_init(lhs)
 			}
 		}
 		// selector (enum value), range. handled in loop below
@@ -747,6 +742,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// NOTE: if we want we can handle init like this
+		// this is only needed for ident or selector, so there is really
+		// no point handling it here, since it wont be used for chaining
 		// else if p.tok == .lcbr && p.line_nr == line_nr && !p.in_init {
 		// 	lhs = p.struct_init_or_assoc(lhs)
 		// }
@@ -809,7 +806,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if has_gt && (p.tok in [.comma, .gt, .lpar, .lcbr, .right_shift, .right_shift_unsigned]) {
 				lhs = ast.GenericInst{lhs: lhs, generic_args: exprs}
 				if p.tok == .lcbr {
-					lhs = p.struct_init_or_assoc(lhs)
+					lhs = p.assoc_or_struct_init(lhs)
 				}
 			}
 			// NOTE: oops we are inside expr called from fn arg or multi return expr
@@ -1487,26 +1484,6 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	}
 }
 
-pub fn (mut p Parser) assoc(typ ast.Expr) ast.Assoc {
-	p.next() // .ellipsis
-	lx := p.expr(.lowest)
-	mut fields := []ast.FieldInit{}
-	for p.tok != .rcbr {
-		field_name := p.expect_name()
-		p.expect(.colon)
-		fields << ast.FieldInit{
-			name: field_name
-			value: p.expr(.lowest)
-		}
-	}
-	p.next()
-	return ast.Assoc{
-		typ: typ
-		expr: lx
-		fields: fields
-	}
-}
-
 pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.StructDecl {
 	// TODO: union
 	// is_union := p.tok == .key_union
@@ -1579,21 +1556,29 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	}
 }
 
-pub fn (mut p Parser) struct_init_or_assoc(typ ast.Expr) ast.Expr {
-	mut generic_types := []ast.Expr{}
-	if p.tok == .lt {
-		p.next()
-		generic_types << p.expect_type()
-		for p.tok == .comma {
-			p.next()
-			generic_types << p.expect_type()
-		}
-		p.expect(.gt)
-	}
+pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 	p.next() // .lcbr
+	// assoc
 	if p.tok == .ellipsis {
-		return p.assoc(typ)
+		p.next()
+		lx := p.expr(.lowest)
+		mut fields := []ast.FieldInit{}
+		for p.tok != .rcbr {
+			field_name := p.expect_name()
+			p.expect(.colon)
+			fields << ast.FieldInit{
+				name: field_name
+				value: p.expr(.lowest)
+			}
+		}
+		p.next()
+		return ast.Assoc{
+			typ: typ
+			expr: lx
+			fields: fields
+		}
 	}
+	// struct init
 	mut fields := []ast.FieldInit{}
 	mut prev_has_name := false
 	for p.tok != .rcbr {
@@ -1605,14 +1590,14 @@ pub fn (mut p Parser) struct_init_or_assoc(typ ast.Expr) ast.Expr {
 			match mut value {
 				ast.Literal { field_name = value.value }
 				ast.Ident { field_name = value.name }
-				else { p.error('struct_init: expected field name, got $value.type_name()') }
+				else { p.error('expected field name, got $value.type_name()') }
 			}
 			p.next()
 			value = p.expr(.lowest)
 		}
 		has_name := field_name.len > 0
 		if fields.len > 0 && (has_name != prev_has_name) {
-			p.error('struct_init: cant mix & match name & no name')
+			p.error('cant mix & match name & no name')
 		}
 		prev_has_name = has_name
 		if p.tok == .comma {
