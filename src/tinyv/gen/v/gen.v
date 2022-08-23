@@ -695,7 +695,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 						if i < expr.params.len-1 { g.write(', ') }
 					}
 					g.write(')')
-					g.expr(expr.return_type)
+					if expr.return_type !is ast.EmptyExpr {
+						g.write(' ')
+						g.expr(expr.return_type)
+					}
 				}
 				ast.MapType {
 					g.write('map[')

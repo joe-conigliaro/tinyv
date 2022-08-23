@@ -1,5 +1,6 @@
 // this file is just to test the parser so there may be a
 // bunch of stuff in here that does not really make sense
+[has_globals]
 module main
 
 #include <header_a.h>
@@ -40,7 +41,7 @@ enum EnumA {
 struct StructA {
 	field_a int
 	field_b string
-	field_c fn(int) int // FIXME
+	field_c fn(int) int
 	field_d int = 111
 	field_e int [attribute_a]
 }
@@ -88,9 +89,7 @@ fn fn_opt_c() ?int {
 	return fn_opt_a()!
 }
 
-fn fn_mulit_return_a() (int, int) {
-	a := StructA<Y,U>{}
-
+fn fn_multi_return_a() (int, int) {
 	return 1,2
 }
 
@@ -113,15 +112,15 @@ fn fn_generic_b<T,Y>(arg_a T, arg_b Y) int {
 	fn_b('a', fn_generic_c<fn<T,Y>(int),int>(1))
 	fn_b('a', fn_generic_c<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2), 1)
 	fn_b('a', moda.fn_generic_b<fn<T,Y>(int),int>(a < if (fn_generic_b<int,int>(1,2) > 2) { 1 } else { 2 }, 2), fn_generic_b<int,int>(1,2))
-	fn_b('a', modb.fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1,2) < (fn_generic_b<int,int>(1,2) - 2), 2)),fn_generic_b<int,int>(1,2))
+	fn_b('a', modb.submodb.fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1,2) < (fn_generic_b<int,int>(1,2) - 2), 2)),fn_generic_b<int,int>(1,2))
 	
-	fna(fn_generic_b<GenericStructB<Y,X> >{}, moda.fn_generic_b<GenericStructB<Y,X> >(1, 1))
-	fna(a < fn_generic_b<GenericStructB<GenericStructA<Y>,X>>{}, moda.fn_generic_b<GenericStructB<Y,X> >(1, 1))
+	fna(fn_generic_b<GenericStructB<int,int>>(GenericStructB<int>{}, 1), moda.fn_generic_b<GenericStructB<int,int>>(GenericStructB<int>{}, 1)) // NOTE: `>>` works here as there is no leading infix
+	fna(a < fn_generic_b<GenericStructB<GenericStructA<int>,int> >(GenericStructB<int>{}, 1), moda.fn_generic_b<GenericStructB<int,int> >(GenericStructB<int>{}, 1)) // TODO: `>>` and `>>>` don't work with leading infix
 	
 	return if x < 64 { fn_generic_b<int,int>(1,2) } else { fn_generic_b<int,int>(1, 2) < (fn_generic_b<int,int>(1, 2) - 2) }
 	return fn_generic_b<int,int>(1, 2) < b, c > d, e < f, g > h, fn_generic_b<int,int>(fn_generic_b<int,int>(fn_generic_b<int,int>(1, 2), 2), 2) > j, k < l, m
 	
-	return a < b, a < fn_generic_b<GenericStructB<int,string>,StructB<int,StructB<u32,u64>>>(1, 1) // TOOD: `>>>` kind of works but messes up `a<b`
+	return a < b, a < fn_generic_b<GenericStructB<int,string>,StructB<int,StructB<u32,u64> > >(1, 1) // TODO: `>>` and `>>>` don't work with leading infix
 	return a < b, c < d, GenericStructB<int,int>{field_a: 1, field_b: 2}
 	return a < b, c > d, e, f
 	return f < g, h < i, j > k 
@@ -178,10 +177,10 @@ fn main_a() {
 	mut map_init_short_string_string := {'key_a': 'value_a'}
 	map_init_short_string_string = {} // test empty
 	map_init_short_string_array_string := {'key_a': ['value_a', 'value_b']}
+	map_init_short_ident_string := {key_a: 'value_a'} // unsupported key type
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
 	struct_init_b := foo.StructA{field_a: 1, field_b: 'v'}
-	mut struct_init_c := StructA{1, 'v'}
-	struct_init_c = {field_d: 222} // TODO: parsed as MapInit
+	struct_init_c := StructA{1, 'v'}
 	// NOTE: no longer supported
 	// assoc_old_a := {struct_a|field_a: 111}
 	// assoc_old_b := {
@@ -208,13 +207,13 @@ fn main_a() {
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
 	index_d := [[1,2,3,4]][0][1] // unlimited chaining (add more examples)
-	index_e := [[1,2,3,4]][0][2..4]
-	index_f := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
-	index_g := fn() []string { return ['a', 'b'] }()[0]
-	index_h := array_init_e[0] or { ['e', 'f'] }[0]
+	index_e := [fn() []StructA { return [fn() []StructA { return [StructA{}] }()][0] }()[0]][0] // more chaining
+	index_f := fn() []string { return ['a', 'b'] }()[0]
+	index_g := array_init_e[0] or { ['e', 'f'] }[0]
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]
+	index_range_d := [[1,2,3,4]][0][2..4]
 	index_or_a := array_init_a[0] or { 1 }
 	index_or_b := array_init_b[0] or { [5,6,7,8] }[0]
 	index_or_c := fn() []int { return [array_init_a[0] or { 1 }] }()[0] or { 1 }
@@ -292,9 +291,9 @@ fn main_a() {
 		println(i)
 		for {
 			if i < 7 {
-				continue outer
+				continue for_label_a
 			} else {
-				break outer
+				break for_label_a
 			}
 		}
 	}

@@ -30,7 +30,7 @@ pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
 pub type Type = ArrayType | ArrayFixedType | FnType | MapType
 	| NilType | NoneType | OptionType | ResultType | TupleType
 
-// File (main Ast container)
+// File (AST container)
 pub struct File {
 pub:
 	path    string
@@ -123,9 +123,9 @@ pub:
 pub struct Fn {
 pub:
 	generic_params []Expr
-	params        []Parameter
-	stmts         []Stmt
-	return_type   Expr
+	params         []Parameter
+	stmts          []Stmt
+	return_type    Expr
 }
 
 pub struct GenericInst {
@@ -142,21 +142,8 @@ pub:
 
 pub struct Ident {
 pub:
-	// kind   IdentKind
 	name   string
-	// is_mut bool
-// pub mut:
-// 	obj    Object
 }
-
-// pub enum IdentKind {
-// 	unresolved
-// 	constant
-// 	function
-// 	global
-// 	mod
-// 	variable
-// }
 
 pub struct If {
 pub:
@@ -288,10 +275,11 @@ pub:
 
 // TODO: look at part 1 & 2 in parser
 // consider removing this completely
-pub struct AttributeDecl {
-pub:
-	attributes []Attribute
-}
+// NOTE: don't use this instead attach global attrs to File
+// pub struct AttributeDecl {
+// pub:
+// 	attributes []Attribute
+// }
 
 pub struct Attribute {
 pub:
@@ -344,16 +332,16 @@ pub:
 
 pub struct FnDecl {
 pub:
-	attributes    []Attribute
-	is_public     bool
-	is_method     bool
-	receiver      Parameter
-	language      Language = .v
-	name          string
+	attributes     []Attribute
+	is_public      bool
+	is_method      bool
+	receiver       Parameter
+	language       Language = .v
+	name           string
 	generic_params []Expr
-	params        []Parameter
-	stmts         []Stmt
-	return_type   Expr = empty_expr
+	params         []Parameter
+	stmts          []Stmt
+	return_type    Expr = empty_expr
 }
 
 pub struct For {
@@ -443,8 +431,8 @@ pub:
 pub struct FnType {
 pub:
 	generic_params []Expr
-	params        []Parameter
-	return_type   Expr = empty_expr
+	params         []Parameter
+	return_type    Expr = empty_expr
 }
 
 pub struct MapType {

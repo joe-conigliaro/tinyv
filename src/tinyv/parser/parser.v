@@ -752,15 +752,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// }
 		// generic call | infix `<`
 		else if p.tok == .lt {
-			// NOTE: why all of this? because I don't want the parser to need
-			// to know anything at all about types, such as builtin type names
-			// or if user defined types start with a capital letter etc.
+			// NOTE: why all this? I don't want the parser to need to know about
+			// builtin type names or if user defined types start with a capital.
 			// I also don't want to introduce unlimited token look ahead.
 			// when we reach an expr that is `name<name,name` we need to check
-			// if it's actually the start of a generic call, or something else.
+			// if it's actually the start of a generic inst, or something else.
 			// NOTE: using `[]` instead of `<>` would solve this issue as well
 			// as nested generic types, which is currently not possible unless
-			// you force spaces for `type<T>>`, or some other workaround
+			// you force spaces for `type<T>>`, or use some other workaround.
 			// TODO: better errors in these conditions
 			op := p.tok()
 			mut exprs := []ast.Expr{}
@@ -774,6 +773,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			exprs << expr
 			for p.tok == .comma {
 				p.next()
+				// TODO: we can also break early here if we want
 				// expr2 := p.expr(op.right_binding_power())
 				expr2 := p.expr(.highest)
 				// multiple possible (ended up not being) generic type lists in a row
@@ -784,8 +784,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				has_gt = true
 			}
+			// some other workaround :D
 			// nested generic type list `foo<int,Bar<int,string>>` etc
-			// TODO: support or abandon?
+			// TODO: support or abandon? this is currently not working
+			// properly when preceded by an infix (see syntax test)
 			else if p.tok in [.right_shift, .right_shift_unsigned] {
 				if !p.in_pgi {
 					// println('should be eating `$p.tok`')
@@ -802,12 +804,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// println('#### A) $p.file_path:$p.line_nr - $p.in_pgi - $p.pgi_depth:$pgi_depth')
 			// generic struct init or assoc
-			// TODO: do we need some more qualifiers?
+			// TODO: do we need some more qualifiers? (check depth?)
 			if has_gt && (p.tok in [.comma, .gt, .lpar, .lcbr, .right_shift, .right_shift_unsigned]) {
-			// if has_gt && (p.pgi_depth == pgi_depth && p.tok in [.lpar, .lcbr, .gt, .comma]) {
-			// if has_gt && ((!p.in_pgi && (p.tok == .lpar || p.tok == .lcbr)) || (p.in_pgi && p.pgi_depth == pgi_depth)) {
 				lhs = ast.GenericInst{lhs: lhs, generic_args: exprs}
 				if p.tok == .lcbr {
 					lhs = p.struct_init_or_assoc(lhs)
