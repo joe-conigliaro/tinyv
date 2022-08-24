@@ -743,14 +743,19 @@ fn (mut g Gen) expr(expr ast.Expr) {
 fn (mut g Gen) attributes(attributes []ast.Attribute) {
 	g.write('[')
 	for i, attribute in attributes {
-		g.write(attribute.name)
-		if attribute.value.len > 0 {
-			g.write(": '")
-			g.write(attribute.value)
-			g.write("'")
-		}
-		if i < attributes.len-1 {
-			g.write('; ')
+		if attribute.comptime_cond !is ast.EmptyExpr {
+			g.write('if ')
+			g.expr(attribute.comptime_cond)
+		} else {
+			g.write(attribute.name)
+			if attribute.value.len > 0 {
+				g.write(": '")
+				g.write(attribute.value)
+				g.write("'")
+			}
+			if i < attributes.len-1 {
+				g.write('; ')
+			}
 		}
 	}
 	g.write(']')

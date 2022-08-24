@@ -283,10 +283,9 @@ pub:
 
 pub struct Attribute {
 pub:
-	name              string
-	value             string
-	comptime_cond     Expr
-	comptime_cond_opt bool
+	name          string
+	value         string
+	comptime_cond Expr
 }
 
 pub struct Block {

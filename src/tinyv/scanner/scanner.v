@@ -20,6 +20,7 @@ mut:
 pub mut:
 	// it slows things down a tiny bit appending to this but it
 	// means the only position we need to store per token is `pos`
+	// TODO: test and consider switching to base position instead.
 	line_offsets  []int = [0] // start of each line
 	offset        int    // current char offset
 	pos           int    // token offset (start of current token)
@@ -55,7 +56,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	}
 	c := s.text[s.offset]
 	s.pos = s.offset
-	// comment OR `/=` OR `/`
+	// comment | `/=` | `/`
 	if c == `/` {
 		c2 := s.text[s.offset+1]
 		// comment
@@ -82,23 +83,30 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.lit = s.text[s.pos..s.offset]
 		return .number
 	}
-	// c/raw string OR name
+	// c/raw string | keyword | name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
-		// `c'c string"` || `r'raw string'`
-		if s.text[s.offset+1] in [`'`, `"`] {
+		s.offset++
+		// `c'c string"` | `r'raw string'`
+		if s.text[s.offset] in [`'`, `"`] {
 			// TODO: maybe move & need to make use of these
 			string_lit_kind := if c == `c` { StringLiteralKind.c } 
 				else if c == `r` { StringLiteralKind.raw }
 				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
-			s.offset++
 			// TODO: need a way to use the correct quote when string includes quotes
 			// best done before gen so it wont need to worry about it (prob parser)
 			s.string_literal(string_lit_kind)
 			s.lit = s.text[s.pos+2..s.offset-1]
 			return .string
 		}
-		// name
-		s.name()
+		// keyword | name
+		for s.offset < s.text.len {
+			c2 := s.text[s.offset]
+			if  (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) || (c2 >= `0` && c2 <= `9`) || c2 == `_` {
+				s.offset++
+				continue
+			}
+			break
+		}
 		s.lit = s.text[s.pos..s.offset]
 		tok := token.keyword_to_token(s.lit)
 		if tok != .unknown {
@@ -343,8 +351,7 @@ fn (mut s Scanner) line() {
 	// a newline reached here will get recorded by next whitespace call
 	// we could add them manually here, but whitespace is called anyway
 	for s.offset < s.text.len {
-		c := s.text[s.offset]
-		if c == `\n` {
+		if s.text[s.offset] == `\n` {
 			break
 		}
 		s.offset++
@@ -352,46 +359,44 @@ fn (mut s Scanner) line() {
 }
 
 [direct_array_access]
-fn(mut s Scanner) comment() {
+fn (mut s Scanner) comment() {
 	s.offset++
-	match s.text[s.offset] {
-		// single line
-		`/` {
-			s.line()
-		}
-		// multi line
-		`*` {
-			mut ml_comment_depth := 1
-			for s.offset < s.text.len {
-				c := s.text[s.offset]
-				c2 := s.text[s.offset+1]
-				if c == `\n` {
-					s.offset++
-					s.line_offsets << s.offset
-				}
-				else if c == `/` && c2 == `*` {
-					s.offset+=2
-					ml_comment_depth++
-				}
-				else if c == `*` && c2 == `/` {
-					s.offset+=2
-					ml_comment_depth--
-					if ml_comment_depth == 0 {
-						break
-					}
-				}
-				else {
-					s.offset++
+	c := s.text[s.offset]
+	// single line
+	if c == `/` {
+		s.line()
+	}
+	// multi line
+	else if c == `*` {
+		mut ml_comment_depth := 1
+		for s.offset < s.text.len {
+			c2 := s.text[s.offset]
+			c3 := s.text[s.offset+1]
+			if c2 == `\n` {
+				s.offset++
+				s.line_offsets << s.offset
+			}
+			else if c2 == `/` && c3 == `*` {
+				s.offset+=2
+				ml_comment_depth++
+			}
+			else if c2 == `*` && c3 == `/` {
+				s.offset+=2
+				ml_comment_depth--
+				if ml_comment_depth == 0 {
+					break
 				}
 			}
+			else {
+				s.offset++
+			}
 		}
-		else {}
 	}
 }
 
 [direct_array_access]
 fn (mut s Scanner) string_literal(kind StringLiteralKind) {
-	c := s.text[s.offset]
+	c_quote := s.text[s.offset]
 	s.offset++
 	mut in_interpolation := false
 	for s.offset < s.text.len {
@@ -423,7 +428,7 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		// i will need to do some checking here, I still would prefer to store
 		// positions here and scan it as a whole string.. then parser can use
 		// the positions. I may change my mind about this. needs more thought.
-		else if c2 == c && !in_interpolation {
+		else if c2 == c_quote && !in_interpolation {
 			s.offset++
 			break
 		}
@@ -489,19 +494,6 @@ fn (mut s Scanner) number() {
 		// exponent
 		else if !has_exponent && c in [`e`, `E`] {
 			has_exponent = true
-			s.offset++
-			continue
-		}
-		break
-	}
-}
-
-[direct_array_access]
-fn (mut s Scanner) name() {
-	s.offset++
-	for s.offset < s.text.len {
-		c := s.text[s.offset]
-		if  (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || (c >= `0` && c <= `9`) || c == `_` {
 			s.offset++
 			continue
 		}

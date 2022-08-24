@@ -386,7 +386,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_lock, .key_rlock {
 			kind := p.tok()
-			// TODO: handle with in_init, or different solution? check .lcbr in expr()
 			in_init := p.in_init
 			p.in_init = true
 			exprs := p.expr_list()
@@ -1003,9 +1002,6 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		mut name := ''
 		mut value := ''
 		mut comptime_cond := ast.empty_expr
-		mut comptime_cond_opt := false
-		// TODO: implement is_comptime
-		// mut is_comptime := false
 		// since unsafe is a keyword
 		if p.tok == .key_unsafe {
 			p.next()
@@ -1015,32 +1011,33 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 		// consider using normal if expr
 		else if p.tok == .key_if {
 			p.next()
-			// name = 'if ' + p.expect_name()
 			comptime_cond = p.expr(.lowest)
-			comptime_cond_opt = p.tok == .question
-			if comptime_cond_opt {
+			if p.tok == .question {
 				p.next()
+				comptime_cond = ast.Postfix{
+					op: .question
+					expr: comptime_cond
+				}
 			}
 		}
 		else {
 			name = p.expect_name()
-		}
-		if p.tok == .colon {
-			p.next()
-			// NOTE: use tok instead of defining AttributeKind
-			// kind := p.tok
-			// TODO: do we need the match below or should we use:
-			// if p.tok in [.semicolon, .rsbr] { p.error('...') }
-			value = match p.tok {
-				.name, .number, .string { p.lit() }
-				else { p.error('unexpected $p.tok, an argument is expected after `:`') }
+			if p.tok == .colon {
+				p.next()
+				// NOTE: use tok instead of defining AttributeKind
+				// kind := p.tok
+				// TODO: do we need the match below or should we use:
+				// if p.tok in [.semicolon, .rsbr] { p.error('...') }
+				value = match p.tok {
+					.name, .number, .string { p.lit() }
+					else { p.error('unexpected $p.tok, an argument is expected after `:`') }
+				}
 			}
 		}
 		attributes << ast.Attribute{
 			name: name
 			value: value
 			comptime_cond: comptime_cond
-			comptime_cond_opt: comptime_cond_opt
 		}
 		if p.tok == .semicolon {
 			p.next()
@@ -1098,15 +1095,13 @@ pub fn (mut p Parser) @for(label string) ast.For {
 		}
 		if p.tok == .semicolon {
 			p.next()
-		}
-		if p.tok != .semicolon {
-			cond = p.expr(.lowest)
-		}
-		if p.tok == .semicolon {
-			p.next()
-		}
-		if p.tok != .lcbr {
-			post = p.stmt()
+			if p.tok != .semicolon {
+				cond = p.expr(.lowest)
+			}
+			p.expect(.semicolon)
+			if p.tok != .lcbr {
+				post = p.stmt()
+			}
 		}
 	}
 	p.in_init = in_init
