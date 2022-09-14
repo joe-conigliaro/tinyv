@@ -31,7 +31,7 @@ I'm very passionate about the V project & it's community. Making the V compiler 
    - consider the possibility of uninitialized objects: this would be need to be unsafe, and it would probably hardly ever be used. But there are certain areas, for example game development where this could be useful or even mandatory. For example when dealing with huge arrays of data structures like game assets.
 
 ## Design Details / Status
-1. Compilation Stages
+1. Frontend
    - Scanner / Lexer (working)
    - Parser (working)
    - AST Generation (working)
