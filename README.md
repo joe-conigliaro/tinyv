@@ -43,4 +43,4 @@ I'm very passionate about the V project & it's community. Making the V compiler 
 3. Backends / Code Generation
    - V (working): AST -> V Generates V code from the AST, useful for testing the parser
    - x64 (planned): Bytecode -> x64 machine code
-   - C (under consideration): Bytecode - > C (not started)
+   - C (under consideration): Bytecode - > C
