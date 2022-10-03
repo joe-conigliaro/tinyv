@@ -175,7 +175,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write(stmt.name)
 			if stmt.generic_params.len > 0 {
-				g.generic_type_list(stmt.generic_params)
+				g.generic_list(stmt.generic_params)
 			}
 			g.write('(')
 			for i,arg in stmt.params {
@@ -310,7 +310,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write(stmt.name)
 			if stmt.generic_params.len > 0 {
-				g.generic_type_list(stmt.generic_params)
+				g.generic_list(stmt.generic_params)
 			}
 			if stmt.fields.len > 0 { g.writeln(' {') } else { g.write(' {') }
 			g.indent++
@@ -443,7 +443,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.Fn {
 			g.write('fn')
 			if expr.generic_params.len > 0 {
-				g.generic_type_list(expr.generic_params)
+				g.generic_list(expr.generic_params)
 			}
 			g.write('(')
 			for i, arg in expr.params {
@@ -462,9 +462,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
-		ast.GenericInst {
+		ast.GenericArgs {
 			g.expr(expr.lhs)
-			g.generic_type_list(expr.generic_args)
+			g.generic_list(expr.args)
 		}
 		ast.Go {
 			g.write('go ')
@@ -690,7 +690,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				ast.FnType {
 					g.write('fn')
 					if expr.generic_params.len > 0 {
-						g.generic_type_list(expr.generic_params)
+						g.generic_list(expr.generic_params)
 					}
 					g.write('(')
 					for i, arg in expr.params {
@@ -765,11 +765,11 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 }
 
 [inline]
-fn (mut g Gen) generic_type_list(generic_types []ast.Expr) {
+fn (mut g Gen) generic_list(exprs []ast.Expr) {
 	g.write('<')
-	for i, generic_type in generic_types {
-		g.expr(generic_type)
-		if i < generic_types.len-1 { g.write(',') }
+	for i, expr in exprs {
+		g.expr(expr)
+		if i < exprs.len-1 { g.write(',') }
 	}
 	g.write('>')
 }

@@ -15,7 +15,7 @@ type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInit | Assoc | Call | CallOrCast | Cast | Comptime
-	| EmptyExpr | Fn | GenericInst | Go | Ident | If | IfGuard | Index | Infix
+	| EmptyExpr | Fn | GenericArgs | Go | Ident | If | IfGuard | Index | Infix
 	| KeywordOperator | Literal | Lock | MapInit | Match | Modifier | Or | Paren
 	| Postfix | Prefix | Range | Selector | StructInit | Tuple | Type | Unsafe
 	// TODO: decide if this going to be done like this
@@ -128,10 +128,10 @@ pub:
 	return_type    Expr
 }
 
-pub struct GenericInst {
+pub struct GenericArgs {
 pub:
-	lhs           Expr
-	generic_args []Expr // concrete types
+	lhs  Expr
+	args []Expr // concrete types
 
 }
 

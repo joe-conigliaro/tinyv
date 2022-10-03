@@ -23,7 +23,7 @@ mut:
 	file_path string
 	scanner   &scanner.Scanner
 	in_init   bool // for/if/match eg. `for x in vals {`
-	in_pgl    bool // in (p)ossible (g)eneric (l)ist `ident<expr|type,...>`
+	in_pga    bool // in (p)ossible (g)eneric (a)args `ident<expr|type,...>`
 	// start token info
 	line_nr   int
 	lit       string
@@ -353,8 +353,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// this only occurs if parsing generic fn in generic call `fn_generic_b<fn<int>(int),int>()`
 			// since we need to use expr() instead of typ() because we don't yet know what we are parsing.
 			// take a look at expr chaining loop branch `if p.tok == .lt`
-			// TODO: are we using ast.GenericInst in this case?
-			if p.in_pgl && p.tok != .lcbr {
+			// TODO: are we using ast.GenericArgs in this case?
+			if p.in_pga && p.tok != .lcbr {
 				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
 			}
 			lhs = ast.Fn{
@@ -516,7 +516,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
-						if p.in_pgl && p.tok != .lcbr { return typ }
+						if p.in_pga && p.tok != .lcbr { return typ }
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
@@ -562,7 +562,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
-					if p.in_pgl && p.tok != .lcbr { return typ }
+					if p.in_pga && p.tok != .lcbr { return typ }
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
@@ -663,7 +663,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						p.expect(.rsbr)
 						value_type := p.expect_type()
 						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
-						if p.in_pgl && p.tok != .lcbr { return map_type }
+						if p.in_pga && p.tok != .lcbr { return map_type }
 						p.expect(.lcbr)
 						p.expect(.rcbr)
 						return ast.MapInit{typ: map_type}
@@ -767,8 +767,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			op := p.tok()
 			mut exprs := []ast.Expr{}
 			mut has_gt := false
-			in_pgl := p.in_pgl
-			p.in_pgl = true
+			in_pga := p.in_pga
+			p.in_pga = true
 			// TODO: we can break early here if we want, should we?
 			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.Infix{...} break }
 			// expr := p.expr(op.right_binding_power())
@@ -782,7 +782,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// multiple possible (ended up not being) generic type lists in a row
 				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
 			}			
-			p.in_pgl = in_pgl
+			p.in_pga = in_pga
 			if p.tok == .gt {
 				p.next()
 				has_gt = true
@@ -792,17 +792,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// TODO: support or abandon? this is currently not working
 			// properly when preceded by an infix (see syntax test)
 			else if p.tok in [.right_shift, .right_shift_unsigned] {
-				if !p.in_pgl {
+				if !p.in_pga {
 					// println('should be eating `$p.tok`')
 					p.next()
 				}
 				has_gt = true
 			}
 			// error in these conditions since we are expecting `{}` or `()`
-			if (has_gt || exprs.len > 1) && !in_pgl && p.tok !in [.lcbr, .lpar] {
+			if (has_gt || exprs.len > 1) && !in_pga && p.tok !in [.lcbr, .lpar] {
 				for x in exprs {
 					// TODO: error with position
-					if x is ast.GenericInst {
+					if x is ast.GenericArgs {
 						p.error('unexpected token `$p.tok`. are you missing `{}` or `()`')
 					}
 				}
@@ -810,7 +810,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// generic struct init or assoc
 			// TODO: do we need some more qualifiers? (check depth?)
 			if has_gt && (p.tok in [.comma, .gt, .lpar, .lcbr, .right_shift, .right_shift_unsigned]) {
-				lhs = ast.GenericInst{lhs: lhs, generic_args: exprs}
+				lhs = ast.GenericArgs{lhs: lhs, args: exprs}
 				if p.tok == .lcbr {
 					lhs = p.assoc_or_struct_init(lhs)
 				}
