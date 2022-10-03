@@ -10,21 +10,29 @@ import tinyv.scanner
 import tinyv.token
 import tinyv.pref
 
+struct CachedToken {
+	tok 	token.Token
+	line_nr int
+	lit     string
+	pos     int
+}
+
 struct Parser {
 	pref      &pref.Preferences
 mut:
 	file_path string
 	scanner   &scanner.Scanner
 	in_init   bool // for/if/match eg. `for x in vals {`
-	in_pgi    bool // in (p)ossible (g)eneric (i)nstantiation `ident<type,type>`
+	in_pgl    bool // in (p)ossible (g)eneric (l)ist `ident<expr|type,...>`
 	// start token info
-	// the following are for tok, for next_tok get directly from scanner
 	line_nr   int
 	lit       string
 	pos       int
-	tok       token.Token // last token
-	next_tok  token.Token // next token (scanner stays 1 tok ahead)
+	tok       token.Token
 	// end token info
+	// peeked token cache (don't you do it! I know you're thinking about it)
+	peeked [4] CachedToken
+	peeked_len int
 }
 
 pub fn new_parser(pref &pref.Preferences) &Parser {
@@ -40,7 +48,7 @@ pub fn (mut p Parser) reset() {
 	p.lit = ''
 	p.pos = 0
 	p.tok = .unknown
-	p.next_tok = .unknown
+	// p.peeked_len = 0
 }
 
 pub fn (mut p Parser) parse_files(files []string) []ast.File {
@@ -67,7 +75,6 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	}
 	p.scanner.set_text(text)
 	// start
-	p.next_tok = p.scanner.scan()
 	p.next()
 	mut top_stmts := []ast.Stmt{}
 	mut imports := []ast.Import{}
@@ -80,7 +87,7 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	}
 	if p.pref.verbose {
 		parse_time := sw.elapsed()
-		println('scan & parse $file_path: ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
+		println('scan & parse $file_path ($p.scanner.line_offsets.len LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
 		path: file_path
@@ -194,7 +201,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			}
 		}
 		else {
-			p.error('unknown top stmt: $p.tok - $p.next_tok - $p.file_path:$p.line_nr')
+			p.error('unknown top stmt: $p.tok - $p.file_path:$p.line_nr')
 		}
 	}
 	
@@ -347,7 +354,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// since we need to use expr() instead of typ() because we don't yet know what we are parsing.
 			// take a look at expr chaining loop branch `if p.tok == .lt`
 			// TODO: are we using ast.GenericInst in this case?
-			if p.in_pgi && p.tok != .lcbr {
+			if p.in_pgl && p.tok != .lcbr {
 				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
 			}
 			lhs = ast.Fn{
@@ -509,7 +516,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
-						if p.in_pgi && p.tok != .lcbr { return typ }
+						if p.in_pgl && p.tok != .lcbr { return typ }
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
@@ -555,7 +562,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
-					if p.in_pgi && p.tok != .lcbr { return typ }
+					if p.in_pgl && p.tok != .lcbr { return typ }
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
@@ -656,7 +663,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						p.expect(.rsbr)
 						value_type := p.expect_type()
 						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
-						if p.in_pgi && p.tok != .lcbr { return map_type }
+						if p.in_pgl && p.tok != .lcbr { return map_type }
 						p.expect(.lcbr)
 						p.expect(.rcbr)
 						return ast.MapInit{typ: map_type}
@@ -760,8 +767,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			op := p.tok()
 			mut exprs := []ast.Expr{}
 			mut has_gt := false
-			in_pgi := p.in_pgi
-			p.in_pgi = true
+			in_pgl := p.in_pgl
+			p.in_pgl = true
 			// TODO: we can break early here if we want, should we?
 			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.Infix{...} break }
 			// expr := p.expr(op.right_binding_power())
@@ -775,7 +782,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// multiple possible (ended up not being) generic type lists in a row
 				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
 			}			
-			p.in_pgi = in_pgi
+			p.in_pgl = in_pgl
 			if p.tok == .gt {
 				p.next()
 				has_gt = true
@@ -785,14 +792,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// TODO: support or abandon? this is currently not working
 			// properly when preceded by an infix (see syntax test)
 			else if p.tok in [.right_shift, .right_shift_unsigned] {
-				if !p.in_pgi {
+				if !p.in_pgl {
 					// println('should be eating `$p.tok`')
 					p.next()
 				}
 				has_gt = true
 			}
 			// error in these conditions since we are expecting `{}` or `()`
-			if (has_gt || exprs.len > 1) && !in_pgi && p.tok !in [.lcbr, .lpar] {
+			if (has_gt || exprs.len > 1) && !in_pgl && p.tok !in [.lcbr, .lpar] {
 				for x in exprs {
 					// TODO: error with position
 					if x is ast.GenericInst {
@@ -919,13 +926,41 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	return lhs
 }
 
+[direct_array_access]
+pub fn (mut p Parser) peek(n int) &CachedToken {
+	// assert n > 0 && p.peeked.len >= n
+	if p.peeked_len >= n {
+		return &p.peeked[p.peeked.len-n]
+	}
+	for i in 0..n {
+		tok := p.scanner.scan()
+		p.peeked[p.peeked.len-1-i] = CachedToken{
+			line_nr: p.scanner.line_offsets.len
+			lit: p.scanner.lit
+			pos: p.scanner.pos
+			tok: tok
+		}
+		p.peeked_len++
+	}
+	return &p.peeked[p.peeked.len-n]
+}
+
 [inline]
+[direct_array_access]
 pub fn (mut p Parser) next() {
-	p.line_nr = p.scanner.line_offsets.len
-	p.lit = p.scanner.lit
-	p.pos = p.scanner.pos
-	p.tok = p.next_tok
-	p.next_tok = p.scanner.scan()
+	if p.peeked_len > 0 {
+		peeked_tok := &p.peeked[p.peeked.len-p.peeked_len]
+		p.peeked_len--
+		p.line_nr = peeked_tok.line_nr
+		p.lit = peeked_tok.lit
+		p.pos = peeked_tok.pos
+		p.tok = peeked_tok.tok
+	} else {
+		p.tok = p.scanner.scan()
+		p.line_nr = p.scanner.line_offsets.len
+		p.lit = p.scanner.lit
+		p.pos = p.scanner.pos
+	}
 }
 
 [inline]
@@ -1068,8 +1103,21 @@ pub fn (mut p Parser) @for(label string) ast.For {
 	p.in_init = true
 	mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
 	// for in `for x in vals {`
-	if p.next_tok in [.comma, .key_in] {
+	// stmt := if p.tok in [.lcbr, semicolon] { ast.empty_stmt } else { p.stmt() }
+	// if p.tok in [.comma, .key_in] {
+	next_tok := p.peek(1)
+	if next_tok.tok in [.comma, .key_in] {
 		mut key, mut value := '', p.expect_name()
+		// mut key, mut value := '', ''
+		// if stmt is ast.ExprStmt {
+		// 	if stmt.expr is ast.Ident {
+		// 		value = stmt.expr.name
+		// 	} else {
+		// 		p.error('expecting identifier')
+		// 	}
+		// } else {
+		// 	p.error('expecting identifier')
+		// }
 		mut value_is_mut := false
 		if p.tok == .comma {
 			p.next()
@@ -1091,6 +1139,7 @@ pub fn (mut p Parser) @for(label string) ast.For {
 	// infinite `for {` and C style `for x:=1; x<=10; x++`
 	else {
 		if p.tok !in [.lcbr, .semicolon] {
+			// init = stmt
 			init = p.stmt()
 		}
 		if p.tok == .semicolon {
@@ -1143,14 +1192,16 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			stmts: p.block()
 		}
 		// else
-		if p.tok == .key_else || (p.tok == .dollar && p.next_tok == .key_else) {
+		mut next_tok := p.peek(1)
+		if p.tok == .key_else || (p.tok == .dollar && next_tok.tok == .key_else) {
 			// we are using expect instead of next to ensure we error when `is_comptime`
 			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
 			// the same applies for the `else if` condition directly below.
 			if is_comptime { p.expect(.dollar) }
 			p.expect(.key_else)
 			// else if
-			if p.tok == .key_if || (p.tok == .dollar && p.next_tok == .key_if) {
+			next_tok = p.peek(1)
+			if p.tok == .key_if || (p.tok == .dollar && next_tok.tok == .key_if) {
 				if is_comptime { p.expect(.dollar) }
 				p.expect(.key_if)
 			}
