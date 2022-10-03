@@ -131,62 +131,60 @@ pub enum BindingPower {
 
 [inline]
 pub fn (t Token) left_binding_power() BindingPower {
-	match t {
+	return match t {
 		// `||`
-		.logical_or {
-			return .one
-		}
+		.logical_or { .one }
 		// `&&`
-		.and {
-			return .two
-		}
+		.and { .two }
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge {
-			return .three
-		}
+		.eq, .ne, .lt, .le, .gt, .ge { .three }
 		// `+` |  `-` |  `|` | `^`
-		.plus, .minus, .pipe, .xor {
-			return .four
-		}
+		.plus, .minus, .pipe, .xor { .four }
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
-		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp {
-			return .five
-		}
-		else {
-			return .lowest
-		}
+		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp { .five }
+		else { .lowest }
 	}
 }
 
 // TODO: double check / fix this. just use what is needed instead of this
 [inline]
 pub fn (t Token) right_binding_power() BindingPower {
-	return BindingPower((int(t.left_binding_power()) + 1))
+	return unsafe{ BindingPower((int(t.left_binding_power()) + 1)) }
 }
 
 [inline]
-pub fn (tok Token) is_prefix() bool {
-	return tok in [.minus, .amp, .mul, .not, .bit_not]
+pub fn (t Token) is_prefix() bool {
+	return match t {
+		.minus, .amp, .mul, .not, .bit_not { true }
+		else { false }
+	}
 }
 
 [inline]
-pub fn (tok Token) is_infix() bool {
-	return tok in [.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in, .key_as, .ge,
-		.le, .logical_or, .xor, .not_in, .key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
-		.right_shift, .right_shift_unsigned]
+pub fn (t Token) is_infix() bool {
+	return match t {
+		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt,
+		.key_in, .key_as, .ge, .le, .logical_or, .xor, .not_in,
+		.key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
+		.right_shift, .right_shift_unsigned { true }
+		else { false }
+	}
 }
 
 [inline]
-pub fn (tok Token) is_postfix() bool {
+pub fn (t Token) is_postfix() bool {
 	// If we want pratt loop to handle `fn()!` | `fn()?`
 	// I will most likely continue doing this manually.
-	// return tok in [.inc, .dec, .not, .question]
-	return tok in [.inc, .dec]
+	// return t in [.inc, .dec, .not, .question]
+	return match t {
+		.inc, .dec { true }
+		else { false }
+	}
 }
 
 [inline]
-pub fn (tok Token) is_assignment() bool {
-	return tok in [
+pub fn (t Token) is_assignment() bool {
+	return match t {
 		.assign, // =
 		.decl_assign, // :=
 		.plus_assign, // +=
@@ -199,18 +197,20 @@ pub fn (tok Token) is_assignment() bool {
 		.and_assign,
 		.right_shift_assign,
 		.left_shift_assign,
-		.right_shift_unsigned_assign,
-	]
+		.right_shift_unsigned_assign { true }
+		else { false }
+	}
 }
 
 [inline]
-pub fn (tok Token) is_overloadable() bool {
-	return tok in [
+pub fn (t Token) is_overloadable() bool {
+	return match t {
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor,
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge,
-	]
+		.eq, .ne, .lt, .le, .gt, .ge { true }
+		else { false }
+	}
 }
 
 // NOTE: probably switch back to map again later.
