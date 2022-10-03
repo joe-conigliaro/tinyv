@@ -190,8 +190,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			if stmt.return_type !is ast.EmptyExpr {
 				g.expr(stmt.return_type)
 			}
-			// C fn definition
-			if stmt.language == .c && stmt.stmts.len == 0 {
+			// C fn definition |
+			// v fns with compiler implementations eg. `pub fn (a array) filter(predicate fn (voidptr) bool) array`
+			// NOTE: can we use generics for these fns, also make sure we parser error for normal fns without a body
+			// TODO: is it the correct way to handle those cases (the fn definitions, not this code)?
+			if /*stmt.language == .c &&*/ stmt.stmts.len == 0 {
 				g.writeln('')
 			}
 			// normal v function
