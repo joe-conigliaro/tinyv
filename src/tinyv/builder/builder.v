@@ -40,9 +40,14 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	mut parser := parser.new_parser(b.pref)
 	mut ast_files := []ast.File{}
 	// parse builtin
-	ast_files << parser.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+	if !b.pref.skip_builtin {
+		ast_files << parser.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+	}
 	// parse user files
 	ast_files << parser.parse_files(files)
+	if b.pref.skip_imports {
+		return ast_files
+	}
 	// parse imports
 	mut parsed_imports := []string{}
 	for afi := 0; afi < ast_files.len ; afi++ {
