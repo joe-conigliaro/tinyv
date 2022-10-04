@@ -944,7 +944,7 @@ pub fn keyword_to_token(name string) Token {
 															match name[6] {
 																`u` {
 																	match name[7] {
-																		`u` { return .key_continue }
+																		`e` { return .key_continue }
 																		else { return .unknown }
 																	}
 																}

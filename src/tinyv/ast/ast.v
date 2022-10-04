@@ -326,7 +326,8 @@ pub:
 
 pub struct FlowControl {
 pub:
-	op token.Token
+	op    token.Token
+	label string
 }
 
 pub struct FnDecl {
@@ -345,7 +346,6 @@ pub:
 
 pub struct For {
 pub:
-	label string
 	init  Stmt = empty_stmt // initialization
 	cond  Expr = empty_expr // condition
 	post  Stmt = empty_stmt // post iteration (afterthought)
@@ -384,6 +384,7 @@ pub:
 pub struct Label {
 pub:
 	name string
+	stmt Stmt = empty_stmt
 }
 
 pub struct Module {

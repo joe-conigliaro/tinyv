@@ -317,9 +317,9 @@ fn main_a() {
 		mut ptr_b := &voidptr(0)
 		*ptr_b = 0
 	}
-	unsafe_a := unsafe { d := 1 d++ d }
+	unsafe_a := unsafe { mut d := 1 d++ d }
 	unsafe_b := unsafe {
-		d := 1
+		mut d := 1
 		d++
 		d
 	}

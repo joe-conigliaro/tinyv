@@ -227,14 +227,20 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			return ast.Assert{expr: p.expr(.lowest)}
 		}
 		.key_break, .key_continue, .key_goto {
-			return ast.FlowControl{op: p.tok()}
+			line_nr := p.line_nr
+			op := p.tok()
+			if p.line_nr == line_nr && p.tok == .name {
+				return ast.FlowControl{op: op, label: p.expect_name()}
+			} else {
+				return ast.FlowControl{op: op}
+			}
 		}
 		.key_defer {
 			p.next()
 			return ast.Defer{stmts: p.block()}
 		}
 		.key_for {
-			return p.@for('')
+			return p.@for()
 		}
 		.key_return {
 			// p.log('ast.Return')
@@ -262,11 +268,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					else { p.error('expecting identifier') }
 				}
 				p.next()
-				if p.tok == .key_for {
-					return p.@for(name)
-				}
 				return ast.Label{
 					name: name
+					stmt: if p.tok == .key_for { p.stmt() } else { ast.empty_stmt }
 				}
 			}
 			// stand alone expression in a statement list
@@ -1082,7 +1086,7 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
 }
 
 // TODO: should we use string or Label/Ident
-pub fn (mut p Parser) @for(label string) ast.For {
+pub fn (mut p Parser) @for() ast.For {
 	p.next()
 	in_init := p.in_init
 	p.in_init = true
@@ -1140,7 +1144,6 @@ pub fn (mut p Parser) @for(label string) ast.For {
 	}
 	p.in_init = in_init
 	return ast.For{
-		label: label
 		init: init
 		cond: cond
 		post: post

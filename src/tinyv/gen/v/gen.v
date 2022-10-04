@@ -151,7 +151,13 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			if !g.in_init { g.writeln('') }
 		}
 		ast.FlowControl {
-			g.writeln(stmt.op.str())
+			if stmt.label.len > 0 {
+				g.write(stmt.op.str())
+				g.write(' ')
+				g.writeln(stmt.label)
+			} else {
+				g.writeln(stmt.op.str())
+			}
 		}
 		ast.FnDecl {
 			if stmt.attributes.len > 0 {
@@ -282,6 +288,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		ast.Label {
 			g.write(stmt.name)
 			g.writeln(':')
+			if stmt.stmt != ast.empty_stmt {
+				g.stmt(stmt.stmt)
+			}
 		}
 		ast.Module {
 			g.write('module ')
