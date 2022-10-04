@@ -28,11 +28,9 @@ mut:
 	line_nr   int
 	lit       string
 	pos       int
-	tok       token.Token
+	tok       token.Token = .unknown
+	next_tok  token.Token = .unknown
 	// end token info
-	// peeked token cache (don't you do it! I know you're thinking about it)
-	peeked [4] CachedToken
-	peeked_len int
 }
 
 pub fn new_parser(pref &pref.Preferences) &Parser {
@@ -48,7 +46,7 @@ pub fn (mut p Parser) reset() {
 	p.lit = ''
 	p.pos = 0
 	p.tok = .unknown
-	// p.peeked_len = 0
+	p.next_tok = .unknown
 }
 
 pub fn (mut p Parser) parse_files(files []string) []ast.File {
@@ -926,35 +924,22 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	return lhs
 }
 
-[direct_array_access]
-pub fn (mut p Parser) peek(n int) &CachedToken {
-	// assert n > 0 && p.peeked.len >= n
-	if p.peeked_len >= n {
-		return &p.peeked[p.peeked.len-n]
+[inline]
+pub fn (mut p Parser) peek() token.Token {
+	if p.next_tok == .unknown {
+		p.next_tok = p.scanner.scan()
 	}
-	for i in 0..n {
-		tok := p.scanner.scan()
-		p.peeked[p.peeked.len-1-i] = CachedToken{
-			line_nr: p.scanner.line_offsets.len
-			lit: p.scanner.lit
-			pos: p.scanner.pos
-			tok: tok
-		}
-		p.peeked_len++
-	}
-	return &p.peeked[p.peeked.len-n]
+	return p.next_tok
 }
 
 [inline]
-[direct_array_access]
 pub fn (mut p Parser) next() {
-	if p.peeked_len > 0 {
-		peeked_tok := &p.peeked[p.peeked.len-p.peeked_len]
-		p.peeked_len--
-		p.line_nr = peeked_tok.line_nr
-		p.lit = peeked_tok.lit
-		p.pos = peeked_tok.pos
-		p.tok = peeked_tok.tok
+	if p.next_tok != .unknown {
+		p.line_nr = p.scanner.line_offsets.len
+		p.lit = p.scanner.lit
+		p.pos = p.scanner.pos
+		p.tok = p.next_tok
+		p.next_tok = .unknown
 	} else {
 		p.tok = p.scanner.scan()
 		p.line_nr = p.scanner.line_offsets.len
@@ -1105,8 +1090,8 @@ pub fn (mut p Parser) @for(label string) ast.For {
 	// for in `for x in vals {`
 	// stmt := if p.tok in [.lcbr, semicolon] { ast.empty_stmt } else { p.stmt() }
 	// if p.tok in [.comma, .key_in] {
-	next_tok := p.peek(1)
-	if next_tok.tok in [.comma, .key_in] {
+	next_tok := p.peek()
+	if next_tok in [.comma, .key_in] {
 		mut key, mut value := '', p.expect_name()
 		// mut key, mut value := '', ''
 		// if stmt is ast.ExprStmt {
@@ -1192,16 +1177,16 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			stmts: p.block()
 		}
 		// else
-		mut next_tok := p.peek(1)
-		if p.tok == .key_else || (p.tok == .dollar && next_tok.tok == .key_else) {
+		mut next_tok := p.peek()
+		if p.tok == .key_else || (p.tok == .dollar && next_tok == .key_else) {
 			// we are using expect instead of next to ensure we error when `is_comptime`
 			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
 			// the same applies for the `else if` condition directly below.
 			if is_comptime { p.expect(.dollar) }
 			p.expect(.key_else)
 			// else if
-			next_tok = p.peek(1)
-			if p.tok == .key_if || (p.tok == .dollar && next_tok.tok == .key_if) {
+			next_tok = p.peek()
+			if p.tok == .key_if || (p.tok == .dollar && next_tok == .key_if) {
 				if is_comptime { p.expect(.dollar) }
 				p.expect(.key_if)
 			}
