@@ -6,6 +6,7 @@ module token
 // TODO: fileset / file / base pos etc
 
 pub struct Position {
+pub:
 	filename string
 	offset	 int
 	line     int

@@ -415,10 +415,8 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		else if c2 == `$` && c3 == `{` {
 			in_interpolation = true
 		}
-		else if c2 == `}` {
-			if in_interpolation {
-				in_interpolation = false
-			}
+		else if c2 == `}` && in_interpolation {
+			in_interpolation = false
 		}
 		// TODO: I will probably store replacement positions in scanner
 		// for efficiency rather than doing it later in parser, I still
@@ -515,4 +513,22 @@ pub fn (s &Scanner) position(pos int) (int, int) {
 		}
 	}
 	return min, pos-s.line_offsets[min-1]+1
+}
+
+// TODO:
+pub fn (s &Scanner) error_details(pos token.Position) string {
+	line_start := if pos.line-2 > 0 {
+		s.line_offsets[pos.line-2]
+	} else {
+		s.line_offsets[0]
+	}
+	mut line_end := pos.offset+1
+	for i := 0 ; line_end<s.text.len ; {
+		if s.text[line_end] == `\n` {
+			i++
+			if i == 2 { break }
+		}
+		line_end++
+	}
+	return s.text[line_start..line_end]
 }

@@ -11,7 +11,7 @@ pub enum ErrorKind{
 
 pub struct ErrorInfo {
 	message  string
-	// details  string
+	details  string
 	position token.Position
 }
 
@@ -34,4 +34,7 @@ pub fn (e ErrorKind) color(s string) string {
 pub fn error(err ErrorInfo, kind ErrorKind) {
 	eprintln(term.bold(kind.color(kind.str())) + ': ' + err.message)
 	eprintln(' -> ' + err.position.str())
+	if err.details.len > 0 {
+		eprintln(err.details)
+	}
 }

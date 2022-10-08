@@ -1094,8 +1094,8 @@ pub fn (mut p Parser) @for() ast.For {
 	// for in `for x in vals {`
 	// stmt := if p.tok in [.lcbr, semicolon] { ast.empty_stmt } else { p.stmt() }
 	// if p.tok in [.comma, .key_in] {
-	tok_next_ := p.peek()
-	if tok_next_ in [.comma, .key_in] {
+	tok_next := p.peek()
+	if tok_next in [.comma, .key_in] {
 		mut key, mut value := '', p.expect_name()
 		// mut key, mut value := '', ''
 		// if stmt is ast.ExprStmt {
@@ -1180,16 +1180,16 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			stmts: p.block()
 		}
 		// else
-		mut tok_next_ := p.peek()
-		if p.tok == .key_else || (p.tok == .dollar && tok_next_ == .key_else) {
+		mut tok_next := p.peek()
+		if p.tok == .key_else || (p.tok == .dollar && tok_next == .key_else) {
 			// we are using expect instead of next to ensure we error when `is_comptime`
 			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
 			// the same applies for the `else if` condition directly below.
 			if is_comptime { p.expect(.dollar) }
 			p.expect(.key_else)
 			// else if
-			tok_next_ = p.peek()
-			if p.tok == .key_if || (p.tok == .dollar && tok_next_ == .key_if) {
+			tok_next = p.peek()
+			if p.tok == .key_if || (p.tok == .dollar && tok_next == .key_if) {
 				if is_comptime { p.expect(.dollar) }
 				p.expect(.key_if)
 			}
@@ -1711,15 +1711,17 @@ fn (mut p Parser) position() token.Position {
 	return token.Position{
 		filename: p.filename
 		line: p.line
-		// column: p.pos-p.scanner.line_offsets[p.line-1]+1
+		offset: p.pos
 		column: p.pos-p.scanner.line_offsets[p.line-1]+1
 	}
 }
 
 fn (mut p Parser) error_message(msg string, kind util.ErrorKind) {
+	pos := p.position()
 	util.error(util.ErrorInfo{
 		message: msg
-		position: p.position()
+		position: pos
+		details: p.scanner.error_details(pos)
 	}, kind)
 }
 
