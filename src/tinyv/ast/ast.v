@@ -33,9 +33,10 @@ pub type Type = ArrayType | ArrayFixedType | FnType | MapType
 // File (AST container)
 pub struct File {
 pub:
-	path    string
-	stmts   []Stmt
-	imports []Import
+	path       string
+	// attributes []Attribute
+	stmts      []Stmt
+	imports    []Import
 }
 
 pub enum Language {

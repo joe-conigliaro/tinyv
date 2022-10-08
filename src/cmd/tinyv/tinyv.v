@@ -12,7 +12,7 @@ fn main() {
 	args := os.args[1..]
 	
 	options := cmdline.only_options(args)
-	pref := pref.new_preferences(options)
+	pref := pref.new_preferences_using_options(options)
 
 	files := cmdline.only_non_options(args)
 	if files.len == 0 { eprintln('At least 1 .v file expected') exit(1) }

@@ -502,7 +502,7 @@ fn (mut s Scanner) number() {
 }
 
 // TODO: move this somewhere maybe as a helper to ast file
-// returns line_nr, col when passed pos
+// returns line, col when passed pos
 pub fn (s &Scanner) position(pos int) (int, int) {
 	mut min, mut max := 0, s.line_offsets.len
 	for min < max {

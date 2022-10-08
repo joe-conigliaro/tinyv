@@ -9,27 +9,22 @@ import tinyv.ast
 import tinyv.scanner
 import tinyv.token
 import tinyv.pref
-
-struct CachedToken {
-	tok 	token.Token
-	line_nr int
-	lit     string
-	pos     int
-}
+import tinyv.util
 
 struct Parser {
 	pref      &pref.Preferences
 mut:
-	file_path string
 	scanner   &scanner.Scanner
+	filename  string
+	// track state
 	in_init   bool // for/if/match eg. `for x in vals {`
 	in_pga    bool // in (p)ossible (g)eneric (a)args `ident<expr|type,...>`
 	// start token info
-	line_nr   int
+	line      int
 	lit       string
 	pos       int
 	tok       token.Token = .unknown
-	next_tok  token.Token = .unknown
+	tok_next_ token.Token = .unknown // DO NOT access directly, use `p.peek()`
 	// end token info
 }
 
@@ -42,11 +37,11 @@ pub fn new_parser(pref &pref.Preferences) &Parser {
 
 pub fn (mut p Parser) reset() {
 	p.scanner.reset()
-	p.line_nr = 0
+	p.line = 0
 	p.lit = ''
 	p.pos = 0
 	p.tok = .unknown
-	p.next_tok = .unknown
+	p.tok_next_ = .unknown
 }
 
 pub fn (mut p Parser) parse_files(files []string) []ast.File {
@@ -57,7 +52,7 @@ pub fn (mut p Parser) parse_files(files []string) []ast.File {
 	return ast_files
 }
 
-pub fn (mut p Parser) parse_file(file_path string) ast.File {
+pub fn (mut p Parser) parse_file(filename string) ast.File {
 	// reset if we are reusing parser instance
 	if p.scanner.pos > 0 {
 		p.reset()
@@ -67,9 +62,9 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	}
 	mut sw := time.new_stopwatch()
 	start_no_time:
-	p.file_path = file_path
-	text := os.read_file(file_path) or {
-		p.error('error reading $file_path')
+	p.filename = filename
+	text := os.read_file(filename) or {
+		p.error('error reading $filename')
 	}
 	p.scanner.set_text(text)
 	// start
@@ -85,10 +80,10 @@ pub fn (mut p Parser) parse_file(file_path string) ast.File {
 	}
 	if p.pref.verbose {
 		parse_time := sw.elapsed()
-		println('scan & parse $file_path ($p.scanner.line_offsets.len LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
+		println('scan & parse $filename ($p.scanner.line_offsets.len LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
-		path: file_path
+		path: filename
 		imports: imports
 		stmts: top_stmts
 	}
@@ -185,28 +180,34 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_global { return p.global_decl(attributes) }
 				.key_struct { return p.struct_decl(is_pub, attributes) }
 				else {
-					// I didn't want attributes as a statement, but attached to things like fn/struct
-					// will have to rethink this now, it can be set on p.has_globals = true
-					// if not needed in later stages. otherwise add a stmt for it. come back to this
-					// TODO: attach these attributes to the file node itself?
-					if attributes[0].name == 'has_globals' {
-						// TODO
-						// p.has_globals = true
-						return ast.empty_stmt
+					// file level attributes
+					// or we are missing a stmt which supports attributes in this match
+					for attribute in attributes {
+						match attribute.name {
+							'has_globals' {}
+							else {
+								p.warn('invalid file level attribute `$attribute.name` (or should `$p.tok` support attributes)')
+							}
+						}
 					}
-					p.error('needs impl (pass attrs): $p.tok')
+					// if p.attributes.len > 0 {
+					// 	p.error('file level attributes must be declared only once at the start of the file')
+					// }
+					// TODO: should we store these attributes then add them to ast.File?
+					// p.attributes = attributes
+					return ast.empty_stmt
 				}
 			}
 		}
 		else {
-			p.error('unknown top stmt: $p.tok - $p.file_path:$p.line_nr')
+			p.error('unknown top stmt: $p.tok - $p.filename:$p.line')
 		}
 	}
 	
 }
 
 pub fn (mut p Parser) stmt() ast.Stmt {
-	// p.log('STMT: $p.tok - $p.file_path:$p.line_nr')
+	// p.log('STMT: $p.tok - $p.filename:$p.line')
 	match p.tok {
 		.dollar {
 			p.next()
@@ -227,9 +228,9 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			return ast.Assert{expr: p.expr(.lowest)}
 		}
 		.key_break, .key_continue, .key_goto {
-			line_nr := p.line_nr
+			line := p.line
 			op := p.tok()
-			if p.line_nr == line_nr && p.tok == .name {
+			if p.line == line && p.tok == .name {
 				return ast.FlowControl{op: op, label: p.expect_name()}
 			} else {
 				return ast.FlowControl{op: op}
@@ -274,8 +275,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				}
 			}
 			// stand alone expression in a statement list
-			// eg: `if x == 1 {`, `x++`, `break/continue`
-			// also: `mut x := 1`, `a,`b := 1,2`
+			// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
 			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
 			if p.tok == .comma {
 				p.next()
@@ -314,8 +314,8 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 }
 
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
-	// p.log('EXPR: $p.tok - $p.line_nr')
-	mut line_nr := p.line_nr
+	// p.log('EXPR: $p.tok - $p.line')
+	mut line := p.line
 	mut lhs := ast.empty_expr
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
@@ -348,8 +348,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 			}
 			params := p.fn_parameters()
-			// NOTE: we may need to check line_nr due to the generic call case listed below
-			// return_type := if line_nr == p.line_nr { p.try_type() } else { ast.empty_expr }
+			// NOTE: we may need to check line due to the generic call case listed below
+			// return_type := if line == p.line { p.try_type() } else { ast.empty_expr }
 			// return_type := p.try_type() or { ast.empty_expr }
 			return_type := p.try_type()
 			// this only occurs if parsing generic fn in generic call `fn_generic_b<fn<int>(int),int>()`
@@ -496,7 +496,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					exprs_arr << exprs2
 				}
 				// (`[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`) | `[2]u8(x)`
-				if p.tok in [.amp, .name] && p.line_nr == line_nr {
+				if p.tok in [.amp, .name] && p.line == line {
 					mut typ := p.expect_type()
 					for i:=exprs_arr.len-1; i>=0; i-- {
 						exprs2 := exprs_arr[i]
@@ -555,7 +555,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// (`[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`) | `[]u8(x)`
-			else if p.tok in [.amp, .lsbr, .name] && p.line_nr == line_nr {
+			else if p.tok in [.amp, .lsbr, .name] && p.line == line {
 				typ := ast.Type(ast.ArrayType{elem_type: p.expect_type()})
 				// cast `[]u8(x)` we know this is a cast
 				// set lhs as the type, cast handled later in expr loop
@@ -632,7 +632,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// update linr_nr to support chaining
-			line_nr = p.line_nr
+			line = p.line
 			// rcbr
 			p.next()
 			lhs = ast.Match{
@@ -710,7 +710,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		if p.tok == .lpar {
 			// TODO: handle by checking expr?
 			// (*ptr_a) = *ptr_a - 1
-			if p.line_nr != line_nr {
+			if p.line != line {
 				return lhs
 			}
 			// p.log('ast.Cast or Call: ${typeof(lhs)}')
@@ -752,7 +752,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: if we want we can handle init like this
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
-		// else if p.tok == .lcbr && p.line_nr == line_nr && !p.in_init {
+		// else if p.tok == .lcbr && p.line == line && !p.in_init {
 		// 	lhs = p.struct_init_or_assoc(lhs)
 		// }
 		// generic call | infix `<`
@@ -852,7 +852,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// index: `expr[i]` | `expr#[i]` 
-		else if p.tok in [.hash, .lsbr] && p.line_nr == line_nr {
+		else if p.tok in [.hash, .lsbr] && p.line == line {
 			is_gated := p.tok == .hash
 			if is_gated {
 				p.next()
@@ -904,7 +904,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		if p.tok.is_infix() {
 			// TODO: handle by checking expr?
 			// deref assign: `*a = b`
-			if p.tok == .mul && p.line_nr != line_nr {
+			if p.tok == .mul && p.line != line {
 				return lhs
 			}
 			op := p.tok()
@@ -930,23 +930,23 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 
 [inline]
 pub fn (mut p Parser) peek() token.Token {
-	if p.next_tok == .unknown {
-		p.next_tok = p.scanner.scan()
+	if p.tok_next_ == .unknown {
+		p.tok_next_ = p.scanner.scan()
 	}
-	return p.next_tok
+	return p.tok_next_
 }
 
 [inline]
 pub fn (mut p Parser) next() {
-	if p.next_tok != .unknown {
-		p.line_nr = p.scanner.line_offsets.len
+	if p.tok_next_ != .unknown {
+		p.line = p.scanner.line_offsets.len
 		p.lit = p.scanner.lit
 		p.pos = p.scanner.pos
-		p.tok = p.next_tok
-		p.next_tok = .unknown
+		p.tok = p.tok_next_
+		p.tok_next_ = .unknown
 	} else {
 		p.tok = p.scanner.scan()
-		p.line_nr = p.scanner.line_offsets.len
+		p.line = p.scanner.line_offsets.len
 		p.lit = p.scanner.lit
 		p.pos = p.scanner.pos
 	}
@@ -1094,8 +1094,8 @@ pub fn (mut p Parser) @for() ast.For {
 	// for in `for x in vals {`
 	// stmt := if p.tok in [.lcbr, semicolon] { ast.empty_stmt } else { p.stmt() }
 	// if p.tok in [.comma, .key_in] {
-	next_tok := p.peek()
-	if next_tok in [.comma, .key_in] {
+	tok_next_ := p.peek()
+	if tok_next_ in [.comma, .key_in] {
 		mut key, mut value := '', p.expect_name()
 		// mut key, mut value := '', ''
 		// if stmt is ast.ExprStmt {
@@ -1180,16 +1180,16 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			stmts: p.block()
 		}
 		// else
-		mut next_tok := p.peek()
-		if p.tok == .key_else || (p.tok == .dollar && next_tok == .key_else) {
+		mut tok_next_ := p.peek()
+		if p.tok == .key_else || (p.tok == .dollar && tok_next_ == .key_else) {
 			// we are using expect instead of next to ensure we error when `is_comptime`
 			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
 			// the same applies for the `else if` condition directly below.
 			if is_comptime { p.expect(.dollar) }
 			p.expect(.key_else)
 			// else if
-			next_tok = p.peek()
-			if p.tok == .key_if || (p.tok == .dollar && next_tok == .key_if) {
+			tok_next_ = p.peek()
+			if p.tok == .key_if || (p.tok == .dollar && tok_next_ == .key_if) {
 				if is_comptime { p.expect(.dollar) }
 				p.expect(.key_if)
 			}
@@ -1206,11 +1206,11 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 pub fn (mut p Parser) directive() ast.Directive {
 	// value := p.lit() // if we scan whole line see scanner
 	p.next()
-	line_nr := p.line_nr
+	line := p.line
 	name := p.expect_name()
 	// TODO: handle properly
 	mut value := p.lit()
-	for p.line_nr == line_nr {
+	for p.line == line {
 		value += p.lit()
 	}
 	return ast.Directive{
@@ -1252,7 +1252,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 
 pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl {
 	p.next()
-	line_nr := p.line_nr
+	line := p.line
 	// method
 	mut is_method := false
 	mut receiver := ast.Parameter{}
@@ -1293,7 +1293,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			p.expect(.rpar)
 			mut return_type := ast.empty_expr
 			_ = return_type
-			if p.tok != .lcbr && p.line_nr == line_nr {
+			if p.tok != .lcbr && p.line == line {
 				return_type = p.expect_type()
 			}
 			p.block()
@@ -1315,8 +1315,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		p.expect(.gt)
 	}
 	params := p.fn_parameters()
-	return_type := if p.tok != .lcbr && p.line_nr == line_nr { p.expect_type() } else { ast.empty_expr }
-	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.next_tok')
+	return_type := if p.tok != .lcbr && p.line == line { p.expect_type() } else { ast.empty_expr }
+	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
 	return ast.FnDecl{
 		attributes: attributes
@@ -1345,7 +1345,7 @@ pub fn (mut p Parser) fn_parameters() []ast.Parameter {
 			name = (typ as ast.Ident).name
 			typ = p.expect_type()
 		}
-		// name := if p.tok == .name && p.next_tok != .dot { p.expect_name() } else { 'param_$params.len' }
+		// name := if p.tok == .name && p.tok_next_ != .dot { p.expect_name() } else { 'param_$params.len' }
 		// typ := if p.tok !in [.comma, .rpar] { p.expect_type() } else { ast.empty_expr }
 		if p.tok == .comma {
 			p.next()
@@ -1495,11 +1495,11 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 			p.next()
 			p.expect(.colon)	
 		}
-		line_nr := p.line_nr
+		line := p.line
 		p.expect_name() // method/field name
 		if p.tok == .lpar {
 			p.fn_parameters()
-			if p.line_nr == line_nr {
+			if p.line == line {
 				p.expect_type() // method return type
 			}
 			// methods <<
@@ -1552,10 +1552,10 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
 		if is_pub || is_mut { p.expect(.colon) }
-		line_nr := p.line_nr
+		line := p.line
 		embed_or_name := p.expect_type()
 		// embedded struct
-		if p.line_nr != line_nr {
+		if p.line != line {
 			if language != .v {
 				p.error('$language structs do not support embedding')
 			}
@@ -1703,15 +1703,32 @@ pub fn (mut p Parser) log(msg string) {
 	}
 }
 
+// TEMP/TODO: remove this & use file / fileset position + helper fns
+fn (mut p Parser) position() token.Position {
+	// NOTE: use scanner.position()) when all we know is pos (later stages)
+	// since we already know line here we use it instead
+	// line, col := p.scanner.position(p.pos)
+	return token.Position{
+		filename: p.filename
+		line: p.line
+		// column: p.pos-p.scanner.line_offsets[p.line-1]+1
+		column: p.pos-p.scanner.line_offsets[p.line-1]+1
+	}
+}
+
+fn (mut p Parser) error_message(msg string, kind util.ErrorKind) {
+	util.error(util.ErrorInfo{
+		message: msg
+		position: p.position()
+	}, kind)
+}
+
+pub fn (mut p Parser) warn(msg string) {
+	p.error_message(msg, .warning)
+}
+
 [noreturn]
 pub fn (mut p Parser) error(msg string) {
-	// NOTE: use scanner.position()) when all we know is pos (later stages)
-	// since we already know line_nr here we use it instead
-	// line_nr, col := p.scanner.position(p.pos)
-	col := p.pos-p.scanner.line_offsets[p.line_nr-1]+1
-	println('========================================')
-	println(' error: $msg')
-	println(' file: $p.file_path:$p.line_nr:$col')
-	println('========================================')
+	p.error_message(msg, .error)
 	exit(1)
 }

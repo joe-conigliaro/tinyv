@@ -39,7 +39,7 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		}
 		// function `fn(int) int`
 		.key_fn {
-			line_nr := p.line_nr
+			line := p.line
 			p.next()
 			mut generic_params := []ast.Expr{}
 			if p.tok == .lt {
@@ -55,8 +55,8 @@ pub fn (mut p Parser) try_type() ast.Expr {
 			return ast.Type(ast.FnType{
 				generic_params: generic_params,
 				params: params,
-				return_type: if p.line_nr == line_nr { p.try_type() } else { ast.empty_expr }
-				// return_type: if p.line_nr == line_nr { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+				// return_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		// nil
@@ -127,11 +127,11 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		}
 		// optional
 		.question {
-			line_nr := p.line_nr
+			line := p.line
 			p.next()
 			return ast.Type(ast.OptionType{
-				base_type: if p.line_nr == line_nr { p.try_type() } else { ast.empty_expr }
-				// base_type: if p.line_nr == line_nr { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				base_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		else {
