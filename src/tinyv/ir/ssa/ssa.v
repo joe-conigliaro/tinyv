@@ -6,6 +6,7 @@ module ssa
 
 type Stmt = Call | Prefix
 
+struct Function{}
 struct Call{}
 struct Prefix{}
 
@@ -32,6 +33,10 @@ mut:
 	block    &BasicBlock
 	users    []Value
 	operands []Value
+}
+
+fn (f Function) add_base_block() {
+	
 }
 
 // To construct the SSA, we will be using the algorithm's described in:

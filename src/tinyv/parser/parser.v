@@ -1317,7 +1317,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	params := p.fn_parameters()
 	return_type := if p.tok != .lcbr && p.line == line { p.expect_type() } else { ast.empty_expr }
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
-	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
+	// also check line for better error detection
+	stmts := if p.tok == .lcbr /*|| p.line == line*/ { p.block() } else { []ast.Stmt{} }
 	return ast.FnDecl{
 		attributes: attributes
 		is_public: is_public
@@ -1716,13 +1717,10 @@ fn (mut p Parser) position() token.Position {
 	}
 }
 
+// so we can customize the error message used by warn & error
 fn (mut p Parser) error_message(msg string, kind util.ErrorKind) {
 	pos := p.position()
-	util.error(util.ErrorInfo{
-		message: msg
-		position: pos
-		details: p.scanner.error_details(pos)
-	}, kind)
+	util.error(pos, msg, p.scanner.error_details(pos), kind)
 }
 
 pub fn (mut p Parser) warn(msg string) {

@@ -9,12 +9,6 @@ pub enum ErrorKind{
 	error
 }
 
-pub struct ErrorInfo {
-	message  string
-	details  string
-	position token.Position
-}
-
 pub fn (e ErrorKind) str() string {
 	return match e {
 		.warning { 'warning' }
@@ -31,10 +25,10 @@ pub fn (e ErrorKind) color(s string) string {
 	}
 }
 
-pub fn error(err ErrorInfo, kind ErrorKind) {
-	eprintln(term.bold(kind.color(kind.str())) + ': ' + err.message)
-	eprintln(' -> ' + err.position.str())
-	if err.details.len > 0 {
-		eprintln(err.details)
+pub fn error(pos token.Position, msg string, details string, kind ErrorKind) {
+	eprintln(term.bold(kind.color(kind.str())) + ': ' + msg)
+	eprintln(' -> ' + pos.str())
+	if details.len > 0 {
+		eprintln(details)
 	}
 }
