@@ -42,8 +42,9 @@ struct StructA {
 	field_a int
 	field_b string
 	field_c fn(int) int
-	field_d int = 111
-	field_e int [attribute_a]
+	field_d string = 'foo' [attribute_a; attribute_b]
+	field_d int = 111 [attribute_a; attribute_b]
+	field_f int [attribute_a; attribute_b]
 }
 
 struct GenericStructA<T> {
@@ -175,11 +176,13 @@ fn main_a() {
 	array_init_a := [1,2,3,4]
 	array_init_b := [1,2,3,4]!
 	array_init_c := [array_init_a]
-	array_init_d := []string{len: 2, cap :2}
+	array_init_d := []string{len: 2, cap: 2}
 	array_init_e := [][]string{}
 	array_init_f := [2][]int{init:[1]}
 	array_init_g := [2][][][][]int{}
 	array_init_h := [2][][][][2]int{}
+	// TODO: fix this error condition?
+	// array_init_i := [['a','b','c','d']
 	array_init_i := [['a','b','c','d']]
 	array_init_j := []&StructA{}
 	array_init_k := [fn(arg_a int) int {

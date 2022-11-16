@@ -516,9 +516,9 @@ pub fn (s &Scanner) position(pos int) (int, int) {
 }
 
 // TODO: move to appropriate place
-pub fn (s &Scanner) error_details(pos token.Position, line_padding int) string {
-	line_start := if pos.line-line_padding-1 > 0 {
-		s.line_offsets[pos.line-line_padding-1]
+pub fn (s &Scanner) error_details(pos token.Position, row_padding int) string {
+	line_start := if pos.line-row_padding-1 > 0 {
+		s.line_offsets[pos.line-row_padding-1]
 	} else {
 		s.line_offsets[0]
 	}
@@ -526,7 +526,7 @@ pub fn (s &Scanner) error_details(pos token.Position, line_padding int) string {
 	for i := 0; line_end<s.text.len; {
 		if s.text[line_end] == `\n` {
 			i++
-			if i == line_padding+1 { break }
+			if i == row_padding+1 { break }
 		}
 		line_end++
 	}

@@ -858,6 +858,19 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		// index: `expr[i]` | `expr#[i]` 
 		else if p.tok in [.hash, .lsbr] && p.line == line {
+			// parse struct init fields attrs, not as index expr
+			// `field_d string = 'foo' [attribute_a; attribute_b]`
+			// `field_d int = 111 [attribute_a; attribute_b]`
+			// TODO: use pratt for chaining? better way to handle this?
+			if mut lhs is ast.Literal {
+					if int(min_bp) > int(p.tok.left_binding_power()) {
+						return lhs
+					}
+					// TODO: move to later stage for supporting vars / exprs.
+					if lhs.kind == .number {
+						p.error('cannot index number')
+					}
+			}
 			is_gated := p.tok == .hash
 			if is_gated {
 				p.next()
@@ -1584,7 +1597,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 		}
 		field_type := p.expect_type()
 		// field - default value
-		field_value := if p.tok == .assign { p.next() p.expr(.lowest) } else { ast.empty_expr }
+		field_value := if p.tok == .assign { p.next() p.expr(.highest) } else { ast.empty_expr }
 		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
 		fields << ast.FieldDecl{
 			name: field_name
