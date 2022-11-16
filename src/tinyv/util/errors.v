@@ -26,8 +26,7 @@ pub fn (e ErrorKind) color(s string) string {
 }
 
 pub fn error(pos token.Position, msg string, details string, kind ErrorKind) {
-	eprintln(term.bold(kind.color(kind.str())) + ': ' + msg)
-	eprintln(' -> ' + pos.str())
+	eprintln(pos.str() + ' -> ' + term.bold(kind.color(kind.str())) + ': ' + msg)
 	if details.len > 0 {
 		eprintln(details)
 	}

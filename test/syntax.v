@@ -282,6 +282,11 @@ fn main_a() {
 	for val_a in list_a {
 		println(val_a)
 	}
+	// TODO: error (unless first 2 are allowed? 0..10 and 0..infinity)
+	// the third one definitely needs to error
+	// for val_a in ..10 {}
+	// for val_a in 0.. {}
+	// for val_a in .. {}
 	for val_a in 0..10 {
 		println(val_a)
 	}

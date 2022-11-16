@@ -515,20 +515,33 @@ pub fn (s &Scanner) position(pos int) (int, int) {
 	return min, pos-s.line_offsets[min-1]+1
 }
 
-// TODO:
-pub fn (s &Scanner) error_details(pos token.Position) string {
-	line_start := if pos.line-2 > 0 {
-		s.line_offsets[pos.line-2]
+// TODO: move to appropriate place
+pub fn (s &Scanner) error_details(pos token.Position, line_padding int) string {
+	line_start := if pos.line-line_padding-1 > 0 {
+		s.line_offsets[pos.line-line_padding-1]
 	} else {
 		s.line_offsets[0]
 	}
 	mut line_end := pos.offset+1
-	for i := 0 ; line_end<s.text.len ; {
+	for i := 0; line_end<s.text.len; {
 		if s.text[line_end] == `\n` {
 			i++
-			if i == 2 { break }
+			if i == line_padding+1 { break }
 		}
 		line_end++
 	}
-	return s.text[line_start..line_end]
+	lines_src := s.text[line_start..line_end].split('\n')
+	line_no_start, _ := s.position(line_start)
+	mut lines_formatted := []string{}
+	for i in 0..lines_src.len {
+		line_no := line_no_start+i
+		line_src := lines_src[i]
+		line_spaces := line_src.replace('\t', '    ')
+		lines_formatted << '${line_no:5d} | ' + line_spaces
+		if line_no == pos.line {
+			space_diff := line_spaces.len - line_src.len
+			lines_formatted << '        ' + ' '.repeat(space_diff+pos.column-1) + '^'
+		}
+	}
+	return lines_formatted.join('\n')
 }

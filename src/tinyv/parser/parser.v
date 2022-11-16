@@ -766,7 +766,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// builtin type names or if user defined types start with a capital.
 			// I also don't want to introduce unlimited token look ahead.
 			// when we reach an expr that is `name<name,name` we need to check
-			// if it's actually the start of a generic inst, or something else.
+			// if it's actually the start of generic args, or something else.
 			// NOTE: using `[]` instead of `<>` would solve this issue as well
 			// as nested generic types, which is currently not possible unless
 			// you force spaces for `type<T>>`, or use some other workaround.
@@ -1019,6 +1019,10 @@ pub fn (mut p Parser) expr_list() []ast.Expr {
 		// NOTE: see `.lt` in expr chaining loop, expand Tuple
 		// that came from possible generic call `return a < b, c` 
 		expr := p.expr(.lowest)
+		// TODO: is this the best place/way to handle this?
+		if expr is ast.EmptyExpr {
+			p.error('expecting expr, got `$p.tok`')
+		}
 		if expr is ast.Tuple { exprs << expr.exprs } else { exprs << expr }
 		if p.tok != .comma {
 			break
@@ -1716,7 +1720,7 @@ pub fn (mut p Parser) log(msg string) {
 
 // TEMP/TODO: remove this & use file / fileset position + helper fns
 fn (mut p Parser) position() token.Position {
-	// NOTE: use scanner.position()) when all we know is pos (later stages)
+	// NOTE: use scanner.position() when all we know is pos (later stages)
 	// since we already know line here we use it instead
 	// line, col := p.scanner.position(p.pos)
 	return token.Position{
@@ -1730,7 +1734,7 @@ fn (mut p Parser) position() token.Position {
 // so we can customize the error message used by warn & error
 fn (mut p Parser) error_message(msg string, kind util.ErrorKind) {
 	pos := p.position()
-	util.error(pos, msg, p.scanner.error_details(pos), kind)
+	util.error(pos, msg, p.scanner.error_details(pos, 2), kind)
 }
 
 pub fn (mut p Parser) warn(msg string) {
