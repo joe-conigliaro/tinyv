@@ -122,8 +122,12 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		}
 		// result
 		.not {
+			line := p.line
 			p.next()
-			return ast.Type(ast.ResultType{ base_type: p.expect_type() })
+			return ast.Type(ast.ResultType{
+				base_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+			})
 		}
 		// optional
 		.question {

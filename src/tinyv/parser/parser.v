@@ -682,6 +682,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				lhs = ast.Selector{lhs:lhs, rhs: p.ident()}
 			}
 			// TODO: move inits to expr loop
+			// NOTE: since we are not relying on capital for types
+			// and therefore struct init, it's not so simple to parse
+			// the following cases without trickery (TODO: consider).
+			// `if err == IError(Eof{}) {`
+			// `if Foo{} == Foo{} {`
 			if p.tok == .lcbr && !p.in_init {
 				return p.assoc_or_struct_init(lhs)
 			}
@@ -753,7 +758,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
 		// else if p.tok == .lcbr && p.line == line && !p.in_init {
-		// 	lhs = p.struct_init_or_assoc(lhs)
+		// 	lhs = p.assoc_or_struct_init(lhs)
 		// }
 		// generic call | infix `<`
 		else if p.tok == .lt {
@@ -928,6 +933,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	return lhs
 }
 
+// use peek() over always keeping next_tok one token ahead.
+// I have done it this way to keep scanner & parser in sync.
+// this simplifies getting any extra information from scanner
+// as I can retrieve it directly, no need to store somewhere.
+// this also help enforce the hard 1 token look ahead limit.
 [inline]
 pub fn (mut p Parser) peek() token.Token {
 	if p.tok_next_ == .unknown {

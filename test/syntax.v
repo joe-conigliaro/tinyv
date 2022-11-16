@@ -77,17 +77,26 @@ fn fn_c(arg_a [][]StructA, arg_b [4]StructA) [][]StructA {
 	return arg_a
 }
 
-fn fn_opt_a() ?int {
+fn fn_optional_a() ?int {
 	return 1
 }
 
-fn fn_opt_b() ?int {
-	return fn_opt_a()?
+fn fn_optional_b() ?int {
+	return fn_optional_a()?
 }
 
 fn fn_opt_c() ?int {
-	return fn_opt_a()!
+	return fn_optional_a()!
 }
+
+fn fn_result_a() ! {
+	return 1
+}
+
+fn fn_result_b() !int {
+	return 1
+}
+
 
 fn fn_multi_return_a() (int, int) {
 	return 1,2
@@ -238,6 +247,10 @@ fn main_a() {
 	closure_a := fn [infix_a, infix_b] () int {
 		return infix_a+infix_b
 	}
+	// TODO: see comment in parser
+	// if err == IError(Foo{}) {
+	// 	// eiiip
+	// }
 	if a == 1 {
 		println('a == $s')
 	}
