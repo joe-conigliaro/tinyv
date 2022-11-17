@@ -6,8 +6,8 @@ struct StructA {
 	// NOTE: ideally attributes would not use `[]`
 	// it would eliminate these issues completely. 
 
-	// ambiguous: is it return `!` and an attribute
-	// or result w/ fixed array `![attr_a]\nfunc_b`?
+	// ambiguous: return `!` followed by attribute or
+	// result w/ fixed array `![attribute_a]func_b`?
 	// rely on newline and space between `!` and `[`,
 	// or check later if we are using a var or const?
 	// try eliminate this type of thing from the syntax.

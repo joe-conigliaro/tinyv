@@ -4,14 +4,24 @@
 module ssa
 
 struct Builder{
-
+	current_fn &Function
+	current_bb &BasicBlock
 }
 
-fn (b Builder) expr(func &Function, expr ast.Expr) Value {
-	
+fn (b Builder) add_basic_block(name string) BasicBlock {
+	return b.current_fn.add_basic_block('${b.current_bb.name}.${name}')
 }
 
-fn (b Builder) stmt(func &Function, stmt ast.Stmt) {
+fn (b Builder) expr(expr ast.Expr) Value {
+	match expr {
+		ast.Call{
+
+		}
+		else {}	
+	}
+}
+
+fn (b Builder) stmt(stmt ast.Stmt) {
 	match stmt {
 		ast.For{
 
@@ -20,33 +30,39 @@ fn (b Builder) stmt(func &Function, stmt ast.Stmt) {
 	}
 }
 
-// TODO: pass Function or BasicBlocks?
-fn (b Builder) @for(func &Function, stmt ast.For/*, label*/) {
-	mut body_bb := func.add_basic_block()
-	mut done_bb := func.add_basic_block()
+fn (b Builder) @if(if_expr ast.If/*, label*/) {
+	if_bb := b.add_basic_block('if')
+	else_bb := b.add_basic_block('if.else')
+	endif_bb := b.add_basic_block('if.endif')
+}
 
-	mut loop_bb := body_bb
+fn (b Builder) @for(stmt ast.For/*, label*/) {
+	mut bb_body := b.add_basic_block('for.body')
+	mut bb_done := b.add_basic_block('for.done')
+
+	mut bb_loop := bb_body
 	if stmt.cond !is ast.EmptyStmt {
-		loop_bb = func.add_basic_block()
+		bb_loop = b.add_basic_block('for.loop')
 	}
-	mut cont_bb := loop_bb
+	mut bb_cont := bb_loop
 	if stmt.post !is ast.EmptyExpr {
-		cont_bb = func.add_basic_block()
+		bb_cont = b.add_basic_block('for.post')
 	}
 
-	body_bb.set_terminator(bb, BranchTerminator{jmp: header_bb});
+	// bb_body.set_terminator(bb, BranchTerminator{bb: bb_header})
+	bb_body.set_terminator(bb, BranchTerminator{bb: bb_loop})
 
 	if stmt.cond !is ast.EmptyStmt {
-		// cond := b.cond(func, stmt.cond, body_bb, done_bb)
-		cond := b.expr(func, stmt.cond)
-		body_bb.set_terminator(IfTerminator{val: cond, jmp_true: body_bb, jmp_false: done_bb});
+		// cond := b.cond(stmt.cond, body_bb, done_bb)
+		cond := b.expr(stmt.cond)
+		bb_body.set_terminator(IfTerminator{val: cond, bb_true: bb_body, bb_false: bb_done})
 	}
 
-	body_bb.set_terminator(BranchTerminator{jmp: body_bb})
+	body_bb.set_terminator(BranchTerminator{bb: bb_body})
 
 	if s.post !is ast.EmptyExpr {
 		b.stmt(func, s.post)
-		body_bb.set_terminator(BranchTerminator{jmp: loop_bb})
+		body_bb.set_terminator(BranchTerminator{bb: bb_loop})
 	}
 }
 

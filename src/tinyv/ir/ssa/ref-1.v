@@ -3,7 +3,7 @@
 // that can be found in the LICENSE file.
 module ssa
 
-// Rough translation of pseudocode algorithms listed in (1)
+// Rough translation of pseudocode algorithms listed in [1]
 
 pub struct BasicBlock {
 mut:
