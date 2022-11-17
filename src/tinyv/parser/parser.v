@@ -70,10 +70,10 @@ pub fn (mut p Parser) parse_file(filename string) ast.File {
 	// start
 	p.next()
 	mut top_stmts := []ast.Stmt{}
-	mut imports := []ast.Import{}
+	mut imports := []ast.ImportStmt{}
 	for p.tok != .eof {
 		stmt := p.top_stmt()
-		if stmt is ast.Import {
+		if stmt is ast.ImportStmt {
 			imports << stmt
 		}
 		top_stmts << stmt
@@ -96,7 +96,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			// NOTE: expr() could handle this if we blindly return an ExprStmt.
 			// however it is being done this way for better error detection.
 			match p.tok {
-				.key_if { return ast.ExprStmt{expr: ast.Comptime{expr: p.@if(true)}} }
+				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
 				else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
@@ -131,8 +131,8 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 				p.next()
 				alias = p.expect_name()
 			}
-			// p.log('ast.Import: $name as $alias')
-			return ast.Import{
+			// p.log('ast.ImportStmt: $name as $alias')
+			return ast.ImportStmt{
 				name: name
 				alias: alias
 				is_aliased: is_aliased
@@ -144,8 +144,8 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_module {
 			p.next()
 			name := p.expect_name()
-			// p.log('ast.Module: $name')
-			return ast.Module{
+			// p.log('ast.ModuleStmt: $name')
+			return ast.ModuleStmt{
 				name: name
 			}
 		}
@@ -216,7 +216,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			// expr() could also handle this if we blindly return an ExprStmt here.
 			// however it is being done this way for better error detection.
 			match p.tok {
-				.key_if { return ast.ExprStmt{expr: ast.Comptime{expr: p.@if(true)}} }
+				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
 				else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
@@ -225,32 +225,32 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 		}
 		.key_assert {
 			p.next()
-			return ast.Assert{expr: p.expr(.lowest)}
+			return ast.AssertStmt{expr: p.expr(.lowest)}
 		}
 		.key_break, .key_continue, .key_goto {
 			line := p.line
 			op := p.tok()
 			if p.line == line && p.tok == .name {
-				return ast.FlowControl{op: op, label: p.expect_name()}
+				return ast.FlowControlStmt{op: op, label: p.expect_name()}
 			} else {
-				return ast.FlowControl{op: op}
+				return ast.FlowControlStmt{op: op}
 			}
 		}
 		.key_defer {
 			p.next()
-			return ast.Defer{stmts: p.block()}
+			return ast.DeferStmt{stmts: p.block()}
 		}
 		.key_for {
-			return p.@for()
+			return p.for_stmt()
 		}
 		.key_return {
-			// p.log('ast.Return')
+			// p.log('ast.ReturnStmt')
 			p.next()
 			// small optimization, save call/array init
 			if p.tok == .rcbr {
-				return ast.Return{}
+				return ast.ReturnStmt{}
 			}
-			return ast.Return{
+			return ast.ReturnStmt{
 				exprs: p.expr_list()
 			}
 		}
@@ -269,7 +269,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 					else { p.error('expecting identifier') }
 				}
 				p.next()
-				return ast.Label{
+				return ast.LabelStmt{
 					name: name
 					stmt: if p.tok == .key_for { p.stmt() } else { ast.empty_stmt }
 				}
@@ -302,7 +302,7 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 				return p.assign([expr])
 			}
 			// TODO: add check for all ExprStmt eg.
-			// if expr is ast.ArrayInit {
+			// if expr is ast.ArrayInitExpr {
 			// 	p.error('UNUSED')
 			// }
 			return ast.ExprStmt{
@@ -319,7 +319,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	mut lhs := ast.empty_expr
 	match p.tok {
 		.char, .key_true, .key_false, .number, .string {
-			lhs = ast.Literal{
+			lhs = ast.BasicLiteral{
 				kind: p.tok
 				value: p.lit()
 			}
@@ -359,7 +359,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if p.in_pga && p.tok != .lcbr {
 				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
 			}
-			lhs = ast.Fn{
+			lhs = ast.FnLiteral{
 				generic_params: generic_params
 				params: params
 				stmts: p.block()
@@ -368,10 +368,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_go {
 			p.next()
-			return ast.Go{expr: p.expr(.lowest)}
+			return ast.GoExpr{expr: p.expr(.lowest)}
 		}
 		.key_if {
-			return p.@if(false)
+			return p.if_expr(false)
 		}
 		// NOTE: handle all these using KeywordOperator for now, if or
 		// as needed later we can split them off into their own types.
@@ -399,7 +399,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.in_init = true
 			exprs := p.expr_list()
 			p.in_init = in_init
-			return ast.Lock{
+			return ast.LockExpr{
 				kind: kind
 				exprs: exprs
 				stmts: p.block()
@@ -408,14 +408,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.dollar {
 			p.next()
 			match p.tok {
-				.key_if { return ast.Comptime{expr: p.@if(true)} }
-				else { return ast.Comptime{expr: p.expr(.lowest)} }
+				.key_if { return ast.ComptimeExpr{expr: p.if_expr(true)} }
+				else { return ast.ComptimeExpr{expr: p.expr(.lowest)} }
 			}
 		}
 		.lpar {
 			p.next()
-			// p.log('ast.Paren:')
-			lhs = ast.Paren{
+			// p.log('ast.ParenExpr:')
+			lhs = ast.ParenExpr{
 				expr: p.expr(.lowest)
 			}
 			p.expect(.rpar)
@@ -432,14 +432,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// empty map init `{}`
 				if p.tok == .rcbr {
 					p.next()
-					return ast.MapInit{}
+					return ast.MapInitExpr{}
 				}
 				// map init
 				mut keys := []ast.Expr{}
 				mut vals := []ast.Expr{}
 				for p.tok != .rcbr {
 					key := p.expr(.lowest)
-					if key is ast.Infix {
+					if key is ast.InfixExpr {
 						if key.op == .pipe {
 							p.error('this assoc syntax is no longer supported `{MyType|`. Use `MyType{...` instead')
 						}
@@ -454,16 +454,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.next()
 				// panic('GOT HERE. hrmm?')
-				lhs = ast.MapInit{
+				lhs = ast.MapInitExpr{
 					keys: keys
 					vals: vals
 				}
 			}
 		}
 		.lsbr {
-			// ArrayInit: `[1,2,3,4]` | `[]int{}` | `[]int{len: 4}` | `[2]int{init: 0}` etc...
-			// ArrayInit->Index: `[1,2,3,4][0]` handled here for reasons listed in comment below
-			// ArrayType in Cast: `[]u8` in `[]u8(x)` set type as it's known, cast handled later
+			// ArrayInitExpr: `[1,2,3,4]` | `[]int{}` | `[]int{len: 4}` | `[2]int{init: 0}` etc...
+			// ArrayInitExpr->IndexExpr: `[1,2,3,4][0]` handled here for reasons listed in comment below
+			// ArrayType in CastExpr: `[]u8` in `[]u8(x)` set type as it's known, cast handled later
 			p.next()
 			// exprs in first `[]` eg. (`1,2,3,4` in `[1,2,3,4]) | (`2` in `[2]int{}`)
 			mut exprs := []ast.Expr{}
@@ -530,7 +530,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 							}
 						}
 						p.next()
-						lhs = ast.ArrayInit{
+						lhs = ast.ArrayInitExpr{
 							typ: typ
 							init: init
 						}
@@ -538,16 +538,16 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[1][0]` | `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
 				else {
-					lhs = ast.ArrayInit{
+					lhs = ast.ArrayInitExpr{
 						exprs: exprs
 					}
 					for i:= 1; i<exprs_arr.len; i++ {
 						exprs2 := exprs_arr[i]
 						if exprs2.len != 1 {
-							// TODO: use same error message as Index in expr loop `expect(.rsbr)` 
+							// TODO: use same error message as IndexExpr in expr loop `expect(.rsbr)` 
 							p.error('invalid index expr')
 						}
-						lhs = ast.Index{
+						lhs = ast.IndexExpr{
 							lhs: lhs
 							expr: exprs2[0]
 						}
@@ -581,7 +581,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						}
 					}
 					p.next()
-					lhs = ast.ArrayInit{
+					lhs = ast.ArrayInitExpr{
 						typ: typ
 						init: init
 						cap: cap
@@ -595,14 +595,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.error('expecting at least one initialization expr: `[expr, expr2]!`')
 				}
 				p.next()
-				lhs = ast.ArrayInit{
+				lhs = ast.ArrayInitExpr{
 					exprs: exprs
 					// TODO: don't need this, we do need some way to indicate `!` though
-					len: ast.Literal{kind: .number, value: exprs.len.str()}
+					len: ast.BasicLiteral{kind: .number, value: exprs.len.str()}
 				}
 			// `[]` | `[1,2,3,4]`
 			} else {
-				lhs = ast.ArrayInit{
+				lhs = ast.ArrayInitExpr{
 					exprs: exprs
 				}
 			}
@@ -635,7 +635,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			line = p.line
 			// rcbr
 			p.next()
-			lhs = ast.Match{
+			lhs = ast.MatchExpr{
 				expr: expr
 				branches: branches
 			}
@@ -647,9 +647,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_unsafe {
-			// p.log('ast.Unsafe')
+			// p.log('ast.UnsafeExpr')
 			p.next()
-			lhs = ast.Unsafe{
+			lhs = ast.UnsafeExpr{
 				stmts: p.block()
 			}
 		}
@@ -668,7 +668,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						if p.in_pga && p.tok != .lcbr { return map_type }
 						p.expect(.lcbr)
 						p.expect(.rcbr)
-						return ast.MapInit{typ: map_type}
+						return ast.MapInitExpr{typ: map_type}
 					}
 					lhs = ast.Ident{name: 'map'}
 				}
@@ -679,7 +679,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// if p.tok == .dot {
 			for p.tok == .dot {
 				p.next()
-				lhs = ast.Selector{lhs:lhs, rhs: p.ident()}
+				lhs = ast.SelectorExpr{lhs:lhs, rhs: p.ident()}
 			}
 			// TODO: move inits to expr loop
 			// NOTE: since we are not relying on capital for types
@@ -696,7 +696,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		else {
 			if p.tok.is_prefix() {
 				// NOTE: just use .highest for now, later we might need to define for each op
-				lhs = ast.Prefix{
+				lhs = ast.PrefixExpr{
 					op: p.tok()
 					expr: p.expr(.highest)
 				}
@@ -718,13 +718,13 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if p.line != line {
 				return lhs
 			}
-			// p.log('ast.Cast or Call: ${typeof(lhs)}')
+			// p.log('ast.CastExpr or CallExpr: ${typeof(lhs)}')
 			args := p.fn_arguments()
 			// definitely a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
 			if p.tok in [.not, .question] {
-				lhs = ast.Postfix{expr: lhs, op: p.tok()}
-				lhs = ast.Call{
+				lhs = ast.PostfixExpr{expr: lhs, op: p.tok()}
+				lhs = ast.CallExpr{
 					lhs: lhs
 					args: args
 				}
@@ -733,14 +733,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			else if args.len == 1 {
 				// definitely a cast
 				if lhs is ast.Type {
-					lhs = ast.Cast{
+					lhs = ast.CastExpr{
 						typ: lhs
 						expr: args[0]
 					}
 				}
 				// work this out after type checking
 				else {
-					lhs = ast.CallOrCast{
+					lhs = ast.CallOrCastExpr{
 						lhs: lhs
 						expr: args[0]
 					}
@@ -748,7 +748,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// definitely a call (0 args, or more than 1 arg)
 			else {
-				lhs = ast.Call{
+				lhs = ast.CallExpr{
 					lhs: lhs
 					args: args
 				}
@@ -777,7 +777,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			in_pga := p.in_pga
 			p.in_pga = true
 			// TODO: we can break early here if we want, should we?
-			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.Infix{...} break }
+			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.InfixExpr{...} break }
 			// expr := p.expr(op.right_binding_power())
 			expr := p.expr(.highest)
 			exprs << expr
@@ -827,7 +827,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			else if exprs.len > 1 {
 				// we've already parsed ahead multiple exprs, use Tuple 
 				// this means we will need to unwrap it in those cases
-				exprs[0] = ast.Infix {
+				exprs[0] = ast.InfixExpr {
 					op: op
 					lhs: lhs
 					rhs: expr
@@ -835,7 +835,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// looked like end of type list, but was really `>` infix
 				// eg: `a<b,c>d` in `fn_call(a<b,c>d)` or `return a<b,c>d`
 				if has_gt {
-					exprs[exprs.len-1] = ast.Infix {
+					exprs[exprs.len-1] = ast.InfixExpr {
 						op: .gt
 						lhs: exprs[exprs.len-1]
 						// rhs: p.expr(op.right_binding_power())
@@ -847,7 +847,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// infix `<`
 			// this is a normal infix
 			else {
-				lhs = ast.Infix{
+				lhs = ast.InfixExpr{
 					lhs: lhs
 					op: op
 					rhs: expr
@@ -863,7 +863,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// `field_d string = 'foo' [attribute_a]`
 			// `field_d int = 111 [attribute_a]`
 			// TODO: use pratt for chaining? better way to handle this?
-			if mut lhs is ast.Literal {
+			if mut lhs is ast.BasicLiteral {
 					if int(min_bp) > int(p.tok.left_binding_power()) {
 						return lhs
 					}
@@ -880,36 +880,36 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			} else {
 				p.next()
 			}
-			// p.log('ast.Index: $p.scanner.lit')
-			lhs = ast.Index{
+			// p.log('ast.IndexExpr: $p.scanner.lit')
+			lhs = ast.IndexExpr{
 				lhs: lhs
 				expr: p.expr(.lowest)
 				is_gated: is_gated
 			}
 			p.expect(.rsbr)
 		}
-		// Selector
+		// SelectorExpr
 		else if p.tok == .dot {
 			p.next()
-			// p.log('ast.Selector')
-			lhs = ast.Selector{
+			// p.log('ast.SelectorExpr')
+			lhs = ast.SelectorExpr{
 				lhs: lhs
 				rhs: p.expr(.lowest)
 			}
 		}
 		else if p.tok == .key_or {
-			// p.log('ast.Or')
+			// p.log('ast.OrExpr')
 			p.next()
-			lhs = ast.Or{
+			lhs = ast.OrExpr{
 				expr: lhs
 				stmts: p.block()
 			}
 		}
 		// range
 		else if p.tok in [.dotdot, .ellipsis] {
-			// p.log('ast.Range')
+			// p.log('ast.RangeExpr')
 			// no need to continue
-			return ast.Range{
+			return ast.RangeExpr{
 				op: p.tok()
 				start: lhs
 				end: if p.tok == .rsbr { ast.empty_expr } else { p.expr(.lowest) }
@@ -928,14 +928,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				return lhs
 			}
 			op := p.tok()
-			lhs = ast.Infix{
+			lhs = ast.InfixExpr{
 				op: op
 				lhs: lhs
 				rhs: p.expr(op.right_binding_power())
 			}
 		}
 		else if p.tok.is_postfix() {
-			lhs = ast.Postfix{
+			lhs = ast.PostfixExpr{
 				op: p.tok()
 				expr: lhs
 			}
@@ -1067,7 +1067,7 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 			comptime_cond = p.expr(.lowest)
 			if p.tok == .question {
 				p.next()
-				comptime_cond = ast.Postfix{
+				comptime_cond = ast.PostfixExpr{
 					op: .question
 					expr: comptime_cond
 				}
@@ -1110,12 +1110,12 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 }
 
 [inline]
-pub fn (mut p Parser) assign(lhs []ast.Expr) ast.Assign {
-	return ast.Assign{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
+pub fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
+	return ast.AssignStmt{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
 
-// TODO: should we use string or Label/Ident
-pub fn (mut p Parser) @for() ast.For {
+// TODO: should we use string or LabelStmt/Ident
+pub fn (mut p Parser) for_stmt() ast.ForStmt {
 	p.next()
 	in_init := p.in_init
 	p.in_init = true
@@ -1172,7 +1172,7 @@ pub fn (mut p Parser) @for() ast.For {
 		}
 	}
 	p.in_init = in_init
-	return ast.For{
+	return ast.ForStmt{
 		init: init
 		cond: cond
 		post: post
@@ -1180,8 +1180,8 @@ pub fn (mut p Parser) @for() ast.For {
 	}
 }
 
-pub fn (mut p Parser) @if(is_comptime bool) ast.If {
-	// p.log('ast.If')
+pub fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
+	// p.log('ast.IfExpr')
 	// .key_if
 	p.next()
 	mut branches := []ast.Branch{}
@@ -1193,13 +1193,13 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 		mut cond := if p.tok == .lcbr { ast.empty_expr }  else { p.expr(.lowest) }
 		if p.tok == .question {
 			// TODO: use postfix for this? handle individual cases like this or globally add to token.is_postfix()?
-			cond = ast.Postfix{expr: cond, op: p.tok}
+			cond = ast.PostfixExpr{expr: cond, op: p.tok}
 			p.next()
 		}
 		// if guard
 		// if p.tok in [.assign. .decl_assign] {
 		if p.tok == .decl_assign {
-			cond = ast.IfGuard{
+			cond = ast.IfGuardExpr{
 				stmt: p.assign([cond])
 			}
 		}
@@ -1226,7 +1226,7 @@ pub fn (mut p Parser) @if(is_comptime bool) ast.If {
 			break
 		}
 	}
-	return ast.If{
+	return ast.IfExpr{
 		branches: branches
 		is_comptime: is_comptime
 	}
@@ -1636,7 +1636,7 @@ pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 			}
 		}
 		p.next()
-		return ast.Assoc{
+		return ast.AssocExpr{
 			typ: typ
 			expr: lx
 			fields: fields
@@ -1652,7 +1652,7 @@ pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 		// name / value
 		if p.tok == .colon {
 			match mut value {
-				ast.Literal { field_name = value.value }
+				ast.BasicLiteral { field_name = value.value }
 				ast.Ident { field_name = value.name }
 				else { p.error('expected field name, got $value.type_name()') }
 			}
@@ -1673,7 +1673,7 @@ pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 		}
 	}
 	p.next()
-	return ast.StructInit{typ: typ, fields: fields}
+	return ast.StructInitExpr{typ: typ, fields: fields}
 }
 
 pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {

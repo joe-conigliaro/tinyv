@@ -23,7 +23,7 @@ pub fn (mut p Parser) try_type() ast.Expr {
 	match p.tok {
 		// pointer
 		.amp {
-			return ast.Prefix{op: p.tok(), expr: p.expect_type()}
+			return ast.PrefixExpr{op: p.tok(), expr: p.expect_type()}
 		}
 		// TODO: variadic
 		.ellipsis {
@@ -116,7 +116,7 @@ pub fn (mut p Parser) try_type() ast.Expr {
 			ident := p.ident()
 			if p.tok == .dot {
 				p.next()
-				return ast.Selector{lhs: ident, rhs: p.ident()}
+				return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
 			}
 			return ident
 		}

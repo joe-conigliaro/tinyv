@@ -74,11 +74,11 @@ fn (mut g Gen) stmts(stmts []ast.Stmt) {
 
 fn (mut g Gen) stmt(stmt ast.Stmt) {
 	match stmt {
-		ast.Assert {
+		ast.AssertStmt {
 			g.write('assert ')
 			g.expr(stmt.expr)
 		}
-		ast.Assign {
+		ast.AssignStmt {
 			for i, l in stmt.lhs {
 				g.expr(l)
 				if i < stmt.lhs.len-1 { g.write(', ') }
@@ -110,7 +110,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.indent--
 			g.writeln(')')
 		}
-		ast.Defer {
+		ast.DeferStmt {
 			g.write('defer {')
 			g.stmts(stmt.stmts)
 			g.writeln('}')
@@ -150,7 +150,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.expr(stmt.expr)
 			if !g.in_init { g.writeln('') }
 		}
-		ast.FlowControl {
+		ast.FlowControlStmt {
 			if stmt.label.len > 0 {
 				g.write(stmt.op.str())
 				g.write(' ')
@@ -210,7 +210,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.writeln('}')
 			}
 		}
-		ast.For {
+		ast.ForStmt {
 			g.write('for ')
 			in_init := g.in_init
 			g.in_init = true
@@ -266,7 +266,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.indent--
 			g.writeln(')')
 		}
-		ast.Import {
+		ast.ImportStmt {
 			g.write('import ')
 			g.write(stmt.name)
 			if stmt.is_aliased {
@@ -285,18 +285,18 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			// TODO: methods
 			g.writeln(' { /* TODO */ }')
 		}
-		ast.Label {
+		ast.LabelStmt {
 			g.write(stmt.name)
 			g.writeln(':')
 			if stmt.stmt != ast.empty_stmt {
 				g.stmt(stmt.stmt)
 			}
 		}
-		ast.Module {
+		ast.ModuleStmt {
 			g.write('module ')
 			g.writeln(stmt.name)
 		}
-		ast.Return {
+		ast.ReturnStmt {
 			g.write('return ')
 			for i, x in stmt.exprs {
 				g.expr(x)
@@ -365,7 +365,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 
 fn (mut g Gen) expr(expr ast.Expr) {
 	match expr {
-		ast.ArrayInit {
+		ast.ArrayInitExpr {
 			if expr.exprs.len > 0 {
 				g.write('[')
 				for i, x in expr.exprs {
@@ -401,7 +401,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('}')
 			}
 		}
-		ast.Assoc {
+		ast.AssocExpr {
 			g.expr(expr.typ)
 			g.writeln('{')
 			g.indent++
@@ -417,7 +417,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.indent--
 			g.write('}')
 		}
-		ast.Call {
+		ast.CallExpr {
 			g.expr(expr.lhs)
 			g.write('(')
 			for i, arg in expr.args {
@@ -426,19 +426,19 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write(')')
 		}
-		ast.CallOrCast {
+		ast.CallOrCastExpr {
 			g.expr(expr.lhs)
 			g.write('(')
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.Cast {
+		ast.CastExpr {
 			g.expr(expr.typ)
 			g.write('(')
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.Comptime {
+		ast.ComptimeExpr {
 			g.write('$')
 			g.expr(expr.expr)
 		}
@@ -449,7 +449,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(': ')
 			g.expr(expr.value)
 		}
-		ast.Fn {
+		ast.FnLiteral {
 			g.write('fn')
 			if expr.generic_params.len > 0 {
 				g.generic_list(expr.generic_params)
@@ -475,14 +475,14 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.generic_list(expr.args)
 		}
-		ast.Go {
+		ast.GoExpr {
 			g.write('go ')
 			g.expr(expr.expr)
 		}
 		ast.Ident {
 			g.write(expr.name)
 		}
-		ast.If {
+		ast.IfExpr {
 			for i, branch in expr.branches {
 				in_init := g.in_init
 				g.in_init = true
@@ -501,17 +501,17 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('}')
 			}
 		}
-		ast.IfGuard {
-			g.write('/* IfGuard */ ')
+		ast.IfGuardExpr {
+			g.write('/* IfGuardExpr */ ')
 			g.stmt(expr.stmt)
 		}
-		ast.Index {
+		ast.IndexExpr {
 			g.expr(expr.lhs)
 			g.write('[')
 			g.expr(expr.expr)
 			g.write(']')
 		}
-		ast.Infix {
+		ast.InfixExpr {
 			g.expr(expr.lhs)
 			g.write(' ')
 			g.write(expr.op.str())
@@ -532,14 +532,14 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write('/*tuple:end*/')
 		}
-		ast.Literal {
+		ast.BasicLiteral {
 			if expr.kind == .char {
 				g.write('`')
 				g.write(expr.value)
 				g.write('`')
 			}
 			else if expr.kind == .string {
-				// TODO: proper store extra info from scanner in Literal (also raw etc)
+				// TODO: proper store extra info from scanner in BasicLiteral (also raw etc)
 				quote := if expr.value.contains("'") { '"' } else { "'" }
 				g.write(quote)
 				g.write(expr.value)
@@ -549,7 +549,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(expr.value)
 			}
 		}
-		ast.Lock {
+		ast.LockExpr {
 			g.write('$expr.kind ')
 			for i, x in expr.exprs {
 				g.expr(x)
@@ -559,7 +559,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.stmts(expr.stmts)
 			g.writeln('}')
 		}
-		ast.MapInit {
+		ast.MapInitExpr {
 			// long syntax
 			if expr.typ !is ast.EmptyExpr {
 				g.expr(expr.typ)
@@ -582,7 +582,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('{}')
 			}
 		}
-		ast.Match {
+		ast.MatchExpr {
 			g.write('match ')
 			g.expr(expr.expr)
 			g.writeln(' {')
@@ -609,37 +609,37 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(' ')
 			g.expr(expr.expr)
 		}
-		ast.Or {
+		ast.OrExpr {
 			g.expr(expr.expr)
 			g.writeln(' or {')
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
-		ast.Paren {
+		ast.ParenExpr {
 			g.write('(')
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.Postfix {
+		ast.PostfixExpr {
 			g.expr(expr.expr)
 			g.write(expr.op.str())
 		}
-		ast.Prefix {
+		ast.PrefixExpr {
 			g.write(expr.op.str())
 			g.expr(expr.expr)
 		}
-		ast.Range {
+		ast.RangeExpr {
 			g.expr(expr.start)
 			// g.write('..')
 			g.write(expr.op.str())
 			g.expr(expr.end)
 		}
-		ast.Selector {
+		ast.SelectorExpr {
 			g.expr(expr.lhs)
 			g.write('.')
 			g.expr(expr.rhs)
 		}
-		ast.StructInit {
+		ast.StructInitExpr {
 			g.expr(expr.typ)
 			// with field names
 			if expr.fields.len > 0 && expr.fields[0].name.len > 0 {
@@ -666,7 +666,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write('}')
 		}
-		ast.Unsafe {
+		ast.UnsafeExpr {
 			// NOTE: use in_init or stmts.len? check vfmt
 			if g.in_init {
 				g.write('unsafe { ')

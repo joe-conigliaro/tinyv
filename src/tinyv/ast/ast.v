@@ -14,16 +14,18 @@ type EmptyExpr = u8
 type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
-pub type Expr = ArrayInit | Assoc | Call | CallOrCast | Cast | Comptime
-	| EmptyExpr | Fn | GenericArgs | Go | Ident | If | IfGuard | Index | Infix
-	| KeywordOperator | Literal | Lock | MapInit | Match | Modifier | Or | Paren
-	| Postfix | Prefix | Range | Selector | StructInit | Tuple | Type | Unsafe
+pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
+	| CallOrCastExpr | CastExpr | ComptimeExpr | EmptyExpr | FnLiteral
+	| GenericArgs | GoExpr | Ident | IfExpr | IfGuardExpr | IndexExpr
+	| InfixExpr | KeywordOperator | LockExpr | MapInitExpr | MatchExpr
+	| Modifier | OrExpr | ParenExpr | PostfixExpr | PrefixExpr | RangeExpr
+	| SelectorExpr | StructInitExpr | Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
-pub type Stmt = Assert | Assign | Block | ConstDecl | Defer | Directive
-	| EmptyStmt | EnumDecl | ExprStmt | FlowControl | FnDecl | For | ForIn
-	| GlobalDecl | Import | InterfaceDecl | Label | Module | Return
-	| StructDecl | TypeDecl
+pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
+	| Directive | EmptyStmt | EnumDecl | ExprStmt | FlowControlStmt
+	| FnDecl | ForStmt | ForIn | GlobalDecl | ImportStmt | InterfaceDecl
+	| LabelStmt | ModuleStmt | ReturnStmt | StructDecl | TypeDecl
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
@@ -36,7 +38,7 @@ pub:
 	path       string
 	// attributes []Attribute
 	stmts      []Stmt
-	imports    []Import
+	imports    []ImportStmt
 }
 
 pub enum Language {
@@ -61,7 +63,7 @@ pub:
 	is_mut bool
 }
 
-pub struct ArrayInit {
+pub struct ArrayInitExpr {
 pub:
 	typ   Expr = empty_expr
 	exprs []Expr
@@ -70,7 +72,7 @@ pub:
 	len   Expr = empty_expr
 }
 
-pub struct Assoc {
+pub struct AssocExpr {
 pub:
 	typ    Expr
 	expr   Expr
@@ -83,25 +85,25 @@ pub:
 	stmts []Stmt
 }
 
-pub struct Call {
+pub struct CallExpr {
 pub:
 	lhs  Expr
 	args []Expr
 }
 
-pub struct CallOrCast {
+pub struct CallOrCastExpr {
 pub:
 	lhs  Expr
 	expr Expr
 }
 
-pub struct Cast {
+pub struct CastExpr {
 pub:
 	typ  Expr
 	expr Expr
 }
 
-pub struct Comptime {
+pub struct ComptimeExpr {
 pub:
 	expr Expr
 }
@@ -121,7 +123,7 @@ pub:
 }
 
 // anon fn
-pub struct Fn {
+pub struct FnLiteral {
 pub:
 	generic_params []Expr
 	params         []Parameter
@@ -136,7 +138,7 @@ pub:
 
 }
 
-pub struct Go {
+pub struct GoExpr {
 pub:
 	expr Expr
 }
@@ -146,25 +148,25 @@ pub:
 	name   string
 }
 
-pub struct If {
+pub struct IfExpr {
 pub:
 	branches    []Branch
 	is_comptime bool
 }
 
-pub struct IfGuard {
+pub struct IfGuardExpr {
 pub:
 	stmt Stmt
 }
 
-pub struct Infix {
+pub struct InfixExpr {
 pub:
 	op  token.Token
 	lhs Expr
 	rhs Expr
 }
 
-pub struct Index {
+pub struct IndexExpr {
 pub:
 	lhs  	 Expr
 	expr 	 Expr
@@ -182,27 +184,27 @@ pub:
 	exprs []Expr
 }
 
-pub struct Literal {
+pub struct BasicLiteral {
 pub:
 	kind  token.Token
 	value string
 }
 
-pub struct Lock {
+pub struct LockExpr {
 pub:
 	kind  token.Token
 	exprs []Expr
 	stmts []Stmt
 }
 
-pub struct MapInit {
+pub struct MapInitExpr {
 pub:
 	typ  Expr = empty_expr
 	keys []Expr
 	vals []Expr
 }
 
-pub struct Match {
+pub struct MatchExpr {
 pub:
 	expr     Expr
 	branches []Branch
@@ -214,60 +216,60 @@ pub:
 	expr Expr
 }
 
-pub struct Or {
+pub struct OrExpr {
 pub:
 	expr  Expr
 	stmts []Stmt
 }
 
-pub struct Paren {
+pub struct ParenExpr {
 pub:
 	expr Expr
 }
 
-pub struct Postfix {
-pub:
-	op   token.Token
-	expr Expr
-}
-
-pub struct Prefix {
+pub struct PostfixExpr {
 pub:
 	op   token.Token
 	expr Expr
 }
 
-pub struct Range {
+pub struct PrefixExpr {
+pub:
+	op   token.Token
+	expr Expr
+}
+
+pub struct RangeExpr {
 pub:
 	op    token.Token // `..` exclusive | `...` inclusive
 	start Expr
 	end   Expr
 }
 
-pub struct Selector {
+pub struct SelectorExpr {
 pub:
 	lhs Expr
 	rhs Expr
 }
 
-pub struct StructInit {
+pub struct StructInitExpr {
 pub:
 	typ    		   Expr
 	fields        []FieldInit
 }
 
-pub struct Unsafe {
+pub struct UnsafeExpr {
 pub:
 	stmts []Stmt
 }
 
 // Statements
-pub struct Assert {
+pub struct AssertStmt {
 pub:
 	expr Expr
 }
 
-pub struct Assign {
+pub struct AssignStmt {
 pub:
 	op  token.Token
 	lhs []Expr
@@ -300,7 +302,7 @@ pub:
 	fields    []FieldInit
 }
 
-pub struct Defer {
+pub struct DeferStmt {
 pub:
 	stmts []Stmt
 }
@@ -325,7 +327,7 @@ pub:
 	expr Expr
 }
 
-pub struct FlowControl {
+pub struct FlowControlStmt {
 pub:
 	op    token.Token
 	label string
@@ -345,7 +347,7 @@ pub:
 	return_type    Expr = empty_expr
 }
 
-pub struct For {
+pub struct ForStmt {
 pub:
 	init  Stmt = empty_stmt // initialization
 	cond  Expr = empty_expr // condition
@@ -353,7 +355,7 @@ pub:
 	stmts []Stmt
 }
 
-// NOTE: used as the initializer for For
+// NOTE: used as the initializer for ForStmt
 pub struct ForIn {
 pub:
 	key   		 string
@@ -368,7 +370,7 @@ pub:
 	fields     []FieldDecl
 }
 
-pub struct Import {
+pub struct ImportStmt {
 pub:
 	name       string
 	alias      string
@@ -382,18 +384,18 @@ pub:
 	// methods    []
 }
 
-pub struct Label {
+pub struct LabelStmt {
 pub:
 	name string
 	stmt Stmt = empty_stmt
 }
 
-pub struct Module {
+pub struct ModuleStmt {
 pub:
 	name string
 }
 
-pub struct Return {
+pub struct ReturnStmt {
 pub:
 	exprs []Expr
 }

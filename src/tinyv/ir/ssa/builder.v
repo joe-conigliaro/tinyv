@@ -14,7 +14,7 @@ fn (b Builder) add_basic_block(name string) BasicBlock {
 
 fn (b Builder) expr(expr ast.Expr) Value {
 	match expr {
-		ast.Call{
+		ast.CallExpr{
 
 		}
 		else {}	
@@ -23,20 +23,20 @@ fn (b Builder) expr(expr ast.Expr) Value {
 
 fn (b Builder) stmt(stmt ast.Stmt) {
 	match stmt {
-		ast.For{
+		ast.ForStmt{
 
 		}
 		else {}
 	}
 }
 
-fn (b Builder) @if(if_expr ast.If/*, label*/) {
+fn (b Builder) if_expr(if_expr ast.IfExpr/*, label*/) {
 	if_bb := b.add_basic_block('if')
 	else_bb := b.add_basic_block('if.else')
 	endif_bb := b.add_basic_block('if.endif')
 }
 
-fn (b Builder) @for(stmt ast.For/*, label*/) {
+fn (b Builder) for_stmt(stmt ast.ForStmt/*, label*/) {
 	mut bb_body := b.add_basic_block('for.body')
 	mut bb_done := b.add_basic_block('for.done')
 
