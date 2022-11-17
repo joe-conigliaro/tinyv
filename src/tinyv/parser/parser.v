@@ -858,15 +858,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		// index: `expr[i]` | `expr#[i]` 
 		else if p.tok in [.hash, .lsbr] && p.line == line {
-			// parse struct init fields attrs, not as index expr
-			// `field_d string = 'foo' [attribute_a; attribute_b]`
-			// `field_d int = 111 [attribute_a; attribute_b]`
+			// struct init field w/ default literal value & attributes
+			// do not incorrectly parse as index expr `'foo'[index]`
+			// `field_d string = 'foo' [attribute_a]`
+			// `field_d int = 111 [attribute_a]`
 			// TODO: use pratt for chaining? better way to handle this?
 			if mut lhs is ast.Literal {
 					if int(min_bp) > int(p.tok.left_binding_power()) {
 						return lhs
 					}
-					// TODO: move to later stage for supporting vars / exprs.
+					// TODO: move to later stage for supporting vars / exprs
+					// eg. `if lhs.type is number { error(... }`
 					if lhs.kind == .number {
 						p.error('cannot index number')
 					}
