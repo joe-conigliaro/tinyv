@@ -862,16 +862,18 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// do not incorrectly parse as index expr `'foo'[index]`
 			// `field_d string = 'foo' [attribute_a]`
 			// `field_d int = 111 [attribute_a]`
-			// TODO: use pratt for chaining? better way to handle this?
 			if mut lhs is ast.BasicLiteral {
-					if int(min_bp) > int(p.tok.left_binding_power()) {
-						return lhs
-					}
-					// TODO: move to later stage for supporting vars / exprs
-					// eg. `if lhs.type is number { error(... }`
-					if lhs.kind == .number {
-						p.error('cannot index number')
-					}
+				// NOTE: if we end up with many situations like this it may be worth
+				// using pratt bp loop for chaining, for now I don't see the value
+				// if int(min_bp) > int(p.tok.left_binding_power()) {
+				if min_bp == .highest {
+					return lhs
+				}
+				// TODO: move to later stage for supporting vars / exprs
+				// eg. `if lhs.type is number { error(... }`
+				if lhs.kind == .number {
+					p.error('cannot index number')
+				}
 			}
 			is_gated := p.tok == .hash
 			if is_gated {
