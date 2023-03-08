@@ -17,9 +17,9 @@ mut:
 	files []ast.File
 }
 
-pub fn new_builder(pref &pref.Preferences) &Builder {
+pub fn new_builder(prefs &pref.Preferences) &Builder {
 	unsafe { return &Builder{
-		pref: pref
+		pref: prefs
 	} }
 }
 
@@ -37,14 +37,14 @@ pub fn (mut b Builder) build(files []string) {
 }
 
 fn (mut b Builder) parse_files(files []string) []ast.File {
-	mut parser := parser.new_parser(b.pref)
+	mut parser_reused := parser.new_parser(b.pref)
 	mut ast_files := []ast.File{}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		ast_files << parser.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
 	}
 	// parse user files
-	ast_files << parser.parse_files(files)
+	ast_files << parser_reused.parse_files(files)
 	if b.pref.skip_imports {
 		return ast_files
 	}
@@ -57,7 +57,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 				continue
 			}
 			mod_path := b.get_module_path(mod.name, ast_file.path)
-			ast_files << parser.parse_files(get_v_files_from_dir(mod_path))
+			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
 		}
 	}

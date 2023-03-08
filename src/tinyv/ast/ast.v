@@ -135,7 +135,6 @@ pub struct GenericArgs {
 pub:
 	lhs  Expr
 	args []Expr // concrete types
-
 }
 
 pub struct GoExpr {

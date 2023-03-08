@@ -18,7 +18,7 @@ mut:
 	filename  string
 	// track state
 	in_init   bool // for/if/match eg. `for x in vals {`
-	in_pga    bool // in (p)ossible (g)eneric (a)args `ident<expr|type,...>`
+	exp_pt    bool // expecting (p)ossible (t)ype from `p.expr()`
 	// start token info
 	line      int
 	lit       string
@@ -28,10 +28,10 @@ mut:
 	// end token info
 }
 
-pub fn new_parser(pref &pref.Preferences) &Parser {
+pub fn new_parser(prefs &pref.Preferences) &Parser {
 	unsafe { return &Parser{
-		pref: pref
-		scanner: scanner.new_scanner(pref, false)
+		pref: prefs
+		scanner: scanner.new_scanner(prefs, false)
 	} }
 }
 
@@ -327,14 +327,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_fn {
 			p.next()
 			mut generic_params := []ast.Expr{}
-			if p.tok == .lt {
+			if p.tok == .lsbr {
 				p.next()
 				generic_params << p.expect_type()
 				for p.tok == .comma {
 					p.next()
 					generic_params << p.expect_type()
 				}
-				p.expect(.gt)
+				p.expect(.rsbr)
 			}
 			// TODO: proper - closure vars
 			if p.tok == .lsbr {
@@ -356,7 +356,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// since we need to use expr() instead of typ() because we don't yet know what we are parsing.
 			// take a look at expr chaining loop branch `if p.tok == .lt`
 			// TODO: are we using ast.GenericArgs in this case?
-			if p.in_pga && p.tok != .lcbr {
+			if p.exp_pt && p.tok != .lcbr {
 				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
 			}
 			lhs = ast.FnLiteral{
@@ -378,7 +378,23 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: I would much rather dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
-		.key_dump, .key_likely, .key_unlikely, .key_isreftype, .key_sizeof, .key_typeof {
+		.key_typeof {
+			// op := p.tok()
+			// p.expect(.lpar)
+			// exp_pt := p.exp_pt
+			// p.exp_pt = true
+			// expr := p.expr(.lowest)
+			// p.exp_pt = exp_pt
+			// p.expect(.rpar)
+			// lhs = ast.KeywordOperator{op: op, expr: expr}
+			op := p.tok()
+			p.expect(.lpar)
+			expr := p.type_or_expr(.lowest)
+			p.expect(.rpar)
+			lhs = ast.KeywordOperator{op: op, expr: expr}
+		}
+		// .key_dump, .key_likely, .key_unlikely, .key_isreftype, .key_sizeof, .key_typeof {
+		.key_dump, .key_likely, .key_unlikely, .key_isreftype, .key_sizeof {
 			op := p.tok()
 			p.expect(.lpar)
 			expr := p.expr(.lowest)
@@ -483,7 +499,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if exprs.len > 0 && p.tok == .lsbr {
 				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
-				for p.tok == .lsbr {
+				// NOTE: checking line here for this case:
+				// `pub const const_a = ['a', 'b', 'c', 'd']`
+				// '[attribute_a; attribute_b]''
+				for p.tok == .lsbr && p.line == line {
 					p.next()
 					mut exprs2 := []ast.Expr{}
 					for p.tok != .rsbr {
@@ -496,7 +515,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					exprs_arr << exprs2
 				}
 				// (`[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`) | `[2]u8(x)`
-				if p.tok in [.amp, .name] && p.line == line {
+				if p.tok in [.amp, .name/*, .question*/] && p.line == line {
 					mut typ := p.expect_type()
 					for i:=exprs_arr.len-1; i>=0; i-- {
 						exprs2 := exprs_arr[i]
@@ -518,7 +537,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
-						if p.in_pga && p.tok != .lcbr { return typ }
+						if p.exp_pt && p.tok != .lcbr { return typ }
 						p.expect(.lcbr)
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
@@ -555,7 +574,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// (`[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`) | `[]u8(x)`
-			else if p.tok in [.amp, .lsbr, .name] && p.line == line {
+			else if p.tok in [.amp, .lsbr, .name/*, .question*/] && p.line == line {
 				typ := ast.Type(ast.ArrayType{elem_type: p.expect_type()})
 				// cast `[]u8(x)` we know this is a cast
 				// set lhs as the type, cast handled later in expr loop
@@ -564,7 +583,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
-					if p.in_pga && p.tok != .lcbr { return typ }
+					if p.exp_pt && p.tok != .lcbr { return typ }
 					p.expect(.lcbr)
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
@@ -665,7 +684,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						p.expect(.rsbr)
 						value_type := p.expect_type()
 						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
-						if p.in_pga && p.tok != .lcbr { return map_type }
+						if p.exp_pt && p.tok != .lcbr { return map_type }
 						p.expect(.lcbr)
 						p.expect(.rcbr)
 						return ast.MapInitExpr{typ: map_type}
@@ -760,103 +779,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// else if p.tok == .lcbr && p.line == line && !p.in_init {
 		// 	lhs = p.assoc_or_struct_init(lhs)
 		// }
-		// generic call | infix `<`
-		else if p.tok == .lt {
-			// NOTE: why all this? I don't want the parser to need to know about
-			// builtin type names or if user defined types start with a capital.
-			// I also don't want to introduce unlimited token look ahead.
-			// when we reach an expr that is `name<name,name` we need to check
-			// if it's actually the start of generic args, or something else.
-			// NOTE: using `[]` instead of `<>` would solve this issue as well
-			// as nested generic types, which is currently not possible unless
-			// you force spaces for `type<T>>`, or use some other workaround.
-			// TODO: better errors in these conditions
-			op := p.tok()
-			mut exprs := []ast.Expr{}
-			mut has_gt := false
-			in_pga := p.in_pga
-			p.in_pga = true
-			// TODO: we can break early here if we want, should we?
-			// if p.tok !in [.key_fn, .name, .lsbr] { lhs = ast.InfixExpr{...} break }
-			// expr := p.expr(op.right_binding_power())
-			expr := p.expr(.highest)
-			exprs << expr
-			for p.tok == .comma {
-				p.next()
-				// TODO: we can also break early here if we want
-				// expr2 := p.expr(op.right_binding_power())
-				expr2 := p.expr(.highest)
-				// multiple possible (ended up not being) generic type lists in a row
-				if expr2 is ast.Tuple { exprs << expr2.exprs } else { exprs << expr2 }
-			}			
-			p.in_pga = in_pga
-			if p.tok == .gt {
-				p.next()
-				has_gt = true
-			}
-			// some other workaround :D
-			// nested generic type list `foo<int,Bar<int,string>>` etc
-			// TODO: support or abandon? this is currently not working
-			// properly when preceded by an infix (see syntax test)
-			else if p.tok in [.right_shift, .right_shift_unsigned] {
-				if !p.in_pga {
-					// println('should be eating `$p.tok`')
-					p.next()
-				}
-				has_gt = true
-			}
-			// error in these conditions since we are expecting `{}` or `()`
-			if (has_gt || exprs.len > 1) && !in_pga && p.tok !in [.lcbr, .lpar] {
-				for x in exprs {
-					// TODO: error with position
-					if x is ast.GenericArgs {
-						p.error('unexpected token `$p.tok`. are you missing `{}` or `()`')
-					}
-				}
-			}
-			// generic struct init or assoc
-			// TODO: do we need some more qualifiers? (check depth?)
-			if has_gt && (p.tok in [.comma, .gt, .lpar, .lcbr, .right_shift, .right_shift_unsigned]) {
-				lhs = ast.GenericArgs{lhs: lhs, args: exprs}
-				if p.tok == .lcbr {
-					lhs = p.assoc_or_struct_init(lhs)
-				}
-			}
-			// NOTE: oops we are inside expr called from fn arg or multi return expr
-			// which has a infix expr, eg: `a<b,c` in `fn_call(a<b,c)` or `return a<b,c`
-			else if exprs.len > 1 {
-				// we've already parsed ahead multiple exprs, use Tuple 
-				// this means we will need to unwrap it in those cases
-				exprs[0] = ast.InfixExpr {
-					op: op
-					lhs: lhs
-					rhs: expr
-				}
-				// looked like end of type list, but was really `>` infix
-				// eg: `a<b,c>d` in `fn_call(a<b,c>d)` or `return a<b,c>d`
-				if has_gt {
-					exprs[exprs.len-1] = ast.InfixExpr {
-						op: .gt
-						lhs: exprs[exprs.len-1]
-						// rhs: p.expr(op.right_binding_power())
-						rhs: p.expr(.highest)
-					}
-				}
-				return ast.Tuple{exprs: exprs}
-			}
-			// infix `<`
-			// this is a normal infix
-			else {
-				lhs = ast.InfixExpr{
-					lhs: lhs
-					op: op
-					rhs: expr
-				}
-				// continue at pratt loop
-				break
-			}
-		}
-		// index: `expr[i]` | `expr#[i]` 
+		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
 		else if p.tok in [.hash, .lsbr] && p.line == line {
 			// struct init field w/ default literal value & attributes
 			// do not incorrectly parse as index expr `'foo'[index]`
@@ -878,17 +801,36 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			is_gated := p.tok == .hash
 			if is_gated {
 				p.next()
-				p.expect(.lsbr)
-			} else {
+			}
+			p.next() // .lsbr
+			// TODO: clean this up / simplify if possible
+			mut exprs := []ast.Expr{}
+			for {
+				// TODO: is it possible to use `p.type_or_expr()` here?
+				exp_pt := p.exp_pt
+				p.exp_pt = true
+				exprs << p.expr(.lowest)
+				p.exp_pt = exp_pt
+				// TODO: expr -> type? best way?
+				// generic_args << p.expect_type()
+				if p.tok != .comma {
+					break
+				}
 				p.next()
 			}
-			// p.log('ast.IndexExpr: $p.scanner.lit')
-			lhs = ast.IndexExpr{
-				lhs: lhs
-				expr: p.expr(.lowest)
-				is_gated: is_gated
-			}
 			p.expect(.rsbr)
+			if p.tok == .lpar {
+				lhs = ast.GenericArgs{lhs: lhs, args: exprs}
+			}
+			else if p.tok == .lcbr && p.line == line && !p.in_init {
+				lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
+			}
+			else {
+				lhs = ast.IndexExpr{
+					lhs: lhs
+					expr: exprs[0]
+				}
+			}
 		}
 		// SelectorExpr
 		else if p.tok == .dot {
@@ -948,6 +890,23 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	}
 	// p.log('returning: $p.tok')
 	return lhs
+}
+
+// parse either a type or expr, eg. `typeof(type|expr)`
+fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
+	// since we are parsing multiple return in `try_type()` ParExpr would
+	// incorrectly get parsed as Tuple, another option noted in `try_type()`
+	// if p.tok == .lpar {
+	// 	return p.expr(min_bp)
+	// }
+	if p.tok in [.question, .key_fn] {
+		return p.try_type()
+	}
+	exp_pt := p.exp_pt
+	p.exp_pt = true
+	expr := p.expr(min_bp)
+	p.exp_pt = exp_pt
+	return expr
 }
 
 // use peek() over always keeping next_tok one token ahead.
@@ -1032,15 +991,14 @@ pub fn (mut p Parser) block() []ast.Stmt {
 pub fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {
-		// exprs << p.expr(.lowest)
-		// NOTE: see `.lt` in expr chaining loop, expand Tuple
-		// that came from possible generic call `return a < b, c` 
-		expr := p.expr(.lowest)
-		// TODO: is this the best place/way to handle this?
-		if expr is ast.EmptyExpr {
-			p.error('expecting expr, got `$p.tok`')
-		}
-		if expr is ast.Tuple { exprs << expr.exprs } else { exprs << expr }
+		exprs << p.expr(.lowest)
+		// TODO: was this just for previous generics impl or was there another need?
+		// expr := p.expr(.lowest)
+		// // TODO: is this the best place/way to handle this?
+		// if expr is ast.EmptyExpr {
+		// 	p.error('expecting expr, got `$p.tok`')
+		// }
+		// exprs << expr
 		if p.tok != .comma {
 			break
 		}
@@ -1334,7 +1292,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	}
 	language, name := p.decl_lang_and_name()
 	mut generic_params := []ast.Expr{}
-	if p.tok == .lt {
+	if p.tok == .lsbr {
 		p.next()
 		for {
 			generic_params << p.expect_type()
@@ -1343,7 +1301,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 			}
 			p.next()
 		}
-		p.expect(.gt)
+		p.expect(.rsbr)
 	}
 	params := p.fn_parameters()
 	return_type := if p.tok != .lcbr && p.line == line { p.expect_type() } else { ast.empty_expr }
@@ -1412,28 +1370,12 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 			if expr !is ast.Ident {
 				p.error('expecting ident for struct config syntax?')
 			}
-			expr2 := p.expr(.lowest)
-			// NOTE: see `.lt` in expr chaining loop, expand Tuple
-			// that came from possible generic call `fn(foo: a < b, c)` 
-			if expr2 is ast.Tuple {
-				expr = ast.FieldInit{
-					name: (expr as ast.Ident).name
-					value: expr2.exprs[0]
-				}
-				args << expr
-				args << expr2.exprs[1..]
-			} else {
-				expr = ast.FieldInit{
-					name: (expr as ast.Ident).name
-					// value: p.expr(.lowest)
-					value: expr2
-				}
-				args << expr
+			args << ast.FieldInit{
+				name: (expr as ast.Ident).name
+				value: p.expr(.lowest)
 			}
 		} else {
-			// NOTE: see `.lt` in expr chaining loop, expand Tuple
-			// that came from possible generic call `fn(a < b, c)` 
-			if mut expr is ast.Tuple { args << expr.exprs } else { args << expr }
+			args << expr
 		}
 		// args << expr
 		if p.tok == .comma {
@@ -1556,14 +1498,14 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	p.next()
 	language, name := p.decl_lang_and_name()
 	mut generic_params := []ast.Expr{}
-	if p.tok == .lt {
+	if p.tok == .lsbr {
 		p.next()
 		generic_params << p.expect_type()
 		for p.tok == .comma {
 			p.next()
 			generic_params << p.expect_type()
 		}
-		p.expect(.gt)
+		p.expect(.rsbr)
 	}
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}

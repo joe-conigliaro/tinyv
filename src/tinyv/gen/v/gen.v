@@ -32,9 +32,9 @@ fn build_tabs(tabs_len int) []string {
 	return tabs_arr
 }
 
-pub fn new_gen(pref &pref.Preferences) &Gen {
+pub fn new_gen(prefs &pref.Preferences) &Gen {
 	unsafe { return &Gen{
-		pref: pref
+		pref: prefs
 		out: strings.new_builder(1000)
 		indent: -1
 	} }
@@ -77,6 +77,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		ast.AssertStmt {
 			g.write('assert ')
 			g.expr(stmt.expr)
+			g.writeln('')
 		}
 		ast.AssignStmt {
 			for i, l in stmt.lhs {
@@ -775,12 +776,12 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 
 [inline]
 fn (mut g Gen) generic_list(exprs []ast.Expr) {
-	g.write('<')
+	g.write('[')
 	for i, expr in exprs {
 		g.expr(expr)
 		if i < exprs.len-1 { g.write(',') }
 	}
-	g.write('>')
+	g.write(']')
 }
 
 [inline]

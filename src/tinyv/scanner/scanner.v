@@ -27,9 +27,9 @@ pub mut:
 	lit           string
 }
 
-pub fn new_scanner(pref &pref.Preferences, scan_comments bool) &Scanner {
+pub fn new_scanner(prefs &pref.Preferences, scan_comments bool) &Scanner {
 	unsafe { return &Scanner{
-		pref: pref
+		pref: prefs
 		scan_comments: scan_comments
 	} }
 }
