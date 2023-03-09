@@ -11,7 +11,7 @@ import tinyv.token
 import tinyv.pref
 import tinyv.util
 
-struct Parser {
+pub struct Parser {
 	pref      &pref.Preferences
 mut:
 	scanner   &scanner.Scanner
@@ -379,14 +379,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
 		.key_typeof {
-			// op := p.tok()
-			// p.expect(.lpar)
-			// exp_pt := p.exp_pt
-			// p.exp_pt = true
-			// expr := p.expr(.lowest)
-			// p.exp_pt = exp_pt
-			// p.expect(.rpar)
-			// lhs = ast.KeywordOperator{op: op, expr: expr}
 			op := p.tok()
 			p.expect(.lpar)
 			expr := p.type_or_expr(.lowest)
@@ -801,18 +793,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			is_gated := p.tok == .hash
 			if is_gated {
 				p.next()
+				p.expect(.lsbr)
+			} else {
+				p.next() // .lsbr
 			}
-			p.next() // .lsbr
 			// TODO: clean this up / simplify if possible
 			mut exprs := []ast.Expr{}
 			for {
-				// TODO: is it possible to use `p.type_or_expr()` here?
-				exp_pt := p.exp_pt
-				p.exp_pt = true
-				exprs << p.expr(.lowest)
-				p.exp_pt = exp_pt
-				// TODO: expr -> type? best way?
-				// generic_args << p.expect_type()
+				exprs << p.type_or_expr(.lowest)
 				if p.tok != .comma {
 					break
 				}
@@ -829,6 +817,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				lhs = ast.IndexExpr{
 					lhs: lhs
 					expr: exprs[0]
+					is_gated: is_gated
 				}
 			}
 		}
