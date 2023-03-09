@@ -336,6 +336,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.expect(.rsbr)
 			}
+			// TODO: closure variable capture syntax is the same as generic arg/param syntax. This should change.
+			// Because of this generic closures cannot exist, even though there is probably no use for them.
+			// If I remember correctly, Go does not allow generic closures. Unless I'm thinking of another lang.
 			// TODO: proper - closure vars
 			if p.tok == .lsbr {
 				p.next()
