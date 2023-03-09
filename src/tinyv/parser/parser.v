@@ -801,13 +801,11 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next() // .lsbr
 			}
 			// TODO: clean this up / simplify if possible
-			mut exprs := []ast.Expr{}
-			for {
-				exprs << p.type_or_expr(.lowest)
-				if p.tok != .comma {
-					break
-				}
+			expr := p.type_or_expr(.lowest)
+			mut exprs := [expr]
+			for p.tok == .comma {
 				p.next()
+				exprs << p.type_or_expr(.lowest)
 			}
 			p.expect(.rsbr)
 			if p.tok == .lpar {
@@ -819,7 +817,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			else {
 				lhs = ast.IndexExpr{
 					lhs: lhs
-					expr: exprs[0]
+					expr: expr
 					is_gated: is_gated
 				}
 			}
