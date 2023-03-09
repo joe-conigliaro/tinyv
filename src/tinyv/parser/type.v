@@ -70,9 +70,6 @@ pub fn (mut p Parser) try_type() ast.Expr {
 			return ast.Type(ast.NoneType{})
 		}
 		// Tuple (multi return)
-		// TODO: allow this anywhere? or only when parsing fn return type?
-		// limiting it is one way to solve `ParenExpr` in `type_or_expr()`
-		// current solution is to check for .lpar in `type_or_expr()`
 		.lpar {
 			p.next()
 			// expect at least two (so we otherwise error)

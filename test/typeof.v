@@ -4,6 +4,10 @@ fn test_typeof_fn() {
 	assert typeof(fn (s string, x u32) (int, f32)).name == 'fn (string, u32) (int, f32)'
 }
 
+fn test_typeof_fn_literal() {
+	assert typeof(fn (i int) int {return i+1}).name == 'TODO' 
+}
+
 fn test_typeof_int() {
 	assert typeof(int).idx == 7
 	assert typeof(int).name == 'int'
@@ -32,12 +36,24 @@ fn test_typeof_array_type() {
 	assert typeof(['a', 'b']).name == '[]string'
 }
 
+fn test_typeof_array_index() {
+	assert typeof(['a', 'b'][0]).name == 'string'
+}
+
 fn test_typeof_map_type() {
 	assert typeof(map[string]int).name == 'map[string]int'
 }
 
-fn test_typeof_array_index() {
-	assert typeof(['a', 'b'][0]).name == 'string'
+fn test_typeof_nil() {
+	assert typeof(nil).name == 'nil'
+}
+
+fn test_typeof_none() {
+	assert typeof(none).name == 'none'
+}
+
+fn test_typeof_pointer() {
+	assert typeof(&string).name == '&string'
 }
 
 //

@@ -886,14 +886,13 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 
 // parse either a type or expr, eg. `typeof(type|expr)`
 fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
-	// since we are parsing multiple return in `try_type()` ParExpr would
-	// incorrectly get parsed as Tuple, another option noted in `try_type()`
-	// if p.tok == .lpar {
-	// 	return p.expr(min_bp)
-	// }
-	if p.tok in [.question, .key_fn] {
+	// NOTE: don't use `p.try_type()` for `.lpar` here
+	// otherwise `ParExpr` will be parsed as `Tuple`
+	// if p.tok in [.question, .key_fn] {
+	if p.tok == .question {
 		return p.try_type()
 	}
+	// TODO: is there a better way? see uses of `p.exp_pt` above.
 	exp_pt := p.exp_pt
 	p.exp_pt = true
 	expr := p.expr(min_bp)
