@@ -26,7 +26,6 @@ I love the simplicity of V, although over time the complexity of the compiler ha
       - Function: `function.$metadata.return_type`
 3. Language / Syntax Changes:
    - I don't want to break backwards compatibility, however there are various small changes which I feel would help unify the language (TODO: Add).
-   - Use `[]` instead of `<>` for generics. This has many benefits for parsing (may require changing closure variable capture syntax).
    - Explicit mutable references: `mut &x`
    - Ability to take the underlying Sum Type pointer address. Extremely useful for:
       - Comparison
@@ -34,7 +33,7 @@ I love the simplicity of V, although over time the complexity of the compiler ha
       - Referencing Nodes
       - Preventing Recursion
    - Named parameters & default parameters
-   - uninitialized objects: Consider the possibility of uninitialized objects. This would need to be `unsafe`, and would probably rarely be used. However there are certain areas, for example game development where the lack of this feature could be a non starter. For example when dealing with huge arrays of data structures like game assets or entities.
+   - Uninitialized objects: Consider the possibility of uninitialized objects. This would need to be `unsafe`, and would probably rarely be used. However there are certain areas, for example game development where the lack of this feature could be a non starter. For example when dealing with huge arrays of data structures like game assets or entities.
 
 ## Design Details / Status
 1. Frontend
