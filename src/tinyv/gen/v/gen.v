@@ -476,6 +476,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.generic_list(expr.args)
 		}
+		ast.GenericArgsOrIndexExpr {
+			g.write('/* ast.GenericArgsOrIndexExpr */')
+			g.expr(expr.lhs)
+			g.generic_list(expr.exprs)
+		}
 		ast.GoExpr {
 			g.write('go ')
 			g.expr(expr.expr)

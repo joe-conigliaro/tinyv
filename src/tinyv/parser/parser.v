@@ -793,32 +793,61 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.error('cannot index number')
 				}
 			}
-			is_gated := p.tok == .hash
-			if is_gated {
+			// `array#[idx]`
+			if p.tok == .hash {
 				p.next()
 				p.expect(.lsbr)
-			} else {
-				p.next() // .lsbr
-			}
-			// TODO: clean this up / simplify if possible
-			expr := p.type_or_expr(.lowest)
-			mut exprs := [expr]
-			for p.tok == .comma {
-				p.next()
-				exprs << p.type_or_expr(.lowest)
-			}
-			p.expect(.rsbr)
-			if p.tok == .lpar {
-				lhs = ast.GenericArgs{lhs: lhs, args: exprs}
-			}
-			else if p.tok == .lcbr && p.line == line && !p.in_init {
-				lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
-			}
-			else {
+				// gated, even if followed by `(` we know it's `arr#[fn_idx]()` and not `fn[int]()` 
 				lhs = ast.IndexExpr{
 					lhs: lhs
-					expr: expr
-					is_gated: is_gated
+					expr: p.expr(.lowest)
+					is_gated: true
+				}
+				p.expect(.rsbr)
+			}
+			// `array[idx]` | `array[fn_idx]()` | fn[int]()` | `GenericStruct[int]{}`
+			else {
+				p.next() // .lsbr
+				// NOTE: it would be nice to only use array when we have multiple exprs
+				// however this would require more conditions and duplicate code
+				expr := p.type_or_expr(.lowest)
+				mut exprs := [expr]
+				for p.tok == .comma {
+					p.next()
+					exprs << p.type_or_expr(.lowest)
+				}
+				p.expect(.rsbr)
+				// `GenericStruct[int]{}`
+				if p.tok == .lcbr && p.line == line && !p.in_init {
+					lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
+				}
+				// `arr[fn_idx]()` | `fn[int]()`
+				else if p.tok == .lpar {
+					// multiple exprs, we know its generic args
+					if exprs.len > 1 {
+						lhs = ast.GenericArgs{lhs: lhs, args: exprs}
+					}
+					// single expr, index or generic arg
+					else {
+						// this will be determined at a later stage by checking lhs
+						if expr in [ast.Ident, ast.SelectorExpr] {
+							lhs = ast.GenericArgsOrIndexExpr{lhs: lhs, exprs: exprs}
+						}
+						// we know its an index
+						else {
+							lhs = ast.IndexExpr{
+								lhs: lhs
+								expr: expr
+							}
+						}
+					}
+				}
+				// `array[idx]`
+				else {
+					lhs = ast.IndexExpr{
+						lhs: lhs
+						expr: expr
+					}
 				}
 			}
 		}

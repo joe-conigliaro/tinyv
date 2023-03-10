@@ -16,10 +16,11 @@ type EmptyStmt = u8
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| CallOrCastExpr | CastExpr | ComptimeExpr | EmptyExpr | FnLiteral
-	| GenericArgs | GoExpr | Ident | IfExpr | IfGuardExpr | IndexExpr
-	| InfixExpr | KeywordOperator | LockExpr | MapInitExpr | MatchExpr
-	| Modifier | OrExpr | ParenExpr | PostfixExpr | PrefixExpr | RangeExpr
-	| SelectorExpr | StructInitExpr | Tuple | Type | UnsafeExpr
+	| GenericArgs | GenericArgsOrIndexExpr | GoExpr | Ident | IfExpr
+	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr
+	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
+	| PrefixExpr | RangeExpr | SelectorExpr | StructInitExpr | Tuple | Type
+	| UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
@@ -135,6 +136,12 @@ pub struct GenericArgs {
 pub:
 	lhs  Expr
 	args []Expr // concrete types
+}
+
+pub struct GenericArgsOrIndexExpr {
+pub:
+	lhs   Expr
+	exprs []Expr
 }
 
 pub struct GoExpr {

@@ -128,10 +128,8 @@ fn main_a() {
 	// array_init_i := [['a','b','c','d']
 	array_init_i := [['a','b','c','d']]
 	array_init_j := []&StructA{}
-	array_init_k := [fn(arg_a int) int {
-		println('array_init_c[0]($arg_a)')
-		return 1
-	}]
+	array_init_k := [fn(arg_a int) int { return 1 }]
+	array_init_i := [fn() int { return 1 }()]
 	expr_a expr_b // TODO: error
 	map_init_long_string_string := map[string]string{}
 	map_init_long_string_array_string := map[string][]string{}
@@ -157,6 +155,9 @@ fn main_a() {
 	call_c := array_init_g[0](1)
 	call_d := struct_a.method_a('string', 1)
 	call_e := struct_a.field_c(1)
+	call_f := array_init_k[0]()
+	call_g := array_init_k[fn() { return 0 }()]()
+	call_h := array_init_k[array_init_b[0]]()
 	cast_a := u8(1)
 	cast_b := &[]u8([1,2,3,4])
 	// the following casts should error later about not being
