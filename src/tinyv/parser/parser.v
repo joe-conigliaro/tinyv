@@ -953,17 +953,14 @@ pub fn (mut p Parser) peek() token.Token {
 [inline]
 pub fn (mut p Parser) next() {
 	if p.tok_next_ != .unknown {
-		p.line = p.scanner.line_offsets.len
-		p.lit = p.scanner.lit
-		p.pos = p.scanner.pos
 		p.tok = p.tok_next_
 		p.tok_next_ = .unknown
 	} else {
 		p.tok = p.scanner.scan()
-		p.line = p.scanner.line_offsets.len
-		p.lit = p.scanner.lit
-		p.pos = p.scanner.pos
 	}
+	p.line = p.scanner.line_offsets.len
+	p.lit = p.scanner.lit
+	p.pos = p.scanner.pos
 }
 
 [inline]
