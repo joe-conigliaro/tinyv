@@ -164,7 +164,8 @@ fn main_a() {
 	// able to cast array types, unless it gets implemented.
 	cast_c := []u8([1,2,3,4])
 	cast_d := [][][]u8([[[1,2,3,4]]])
-	index_a := array_init_a[1]
+	index_a := array_init_a[0]
+	index_a := array_init_a[a]
 	index_b := struct_a.field_b[1]
 	index_c := [StructA{}][0] // direct index after init
 	index_d := [[1,2,3,4]][0][1] // unlimited chaining (add more examples)

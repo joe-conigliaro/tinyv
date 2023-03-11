@@ -810,6 +810,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next() // .lsbr
 				// NOTE: it would be nice to only use array when we have multiple exprs
 				// however this would require more conditions and duplicate code
+				// only use `ast.GenericArgsOrIndexExpr` for cases which
+				// absolutely cannot be determined until a later stage
 				expr := p.type_or_expr(.lowest)
 				mut exprs := [expr]
 				for p.tok == .comma {
@@ -821,32 +823,40 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				if p.tok == .lcbr && p.line == line && !p.in_init {
 					lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
 				}
-				// `arr[fn_idx]()` | `fn[int]()`
+				// `arr[0]()` | `fn[int]()`
 				else if p.tok == .lpar {
 					// multiple exprs, we know its generic args
 					if exprs.len > 1 {
 						lhs = ast.GenericArgs{lhs: lhs, args: exprs}
 					}
-					// single expr, index or generic arg
+					// `fn[GenericStruct[int]]()` nested generic args
+					else if expr is ast.GenericArgs {
+						lhs = ast.GenericArgs{lhs: lhs, args: exprs}
+					}
+					// `ident[ident]()` this will be determined at a later stage by checking lhs
+					else if expr in [ast.Ident, ast.SelectorExpr] {
+						lhs = ast.GenericArgsOrIndexExpr{lhs: lhs, exprs: exprs}
+					}
+					// `arr[0]()` we know its an index
 					else {
-						// this will be determined at a later stage by checking lhs
-						if expr in [ast.Ident, ast.SelectorExpr] {
-							lhs = ast.GenericArgsOrIndexExpr{lhs: lhs, exprs: exprs}
-						}
-						// we know its an index
-						else {
-							lhs = ast.IndexExpr{
-								lhs: lhs
-								expr: expr
-							}
+						lhs = ast.IndexExpr{
+							lhs: lhs
+							expr: expr
 						}
 					}
 				}
-				// `array[idx]`
+				// `array[idx]` | `fn[StructA[T], StructB[T]]`
 				else {
-					lhs = ast.IndexExpr{
-						lhs: lhs
-						expr: expr
+					// `fn[GenericStructA[int], GenericStructB[int]]` | `GenericStructC[int, GenericStructA[int]]]` nested generic args
+					// TODO: make sure this does not cause any false positives
+					if p.exp_pt && expr in [ast.GenericArgs, ast.Ident, ast.SelectorExpr] /* && p.tok in [.comma, .rsbr]*/ {
+						lhs = ast.GenericArgs{lhs: lhs, args: exprs}
+					}
+					else {
+						lhs = ast.IndexExpr{
+							lhs: lhs
+							expr: expr
+						}
 					}
 				}
 			}
