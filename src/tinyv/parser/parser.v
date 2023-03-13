@@ -325,20 +325,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_fn {
 			p.next()
-			mut generic_params := []ast.Expr{}
-			if p.tok == .lsbr {
-				p.next()
-				generic_params << p.expect_type()
-				for p.tok == .comma {
-					p.next()
-					generic_params << p.expect_type()
-				}
-				p.expect(.rsbr)
-			}
 			// TODO: closure variable capture syntax is the same as generic arg/param syntax. This should change.
-			// Because of this generic closures cannot exist, even though there is probably no use for them.
-			// If I remember correctly, Go does not allow generic closures. Unless I'm thinking of another lang.
-			// TODO: proper - closure vars
+			// for clarity and also generic closures cannot exist, even though there is probably no use for them.
+			mut captured_vars := []ast.Expr{}
 			if p.tok == .lsbr {
 				p.next()
 				for p.tok != .rsbr {
@@ -349,22 +338,15 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.next()
 			}
-			params := p.fn_parameters()
-			// NOTE: we may need to check line due to the generic call case listed below
-			// return_type := if line == p.line { p.try_type() } else { ast.empty_expr }
-			// return_type := p.try_type() or { ast.empty_expr }
-			return_type := p.try_type()
-			// this only occurs if parsing generic fn in generic call `fn_generic_b[fn[int](int),int]()`
-			// since we need to use `type_or_expr()` because we don't yet know what we are parsing.
-			// take a look at expr chaining loop branch `else if p.tok in [.hash, .lsbr] && p.line == line {`
+			if p.tok == .lsbr { panic('generic closure') }
+			signature := p.fn_signature()
 			if p.exp_pt && p.tok != .lcbr {
-				return ast.Type(ast.FnType{generic_params: generic_params, params: params, return_type: return_type})
+				return ast.Type(signature)
 			}
 			lhs = ast.FnLiteral{
-				generic_params: generic_params
-				params: params
+				signature: signature
 				stmts: p.block()
-				return_type: return_type
+				captured_vars: captured_vars
 			}
 		}
 		.key_go {
@@ -914,13 +896,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	return lhs
 }
 
-// parse either a type or expr, eg. `typeof(type|expr)`
+// parse type or expr, eg. `typeof(type|expr)` | `array_or_generic_call[type|expr]()`
 fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
-	// if p.tok in [.question, .key_fn] {
 	if p.tok == .question {
 		return p.try_type()
 	}
-	// TODO: is there a better way? see uses of `p.exp_pt` above.
+	// TODO: try better way (also no dupe code), see uses of `p.exp_pt` above.
+	// perhaps use `p.try_type()` in `p.expr()` for `.name, .key_fn, .question`
+	// and then we can either return the type directly or continue to init/call.
 	exp_pt := p.exp_pt
 	p.exp_pt = true
 	expr := p.expr(min_bp)
@@ -1305,20 +1288,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		}
 	}
 	language, name := p.decl_lang_and_name()
-	mut generic_params := []ast.Expr{}
-	if p.tok == .lsbr {
-		p.next()
-		for {
-			generic_params << p.expect_type()
-			if p.tok != .comma {
-				break
-			}
-			p.next()
-		}
-		p.expect(.rsbr)
-	}
-	params := p.fn_parameters()
-	return_type := if p.tok != .lcbr && p.line == line { p.expect_type() } else { ast.empty_expr }
+	signature := p.fn_signature()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
 	stmts := if p.tok == .lcbr /*|| p.line == line*/ { p.block() } else { []ast.Stmt{} }
@@ -1329,10 +1299,28 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		receiver: receiver
 		name: name
 		language: language
-		generic_params: generic_params
-		params: params
+		signature: signature
 		stmts: stmts
-		return_type: return_type
+	}
+}
+
+pub fn (mut p Parser) fn_signature() ast.FnType {
+	mut generic_params := []ast.Expr{}
+	if p.tok == .lsbr {
+		p.next()
+		generic_params << p.expect_type()
+		for p.tok == .comma {
+			p.next()
+			generic_params << p.expect_type()
+		}
+		p.expect(.rsbr)
+	}
+	line := p.line
+	params := p.fn_parameters()
+	return ast.FnType{
+		generic_params: generic_params,
+		params: params,
+		return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
 	}
 }
 

@@ -123,13 +123,12 @@ pub:
 	value Expr
 }
 
-// anon fn
+// anon fn / closure
 pub struct FnLiteral {
 pub:
-	generic_params []Expr
-	params         []Parameter
-	stmts          []Stmt
-	return_type    Expr
+	signature     FnType
+	captured_vars []Expr
+	stmts         []Stmt
 }
 
 pub struct GenericArgs {
@@ -347,10 +346,8 @@ pub:
 	receiver       Parameter
 	language       Language = .v
 	name           string
-	generic_params []Expr
-	params         []Parameter
+	signature      FnType
 	stmts          []Stmt
-	return_type    Expr = empty_expr
 }
 
 pub struct ForStmt {

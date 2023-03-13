@@ -39,25 +39,8 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		}
 		// function `fn(int) int`
 		.key_fn {
-			line := p.line
 			p.next()
-			mut generic_params := []ast.Expr{}
-			if p.tok == .lsbr {
-				p.next()
-				generic_params << p.expect_type()
-				for p.tok == .comma {
-					p.next()
-					generic_params << p.expect_type()
-				}
-				p.expect(.rsbr)
-			}
-			params := p.fn_parameters()
-			return ast.Type(ast.FnType{
-				generic_params: generic_params,
-				params: params,
-				return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
-				// return_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
-			})
+			return ast.Type(p.fn_signature())
 		}
 		// nil
 		.key_nil {

@@ -9,7 +9,8 @@ import strings
 import time
 
 const(
-	tabs = build_tabs(14)
+	tabs = build_tabs(16)
+	// tabs = build_tabs(24)
 )
 
 struct Gen {
@@ -181,21 +182,21 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('.')
 			}
 			g.write(stmt.name)
-			if stmt.generic_params.len > 0 {
-				g.generic_list(stmt.generic_params)
+			if stmt.signature.generic_params.len > 0 {
+				g.generic_list(stmt.signature.generic_params)
 			}
 			g.write('(')
-			for i,arg in stmt.params {
+			for i,arg in stmt.signature.params {
 				if arg.name.len > 0 {
 					g.write(arg.name)
 					g.write(' ')
 				}
 				g.expr(arg.typ)
-				if i < stmt.params.len-1 { g.write(', ') }
+				if i < stmt.signature.params.len-1 { g.write(', ') }
 			}
 			g.write(') ')
-			if stmt.return_type !is ast.EmptyExpr {
-				g.expr(stmt.return_type)
+			if stmt.signature.return_type !is ast.EmptyExpr {
+				g.expr(stmt.signature.return_type)
 			}
 			// C fn definition |
 			// v fns with compiler implementations eg. `pub fn (a array) filter(predicate fn (voidptr) bool) array`
@@ -452,19 +453,19 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.FnLiteral {
 			g.write('fn')
-			if expr.generic_params.len > 0 {
-				g.generic_list(expr.generic_params)
+			if expr.signature.generic_params.len > 0 {
+				g.generic_list(expr.signature.generic_params)
 			}
 			g.write('(')
-			for i, arg in expr.params {
+			for i, arg in expr.signature.params {
 				g.write(arg.name)
 				g.write(' ')
 				g.expr(arg.typ)
-				if i < expr.params.len-1 { g.write(', ') }
+				if i < expr.signature.params.len-1 { g.write(', ') }
 			}
 			g.write(') ')
-			if expr.return_type !is ast.EmptyExpr {
-				g.expr(expr.return_type)
+			if expr.signature.return_type !is ast.EmptyExpr {
+				g.expr(expr.signature.return_type)
 				g.writeln(' {')
 			} else {
 				g.writeln('{')
@@ -473,6 +474,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('}')
 		}
 		ast.GenericArgs {
+			g.write('/* ast.GenericArgs */')
 			g.expr(expr.lhs)
 			g.generic_list(expr.args)
 		}
@@ -512,6 +514,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.stmt(expr.stmt)
 		}
 		ast.IndexExpr {
+			g.write('/* ast.IndexExpr */')
 			g.expr(expr.lhs)
 			g.write('[')
 			g.expr(expr.expr)
@@ -810,7 +813,3 @@ fn (mut g Gen) writeln(str string) {
 pub fn (g &Gen) print_output() {
 	println(g.out)
 }
-// // weird output bug, try instead:
-// pub fn (mut g Gen) print_output() {
-// 	println(g.out.str())
-// }
