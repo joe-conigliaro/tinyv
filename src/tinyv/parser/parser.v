@@ -684,6 +684,19 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				return p.assoc_or_struct_init(lhs)
 			}
 		}
+		// native optionals `x := ?mod_a.StructA{}`
+		// could also simply be handled by `Token.is_prefix()` below
+		.question {
+			lhs = p.expect_type()
+			// only handle where actually needed instead of expr loop
+			// I may change my mind, however for now this seems best
+			if p.tok == .lcbr && !p.in_init {
+				return p.assoc_or_struct_init(lhs)
+			}
+			if p.tok != .lpar && !p.exp_pt {
+				p.error('expecting `(` or `{`')
+			}
+		}
 		// selector (enum value), range. handled in loop below
 		.dot, .dotdot, .ellipsis {}
 		else {
@@ -898,9 +911,6 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 
 // parse type or expr, eg. `typeof(type|expr)` | `array_or_generic_call[type|expr]()`
 fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
-	if p.tok == .question {
-		return p.try_type()
-	}
 	// TODO: try better way (also no dupe code), see uses of `p.exp_pt` above.
 	// perhaps use `p.try_type()` in `p.expr()` for `.name, .key_fn, .question`
 	// and then we can either return the type directly or continue to init/call.

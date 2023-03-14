@@ -216,23 +216,23 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write('for ')
 			in_init := g.in_init
 			g.in_init = true
-			mut infinate := true
+			mut is_plain := true
 			if stmt.init !is ast.EmptyStmt {
-				infinate = false
+				is_plain = false
 				g.stmt(stmt.init)
 			}
 			if stmt.cond !is ast.EmptyExpr {
-				infinate = false
+				is_plain = false
 				g.write('; ')
 				g.expr(stmt.cond)
 			}
 			if stmt.post !is ast.EmptyStmt {
-				infinate = false
+				is_plain = false
 				g.write('; ')
 				g.stmt(stmt.post)
 			}
 			g.in_init = in_init
-			g.writeln(if infinate { '{' } else { ' {'} )
+			g.writeln(if is_plain { '{' } else { ' {'} )
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
