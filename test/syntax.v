@@ -49,6 +49,17 @@ struct StructA {
 
 struct C.StructA {}
 
+interface InterfaceA {
+	field_a string
+	method_a() string
+	method_b(string) string
+}
+
+interface InterfaceB {
+mut:
+	method_a(string) string
+}
+
 fn C.external_fn_a(arg_a int) int
 
 [attribute_a: 'attribute_a_val'; attribute_b]

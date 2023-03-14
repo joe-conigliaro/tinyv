@@ -126,7 +126,7 @@ pub:
 // anon fn / closure
 pub struct FnLiteral {
 pub:
-	signature     FnType
+	typ           FnType
 	captured_vars []Expr
 	stmts         []Stmt
 }
@@ -340,14 +340,14 @@ pub:
 
 pub struct FnDecl {
 pub:
-	attributes     []Attribute
-	is_public      bool
-	is_method      bool
-	receiver       Parameter
-	language       Language = .v
-	name           string
-	signature      FnType
-	stmts          []Stmt
+	attributes []Attribute
+	is_public  bool
+	is_method  bool
+	receiver   Parameter
+	language   Language = .v
+	name       string
+	typ        FnType
+	stmts      []Stmt
 }
 
 pub struct ForStmt {
@@ -384,7 +384,7 @@ pub struct InterfaceDecl {
 pub:
 	is_public bool
 	name      string
-	// methods    []
+	fields    []FieldDecl
 }
 
 pub struct LabelStmt {

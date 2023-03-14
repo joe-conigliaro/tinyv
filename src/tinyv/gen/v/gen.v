@@ -182,22 +182,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write('.')
 			}
 			g.write(stmt.name)
-			if stmt.signature.generic_params.len > 0 {
-				g.generic_list(stmt.signature.generic_params)
-			}
-			g.write('(')
-			for i,arg in stmt.signature.params {
-				if arg.name.len > 0 {
-					g.write(arg.name)
-					g.write(' ')
-				}
-				g.expr(arg.typ)
-				if i < stmt.signature.params.len-1 { g.write(', ') }
-			}
-			g.write(') ')
-			if stmt.signature.return_type !is ast.EmptyExpr {
-				g.expr(stmt.signature.return_type)
-			}
+			g.fn_type(stmt.typ)
 			// C fn definition |
 			// v fns with compiler implementations eg. `pub fn (a array) filter(predicate fn (voidptr) bool) array`
 			// NOTE: can we use generics for these fns, also make sure we parser error for normal fns without a body
@@ -283,9 +268,27 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write('interface ')
 			g.write(stmt.name)
-			// g.writeln(' {')
-			// TODO: methods
-			g.writeln(' { /* TODO */ }')
+			g.writeln(' {')
+			g.indent++
+			for field in stmt.fields {
+				g.write(field.name)
+				if field.typ is ast.Type {
+					if field.typ is ast.FnType {
+						g.fn_type(field.typ)
+					} else {
+						g.write(' ')
+						g.expr(field.typ)
+					}
+				}
+				// TODO/FIXME: because p.typ() is returning ident & selector currently
+				else {
+					g.write(' ')
+					g.expr(field.typ)
+				}
+				g.writeln('')
+			}
+			g.indent--
+			g.writeln('}')
 		}
 		ast.LabelStmt {
 			g.write(stmt.name)
@@ -453,19 +456,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.FnLiteral {
 			g.write('fn')
-			if expr.signature.generic_params.len > 0 {
-				g.generic_list(expr.signature.generic_params)
-			}
-			g.write('(')
-			for i, arg in expr.signature.params {
-				g.write(arg.name)
-				g.write(' ')
-				g.expr(arg.typ)
-				if i < expr.signature.params.len-1 { g.write(', ') }
-			}
-			g.write(') ')
-			if expr.signature.return_type !is ast.EmptyExpr {
-				g.expr(expr.signature.return_type)
+			g.fn_type(expr.typ)
+			if expr.typ.return_type !is ast.EmptyExpr {
 				g.writeln(' {')
 			} else {
 				g.writeln('{')
@@ -707,19 +699,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				ast.FnType {
 					g.write('fn')
-					if expr.generic_params.len > 0 {
-						g.generic_list(expr.generic_params)
-					}
-					g.write('(')
-					for i, arg in expr.params {
-						g.expr(arg.typ)
-						if i < expr.params.len-1 { g.write(', ') }
-					}
-					g.write(')')
-					if expr.return_type !is ast.EmptyExpr {
-						g.write(' ')
-						g.expr(expr.return_type)
-					}
+					g.fn_type(expr)
 				}
 				ast.MapType {
 					g.write('map[')
@@ -780,6 +760,22 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 		}
 	}
 	g.write(']')
+}
+
+fn (mut g Gen) fn_type(typ ast.FnType) {
+	if typ.generic_params.len > 0 {
+		g.generic_list(typ.generic_params)
+	}
+	g.write('(')
+	for i, arg in typ.params {
+		g.expr(arg.typ)
+		if i < typ.params.len-1 { g.write(', ') }
+	}
+	g.write(')')
+	if typ.return_type !is ast.EmptyExpr {
+		g.write(' ')
+		g.expr(typ.return_type)
+	}
 }
 
 [inline]

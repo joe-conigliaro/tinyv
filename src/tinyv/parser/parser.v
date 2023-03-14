@@ -339,12 +339,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 			}
 			if p.tok == .lsbr { panic('generic closure') }
-			signature := p.fn_signature()
-			if p.exp_pt && p.tok != .lcbr {
-				return ast.Type(signature)
-			}
+			typ := p.fn_type()
+			if p.exp_pt && p.tok != .lcbr { return ast.Type(typ) }
 			lhs = ast.FnLiteral{
-				signature: signature
+				typ: typ
 				stmts: p.block()
 				captured_vars: captured_vars
 			}
@@ -910,6 +908,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 }
 
 // parse type or expr, eg. `typeof(type|expr)` | `array_or_generic_call[type|expr]()`
+[inline]
 fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
 	// TODO: try better way (also no dupe code), see uses of `p.exp_pt` above.
 	// perhaps use `p.try_type()` in `p.expr()` for `.name, .key_fn, .question`
@@ -1298,7 +1297,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		}
 	}
 	language, name := p.decl_lang_and_name()
-	signature := p.fn_signature()
+	typ := p.fn_type()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
 	stmts := if p.tok == .lcbr /*|| p.line == line*/ { p.block() } else { []ast.Stmt{} }
@@ -1309,28 +1308,8 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 		receiver: receiver
 		name: name
 		language: language
-		signature: signature
+		typ: typ
 		stmts: stmts
-	}
-}
-
-pub fn (mut p Parser) fn_signature() ast.FnType {
-	mut generic_params := []ast.Expr{}
-	if p.tok == .lsbr {
-		p.next()
-		generic_params << p.expect_type()
-		for p.tok == .comma {
-			p.next()
-			generic_params << p.expect_type()
-		}
-		p.expect(.rsbr)
-	}
-	line := p.line
-	params := p.fn_parameters()
-	return ast.FnType{
-		generic_params: generic_params,
-		params: params,
-		return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
 	}
 }
 
@@ -1470,26 +1449,17 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 		name += p.expect_name()
 	}
 	p.expect(.lcbr)
-	// TODO: finish
-	// mut methods := []
+	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		is_mut := p.tok == .key_mut
 		if is_mut {
 			p.next()
 			p.expect(.colon)	
 		}
-		line := p.line
-		// field_or_method_name := p.expect_name() // method/field name
-		p.expect_name() // method/field name
-		if p.tok == .lpar {
-			p.fn_parameters()
-			if p.line == line {
-				p.expect_type() // method return type
-			}
-			// methods <<
-		} else {
-			// fields <<
-			p.expect_type()
+		field_name := p.expect_name()
+		fields << ast.FieldDecl{
+			name: field_name
+			typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
 		}
 	}
 	// rcbr
@@ -1497,8 +1467,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	return ast.InterfaceDecl{
 		is_public: is_public
 		name: name
-		// methods: methods
-		// fields: fields
+		fields: fields
 	}
 }
 

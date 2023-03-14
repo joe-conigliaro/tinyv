@@ -40,7 +40,7 @@ pub fn (mut p Parser) try_type() ast.Expr {
 		// function `fn(int) int`
 		.key_fn {
 			p.next()
-			return ast.Type(p.fn_signature())
+			return ast.Type(p.fn_type())
 		}
 		// nil
 		.key_nil {
@@ -125,5 +125,25 @@ pub fn (mut p Parser) try_type() ast.Expr {
 			// return error('expecting type, got `$p.tok`')
 			return ast.empty_expr
 		}
+	}
+}
+
+pub fn (mut p Parser) fn_type() ast.FnType {
+	mut generic_params := []ast.Expr{}
+	if p.tok == .lsbr {
+		p.next()
+		generic_params << p.expect_type()
+		for p.tok == .comma {
+			p.next()
+			generic_params << p.expect_type()
+		}
+		p.expect(.rsbr)
+	}
+	line := p.line
+	params := p.fn_parameters()
+	return ast.FnType{
+		generic_params: generic_params,
+		params: params,
+		return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
 	}
 }
