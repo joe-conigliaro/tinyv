@@ -38,11 +38,12 @@ pub fn (mut b Builder) build(files []string) {
 }
 
 ////////////
+struct SharedIntWorkaround { mut: value int }
 struct ParsingSharedState {
 mut:
     parsed_modules shared []string
-    files_to_be_parsed int
-    files_already_parsed int
+    files_to_be_parsed shared SharedIntWorkaround
+    files_already_parsed shared SharedIntWorkaround
 }
 fn (mut pstate ParsingSharedState) mark_module_as_parsed( name string ) {
    lock pstate.parsed_modules {
@@ -61,7 +62,9 @@ fn (mut pstate ParsingSharedState) parse_files_async(ch_in chan string, files []
 	for file in files {
 	        eprintln('>>>> ${@METHOD} file: $file')
 		ch_in <- file
-		pstate.files_to_be_parsed++
+		lock pstate.files_to_be_parsed {
+		  pstate.files_to_be_parsed.value++
+		}
 	}
 }
 fn (mut pstate ParsingSharedState) parse_async_worker(mut b Builder, ch_in chan string, ch_out chan ast.File) {
@@ -80,7 +83,9 @@ fn (mut pstate ParsingSharedState) parse_async_worker(mut b Builder, ch_in chan 
 		 	pstate.parse_files_async(ch_in, get_v_files_from_dir(mod_path))
 		}
                 // eprintln('>> ${@METHOD} fully parsed file: $filename')
-		pstate.files_already_parsed++
+		lock pstate.files_already_parsed {
+          		pstate.files_already_parsed.value++
+		}
 		ch_out <- ast_file
     }
 }
@@ -109,11 +114,13 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	mut output_idx := 0
 	for {
 	        output_idx++
-		if pstate.files_already_parsed == pstate.files_to_be_parsed {
+		rlock pstate.files_already_parsed, pstate.files_to_be_parsed {
+		if pstate.files_already_parsed.value == pstate.files_to_be_parsed.value {
 	           eprintln('output reading idx: $output_idx')
              	   dump(pstate)
 		   break
 	        }
+		}
 		ast_file := <- ch_out
 		ast_files << ast_file
 	}
