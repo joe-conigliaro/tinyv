@@ -10,6 +10,7 @@ import tinyv.parser
 import tinyv.pref
 import tinyv.types
 import time
+import runtime
 
 struct Builder {
 	pref &pref.Preferences
@@ -36,71 +37,90 @@ pub fn (mut b Builder) build(files []string) {
 	println(' * Total: ${total_time.milliseconds()}ms (${total_time.microseconds()}us)')
 }
 
-fn (mut b Builder) parse_async_worker(ch_in chan string, ch_out chan ast.File, mut parsed_imports []string) {
+////////////
+struct ParsingSharedState {
+mut:
+    parsed_modules shared []string
+    files_to_be_parsed int
+    files_already_parsed int
+}
+fn (mut pstate ParsingSharedState) mark_module_as_parsed( name string ) {
+   lock pstate.parsed_modules {
+       pstate.parsed_modules << name
+   }
+}
+fn (mut pstate ParsingSharedState) already_parsed_module(name string) bool {
+   rlock pstate.parsed_modules {
+       if name in pstate.parsed_modules {
+           return true
+       }
+   }
+   return false
+}
+fn (mut pstate ParsingSharedState) parse_files_async(ch_in chan string, files []string) {
+	for file in files {
+	        eprintln('>>>> ${@METHOD} file: $file')
+		ch_in <- file
+		pstate.files_to_be_parsed++
+	}
+}
+fn (mut pstate ParsingSharedState) parse_async_worker(mut b Builder, ch_in chan string, ch_out chan ast.File) {
+        eprintln('>> ${@METHOD}')
 	mut p := parser.new_parser(b.pref)
 	for {
 		filename := <- ch_in or { break }
-        ast_file := p.parse_file(filename)
-		// TODO: either parse imports here
-		// for mod in ast_file.imports {
-		// 	if mod.name in parsed_imports {
-		// 		continue
-		// 	}
-		// 	mod_path := b.get_module_path(mod.name, ast_file.path)
-		// 	b.parse_files_async(get_v_files_from_dir(mod_path))
-		// 	parsed_imports << mod.name
-		// }
+                ast_file := p.parse_file(filename)		
+	        for mod in ast_file.imports {
+		        if pstate.already_parsed_module( mod.name ) {
+			    continue
+		        }
+		 	pstate.mark_module_as_parsed(mod.name)
+			
+		 	mod_path := b.get_module_path(mod.name, ast_file.path)
+		 	pstate.parse_files_async(ch_in, get_v_files_from_dir(mod_path))
+		}
+                // eprintln('>> ${@METHOD} fully parsed file: $filename')
+		pstate.files_already_parsed++
 		ch_out <- ast_file
     }
 }
-
-fn (mut b Builder) parse_files_async(ch_in chan string, files []string) {
-	for file in files {
-		ch_in <- file
-	}
-}
-
+////////////
 fn (mut b Builder) parse_files(files []string) []ast.File {
-	mut ch_in := chan string{cap: 100}
-	mut ch_out := chan ast.File{cap: 100}
-	mut parsed_imports := []string{}
-	// mut parser_reused := parser.new_parser(b.pref)
+	mut ch_in := chan string{cap: 1000}
+	mut ch_out := chan ast.File{cap: 1000}
+	mut pstate := &ParsingSharedState{}
 	mut ast_files := []ast.File{}
 	mut threads := []thread{}
-	// mut wg := sync.new_waitgroup()
-	for _ in 0..8 {
-		threads << spawn b.parse_async_worker(ch_in, ch_out, mut &parsed_imports)
-		// spawn b.parse_async_worker(ch_in, ch_out, mut &parsed_imports)
+	for thread_idx in 0..runtime.nr_jobs() {
+	        dump(thread_idx)
+		threads << spawn pstate.parse_async_worker(mut b, ch_in, ch_out)
 	}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		// ast_files << parser_reused.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
-		b.parse_files_async(ch_in, get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+		pstate.parse_files_async(ch_in, get_v_files_from_dir(b.get_vlib_module_path('builtin')))
 	}
 	// parse user files
-	// ast_files << parser_reused.parse_files(files)
-	b.parse_files_async(ch_in, files)
+	pstate.parse_files_async(ch_in, files)
 	if b.pref.skip_imports {
 		return ast_files
 	}
-	ch_in.close()
-	threads.wait()
-	ch_out.close()
 
 	println(' 1 ast_file.len: $ast_files.len')
+	mut output_idx := 0
 	for {
-		ast_file := <- ch_out or { break }
-		// TODO: OR parse imports here but channels are already closed
-		// for mod in ast_file.imports {
-		// 	if mod.name in parsed_imports {
-		// 		continue
-		// 	}
-		// 	mod_path := b.get_module_path(mod.name, ast_file.path)
-		// 	b.parse_files_async(get_v_files_from_dir(mod_path))
-		// 	parsed_imports << mod.name
-		// }
+	        output_idx++
+		if pstate.files_already_parsed == pstate.files_to_be_parsed {
+	           eprintln('output reading idx: $output_idx')
+             	   dump(pstate)
+		   break
+	        }
+		ast_file := <- ch_out
 		ast_files << ast_file
 	}
+	
+	ch_in.close()
+	ch_out.close()
+	threads.wait()       
 
 	println(' 2 ast_file.len: $ast_files.len')
 	return ast_files
