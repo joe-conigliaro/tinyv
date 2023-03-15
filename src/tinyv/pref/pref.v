@@ -13,7 +13,7 @@ pub mut:
 	skip_imports     bool
 	no_parallel      bool
 pub:
-	vroot            string = os.dir(vexe_path())
+	vroot            string = os.dir(@VEXE)
 	vmodules_path    string = os.vmodules_dir()
 }
 
@@ -30,16 +30,4 @@ pub fn new_preferences_using_options(options []string) Preferences {
 		skip_imports: '--skip-imports' in options
 		no_parallel: '--no-parallel' in options
 	}
-}
-
-pub fn vexe_path() string {
-	vexe := os.getenv('VEXE')
-	if vexe != '' {
-		return vexe
-	}
-	panic('VEXE not set. Set it manually, or use `v run file.v` for now')
-	// TODO: uncomment once vlib is with tinyv
-	// real_vexe_path := os.real_path(os.executable())
-	// os.setenv('VEXE', real_vexe_path, true)
-	// return real_vexe_path
 }
