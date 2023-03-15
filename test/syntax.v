@@ -43,7 +43,7 @@ struct StructA {
 	field_b string
 	field_c fn(int) int
 	field_d string = 'foo' [attribute_a; attribute_b]
-	field_d int = 111 [attribute_a; attribute_b]
+	field_e int = 111 [attribute_a; attribute_b]
 	field_f int [attribute_a; attribute_b]
 }
 
