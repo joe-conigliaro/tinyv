@@ -26,7 +26,7 @@ pub fn (mut b Builder) build(files []string) {
 	if b.pref.no_parallel {
 		b.files = b.parse_files(files)
 	} else {
-		b.files = b.parse_files_async(files)
+		b.files = b.parse_files_parallel(files)
 	}
 	parse_time := sw.elapsed()
 	// b.check_files()

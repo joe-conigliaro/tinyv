@@ -62,7 +62,7 @@ fn (mut pstate ParsingSharedState) worker(mut b Builder, ch_in chan string, ch_o
 	}
 }
 
-fn (mut b Builder) parse_files_async(files []string) []ast.File {
+fn (mut b Builder) parse_files_parallel(files []string) []ast.File {
 	mut ch_in := chan string{cap: 1000}
 	mut ch_out := chan ast.File{cap: 1000}
 	mut pstate := &ParsingSharedState{}
