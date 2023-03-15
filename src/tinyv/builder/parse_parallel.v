@@ -7,12 +7,12 @@ import tinyv.ast
 import tinyv.parser
 import runtime
 
+// TODO: remove workaround once fixed in compiler
 struct SharedIntWorkaround { mut: value int }
 struct ParsingSharedState {
 mut:
 	parsed_modules shared []string
-	files_to_be_parsed shared SharedIntWorkaround
-	files_already_parsed shared SharedIntWorkaround
+	files_queued   shared SharedIntWorkaround
 }
 
 fn (mut pstate ParsingSharedState) mark_module_as_parsed( name string ) {
@@ -34,8 +34,8 @@ fn (mut pstate ParsingSharedState) add_files(ch_in chan string, files []string) 
 	for file in files {
 		// eprintln('>>>> ${@METHOD} file: $file')
 		ch_in <- file
-		lock pstate.files_to_be_parsed {
-			pstate.files_to_be_parsed.value++
+		lock pstate.files_queued {
+			pstate.files_queued.value++
 		}
 	}
 }
@@ -57,8 +57,8 @@ fn (mut pstate ParsingSharedState) worker(mut b Builder, ch_in chan string, ch_o
 			}
 		}
 		// eprintln('>> ${@METHOD} fully parsed file: $filename')
-		lock pstate.files_already_parsed {
-			pstate.files_already_parsed.value++
+		lock pstate.files_queued {
+			pstate.files_queued.value--
 		}
 		ch_out <- ast_file
 	}
@@ -86,8 +86,8 @@ fn (mut b Builder) parse_files_parallel(files []string) []ast.File {
 	// mut output_idx := 0
 	for {
 		// output_idx++
-		rlock pstate.files_already_parsed, pstate.files_to_be_parsed {
-			if pstate.files_already_parsed.value == pstate.files_to_be_parsed.value {
+		rlock pstate.files_queued {
+			if pstate.files_queued.value == 0 {
 				// eprintln('output reading idx: $output_idx')
 				// dump(pstate)
 				break
