@@ -36,31 +36,73 @@ pub fn (mut b Builder) build(files []string) {
 	println(' * Total: ${total_time.milliseconds()}ms (${total_time.microseconds()}us)')
 }
 
+fn (mut b Builder) parse_async_worker(ch_in chan string, ch_out chan ast.File, mut parsed_imports []string) {
+	mut p := parser.new_parser(b.pref)
+	for {
+		filename := <- ch_in or { break }
+        ast_file := p.parse_file(filename)
+		// TODO: either parse imports here
+		// for mod in ast_file.imports {
+		// 	if mod.name in parsed_imports {
+		// 		continue
+		// 	}
+		// 	mod_path := b.get_module_path(mod.name, ast_file.path)
+		// 	b.parse_files_async(get_v_files_from_dir(mod_path))
+		// 	parsed_imports << mod.name
+		// }
+		ch_out <- ast_file
+    }
+}
+
+fn (mut b Builder) parse_files_async(ch_in chan string, files []string) {
+	for file in files {
+		ch_in <- file
+	}
+}
+
 fn (mut b Builder) parse_files(files []string) []ast.File {
-	mut parser_reused := parser.new_parser(b.pref)
+	mut ch_in := chan string{cap: 100}
+	mut ch_out := chan ast.File{cap: 100}
+	mut parsed_imports := []string{}
+	// mut parser_reused := parser.new_parser(b.pref)
 	mut ast_files := []ast.File{}
+	mut threads := []thread{}
+	// mut wg := sync.new_waitgroup()
+	for _ in 0..8 {
+		threads << spawn b.parse_async_worker(ch_in, ch_out, mut &parsed_imports)
+		// spawn b.parse_async_worker(ch_in, ch_out, mut &parsed_imports)
+	}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+		// ast_files << parser_reused.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+		b.parse_files_async(ch_in, get_v_files_from_dir(b.get_vlib_module_path('builtin')))
 	}
 	// parse user files
-	ast_files << parser_reused.parse_files(files)
+	// ast_files << parser_reused.parse_files(files)
+	b.parse_files_async(ch_in, files)
 	if b.pref.skip_imports {
 		return ast_files
 	}
-	// parse imports
-	mut parsed_imports := []string{}
-	for afi := 0; afi < ast_files.len ; afi++ {
-		ast_file := ast_files[afi]
-		for mod in ast_file.imports {
-			if mod.name in parsed_imports {
-				continue
-			}
-			mod_path := b.get_module_path(mod.name, ast_file.path)
-			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path))
-			parsed_imports << mod.name
-		}
+	ch_in.close()
+	threads.wait()
+	ch_out.close()
+
+	println(' 1 ast_file.len: $ast_files.len')
+	for {
+		ast_file := <- ch_out or { break }
+		// TODO: OR parse imports here but channels are already closed
+		// for mod in ast_file.imports {
+		// 	if mod.name in parsed_imports {
+		// 		continue
+		// 	}
+		// 	mod_path := b.get_module_path(mod.name, ast_file.path)
+		// 	b.parse_files_async(get_v_files_from_dir(mod_path))
+		// 	parsed_imports << mod.name
+		// }
+		ast_files << ast_file
 	}
+
+	println(' 2 ast_file.len: $ast_files.len')
 	return ast_files
 }
 
