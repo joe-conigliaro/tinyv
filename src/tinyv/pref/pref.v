@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Joe Conigliaro. All rights reserved.
+// Copyright (c) 2020-2023 Joe Conigliaro. All rights reserved.
 // Use of this source code is governed by an MIT license
 // that can be found in the LICENSE file.
 module pref
@@ -11,6 +11,7 @@ pub mut:
 	verbose          bool
 	skip_builtin     bool
 	skip_imports     bool
+	no_parallel      bool
 pub:
 	vroot            string = os.dir(vexe_path())
 	vmodules_path    string = os.vmodules_dir()
@@ -27,6 +28,7 @@ pub fn new_preferences_using_options(options []string) Preferences {
 		verbose: '--verbose' in options || '-v' in options
 		skip_builtin: '--skip-builtin' in options
 		skip_imports: '--skip-imports' in options
+		no_parallel: '--no-parallel' in options
 	}
 }
 
