@@ -81,15 +81,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln('')
 		}
 		ast.AssignStmt {
-			for i, l in stmt.lhs {
-				g.expr(l)
-				if i < stmt.lhs.len-1 { g.write(', ') }
-			}
+			g.expr_list(stmt.lhs, ', ')
 			g.write(' $stmt.op ')
-			for i, r in stmt.rhs {
-				g.expr(r)
-				if i < stmt.lhs.len-1 { g.write(', ') }
-			}
+			g.expr_list(stmt.rhs, ', ')
 			if !g.in_init { g.writeln('') }
 		}
 		ast.Block {
@@ -303,10 +297,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.ReturnStmt {
 			g.write('return ')
-			for i, x in stmt.exprs {
-				g.expr(x)
-				if i < stmt.exprs.len-1 { g.write(', ') }
-			}
+			g.expr_list(stmt.exprs, ', ')
 			g.writeln('')
 		}
 		ast.StructDecl {
@@ -351,12 +342,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write(stmt.name)
 			if stmt.variants.len > 0 {
 				g.write(' = ')
-				for i, variant in stmt.variants {
-					g.expr(variant)
-					if i < stmt.variants.len-1 {
-						g.write(' | ')
-					}
-				}
+				g.expr_list(stmt.variants, ' | ')
 			}
 			else {
 				g.write(' ')
@@ -373,10 +359,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.ArrayInitExpr {
 			if expr.exprs.len > 0 {
 				g.write('[')
-				for i, x in expr.exprs {
-					g.expr(x)
-					if i < expr.exprs.len-1 { g.write(', ') }
-				}
+				g.expr_list(expr.exprs, ', ')
 				g.write(']')
 				// TODO: better way to handle this
 				if expr.len !is ast.EmptyExpr {
@@ -425,10 +408,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.CallExpr {
 			g.expr(expr.lhs)
 			g.write('(')
-			for i, arg in expr.args {
-				g.expr(arg)
-				if i < expr.args.len-1 { g.write(', ') }
-			}
+			g.expr_list(expr.args, ', ')
 			g.write(')')
 		}
 		ast.CallOrCastExpr {
@@ -458,10 +438,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('fn')
 			if expr.captured_vars.len > 0 {
 				g.write(' [')
-				for i, var in expr.captured_vars {
-					g.expr(var)
-					if i < expr.captured_vars.len-1 { g.write(', ') }
-				}
+				g.expr_list(expr.captured_vars, ', ')
 				g.write('] ')
 			}
 			g.fn_type(expr.typ)
@@ -531,10 +508,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.Tuple {
 			g.write('/*tuple:start*/')
-			for i, x in expr.exprs {
-				g.expr(x)
-				if i < expr.exprs.len-1 { g.write(', ') }
-			}
+			g.expr_list(expr.exprs, ', ')
 			g.write('/*tuple:end*/')
 		}
 		ast.BasicLiteral {
@@ -556,10 +530,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.LockExpr {
 			g.write('$expr.kind ')
-			for i, x in expr.exprs {
-				g.expr(x)
-				if i < expr.exprs.len-1 { g.write(', ') }
-			}
+			g.expr_list(expr.exprs, ', ')
 			g.writeln(' {')
 			g.stmts(expr.stmts)
 			g.writeln('}')
@@ -594,10 +565,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.indent++
 			for branch in expr.branches {
 				if branch.cond.len > 0 {
-					for j, cond in branch.cond {
-						g.expr(cond)
-						if j < branch.cond.len-1 { g.write(', ') }
-					}
+					g.expr_list(branch.cond, ', ')
 				}
 				else {
 					g.write('else')
@@ -731,10 +699,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				ast.TupleType {
 					g.write('(')
-					for i, x in expr.types {
-						g.expr(x)
-						if i < expr.types.len-1 { g.write(', ') } 
-					}
+					g.expr_list(expr.types, ', ')
 					g.write(')')
 				}
 				// TODO: v bug since all variants are accounted for
@@ -787,12 +752,17 @@ fn (mut g Gen) fn_type(typ ast.FnType) {
 }
 
 [inline]
-fn (mut g Gen) generic_list(exprs []ast.Expr) {
-	g.write('[')
+fn (mut g Gen) expr_list(exprs []ast.Expr, separator string) {
 	for i, expr in exprs {
 		g.expr(expr)
-		if i < exprs.len-1 { g.write(',') }
+		if i < exprs.len-1 { g.write(separator) }
 	}
+}
+
+[inline]
+fn (mut g Gen) generic_list(exprs []ast.Expr) {
+	g.write('[')
+	g.expr_list(exprs, ', ')
 	g.write(']')
 }
 
