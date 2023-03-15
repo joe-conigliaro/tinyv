@@ -175,6 +175,19 @@ fn main_a() {
 	// able to cast array types, unless it gets implemented.
 	cast_c := []u8([1,2,3,4])
 	cast_d := [][][]u8([[[1,2,3,4]]])
+	fn_literal_a := fn(param_a int, param_b int) int {
+		return param_a+param_b
+	}
+	fn_literal_call_a := fn_literal_a(2, 4)
+	fn_literal_direct_call_a := fn(param_a int, param_b int) int {
+		return param_a+param_b
+	}(2, 4)
+	fn_literal_capturing_vars_a := fn [infix_a, infix_b] (param_a int, param_b int) int {
+		return infix_a+infix_b+param_a
+	}
+	fn_literal_capturing_vars_direct_call_a := fn [infix_a, infix_b] (param_a int, param_b int) int {
+		return (infix_a+infix_b)*(param_a+param_b)
+	}(2, 4)
 	index_a := array_init_a[0]
 	index_a := array_init_a[a]
 	index_b := struct_a.field_b[1]
@@ -204,9 +217,6 @@ fn main_a() {
 	prefix_c := -infix_a + 2
 	prefix_optional_a := ?mod_a.StructA{}
 	prefix_optional_b := ?mod_a.StructA(none)
-	closure_a := fn [infix_a, infix_b] () int {
-		return infix_a+infix_b
-	}
 	// TODO: see comment in parser
 	// if err == IError(Foo{}) {
 	// 	// eiiip

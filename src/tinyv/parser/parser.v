@@ -331,7 +331,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if p.tok == .lsbr {
 				p.next()
 				for p.tok != .rsbr {
-					p.expr(.lowest)
+					captured_vars << p.expr(.lowest)
 					if p.tok == .comma {
 						p.next()
 					}
@@ -346,6 +346,8 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				stmts: p.block()
 				captured_vars: captured_vars
 			}
+			// update for call in expr loop
+			line = p.line
 		}
 		.key_go {
 			p.next()
@@ -716,16 +718,14 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// I might decide to change this later.
 	for {
 		// call | cast
-		if p.tok == .lpar {
-			// TODO: handle by checking expr?
-			// (*ptr_a) = *ptr_a - 1
-			if p.line != line {
-				return lhs
-			}
+		// NOTE: checking line for deref assign in parenthesis
+		// `(*ptr_a) = *ptr_a - 1`
+		if p.tok == .lpar && p.line == line {
 			// p.log('ast.CastExpr or CallExpr: ${typeof(lhs)}')
 			args := p.fn_arguments()
 			// definitely a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
+			// TODO: use expect_type?
 			if p.tok in [.not, .question] {
 				lhs = ast.PostfixExpr{expr: lhs, op: p.tok()}
 				lhs = ast.CallExpr{

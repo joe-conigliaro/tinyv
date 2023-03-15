@@ -456,12 +456,16 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.FnLiteral {
 			g.write('fn')
-			g.fn_type(expr.typ)
-			if expr.typ.return_type !is ast.EmptyExpr {
-				g.writeln(' {')
-			} else {
-				g.writeln('{')
+			if expr.captured_vars.len > 0 {
+				g.write(' [')
+				for i, var in expr.captured_vars {
+					g.expr(var)
+					if i < expr.captured_vars.len-1 { g.write(', ') }
+				}
+				g.write('] ')
 			}
+			g.fn_type(expr.typ)
+			g.writeln(' {')
 			g.stmts(expr.stmts)
 			g.write('}')
 		}
@@ -767,8 +771,12 @@ fn (mut g Gen) fn_type(typ ast.FnType) {
 		g.generic_list(typ.generic_params)
 	}
 	g.write('(')
-	for i, arg in typ.params {
-		g.expr(arg.typ)
+	for i, param in typ.params {
+		if param.name.len > 0 {
+			g.write(param.name)
+			g.write(' ')
+		}
+		g.expr(param.typ)
 		if i < typ.params.len-1 { g.write(', ') }
 	}
 	g.write(')')
