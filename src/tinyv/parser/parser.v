@@ -17,7 +17,7 @@ mut:
 	scanner   &scanner.Scanner
 	filename  string
 	// track state
-	in_init   bool // for/if/match eg. `for x in vals {`
+	exp_lcbr  bool // expecting `{` parsing `x` in `for|if|match x {` etc
 	exp_pt    bool // expecting (p)ossible (t)ype from `p.expr()`
 	// start token info
 	line      int
@@ -385,10 +385,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_lock, .key_rlock {
 			kind := p.tok()
-			in_init := p.in_init
-			p.in_init = true
+			exp_lcbr := p.exp_lcbr
+			p.exp_lcbr = true
 			exprs := p.expr_list()
-			p.in_init = in_init
+			p.exp_lcbr = exp_lcbr
 			return ast.LockExpr{
 				kind: kind
 				exprs: exprs
@@ -412,7 +412,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.lcbr {
 			// shorthand map / struct init
-			if !p.in_init {
+			if !p.exp_lcbr {
 				// NOTE: config syntax handled in `p.fn_arguments()`
 				// which afaik is the only place it's supported
 				// lhs = p.struct_init()
@@ -602,17 +602,17 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_match {
 			p.next()
-			mut in_init := p.in_init
-			p.in_init = true
+			mut exp_lcbr := p.exp_lcbr
+			p.exp_lcbr = true
 			expr := p.expr(.lowest)
-			p.in_init = in_init
+			p.exp_lcbr = exp_lcbr
 			p.expect(.lcbr)
 			mut branches := []ast.Branch{}
 			for p.tok != .rcbr {
-				in_init = p.in_init
-				p.in_init = true
+				exp_lcbr = p.exp_lcbr
+				p.exp_lcbr = true
 				cond := p.expr_list()
-				p.in_init = in_init
+				p.exp_lcbr = exp_lcbr
 				branches << ast.Branch {
 					cond: cond
 					stmts: p.block()
@@ -680,7 +680,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// the following cases without trickery (TODO: consider).
 			// `if err == IError(Eof{}) {`
 			// `if Foo{} == Foo{} {`
-			if p.tok == .lcbr && !p.in_init {
+			if p.tok == .lcbr && !p.exp_lcbr {
 				return p.assoc_or_struct_init(lhs)
 			}
 		}
@@ -690,7 +690,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lhs = p.expect_type()
 			// only handle where actually needed instead of expr loop
 			// I may change my mind, however for now this seems best
-			if p.tok == .lcbr && !p.in_init {
+			if p.tok == .lcbr && !p.exp_lcbr {
 				return p.assoc_or_struct_init(lhs)
 			}
 			if p.tok != .lpar && !p.exp_pt {
@@ -722,7 +722,10 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// `(*ptr_a) = *ptr_a - 1`
 		if p.tok == .lpar && p.line == line {
 			// p.log('ast.CastExpr or CallExpr: ${typeof(lhs)}')
+			exp_lcbr := p.exp_lcbr
+			p.exp_lcbr = false
 			args := p.fn_arguments()
+			p.exp_lcbr = exp_lcbr
 			// definitely a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
 			// TODO: use expect_type?
@@ -761,7 +764,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: if we want we can handle init like this
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
-		// else if p.tok == .lcbr && p.line == line && !p.in_init {
+		// else if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
 		// 	lhs = p.assoc_or_struct_init(lhs)
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
@@ -810,7 +813,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
-				if p.tok == .lcbr && p.line == line && !p.in_init {
+				if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
 					lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
 				}
 				// `array[0]()` | `fn[int]()`
@@ -1085,8 +1088,8 @@ pub fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
 // TODO: should we use string or LabelStmt/Ident
 pub fn (mut p Parser) for_stmt() ast.ForStmt {
 	p.next()
-	in_init := p.in_init
-	p.in_init = true
+	exp_lcbr := p.exp_lcbr
+	p.exp_lcbr = true
 	mut init, mut cond, mut post := ast.empty_stmt, ast.empty_expr, ast.empty_stmt
 	// for in `for x in vals {`
 	// NOTE: commented code is alternate method without peeking
@@ -1140,7 +1143,7 @@ pub fn (mut p Parser) for_stmt() ast.ForStmt {
 			}
 		}
 	}
-	p.in_init = in_init
+	p.exp_lcbr = exp_lcbr
 	return ast.ForStmt{
 		init: init
 		cond: cond
@@ -1155,8 +1158,8 @@ pub fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	p.next()
 	mut branches := []ast.Branch{}
 	for {
-		in_init := p.in_init
-		p.in_init = true
+		exp_lcbr := p.exp_lcbr
+		p.exp_lcbr = true
 		// mut cond := p.expr(.lowest)
 		// NOTE: the line above works, but avoid calling p.expr()
 		mut cond := if p.tok == .lcbr { ast.empty_expr }  else { p.expr(.lowest) }
@@ -1173,7 +1176,7 @@ pub fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 				stmt: p.assign([cond])
 			}
 		}
-		p.in_init = in_init
+		p.exp_lcbr = exp_lcbr
 		branches << ast.Branch{
 			cond: [cond]
 			stmts: p.block()

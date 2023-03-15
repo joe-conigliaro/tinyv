@@ -47,6 +47,12 @@ struct StructA {
 	field_f int [attribute_a; attribute_b]
 }
 
+struct StructB {
+mut: // TODO: modifiers
+	field_a int
+	field_b string
+}
+
 struct C.StructA {}
 
 interface InterfaceA {
@@ -56,7 +62,7 @@ interface InterfaceA {
 }
 
 interface InterfaceB {
-mut:
+mut: // TODO: modifiers
 	method_a(string) string
 }
 
@@ -135,7 +141,7 @@ fn main_a() {
 	array_init_f := [2][]int{init:[1]}
 	array_init_g := [2][][][][]int{}
 	array_init_h := [2][][][][2]int{}
-	// TODO: fix this error condition?
+	// TODO: better error for missing `]`
 	// array_init_i := [['a','b','c','d']
 	array_init_i := [['a','b','c','d']]
 	array_init_j := []&StructA{}
@@ -151,7 +157,7 @@ fn main_a() {
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
 	struct_init_b := foo.StructA{field_a: 1, field_b: 'v'}
 	struct_init_c := StructA{1, 'v'}
-	// NOTE: no longer supported
+	// NOTE: no longer supported. will error
 	// assoc_old_a := {struct_a|field_a: 111}
 	// assoc_old_b := {
 	// 	...struct_a
@@ -183,7 +189,7 @@ fn main_a() {
 		return param_a+param_b
 	}(2, 4)
 	fn_literal_capturing_vars_a := fn [infix_a, infix_b] (param_a int, param_b int) int {
-		return infix_a+infix_b+param_a
+		return (infix_a+infix_b)*(param_a+param_b)
 	}
 	fn_literal_capturing_vars_direct_call_a := fn [infix_a, infix_b] (param_a int, param_b int) int {
 		return (infix_a+infix_b)*(param_a+param_b)
@@ -217,9 +223,12 @@ fn main_a() {
 	prefix_c := -infix_a + 2
 	prefix_optional_a := ?mod_a.StructA{}
 	prefix_optional_b := ?mod_a.StructA(none)
-	// TODO: see comment in parser
-	// if err == IError(Foo{}) {
-	// 	// eiiip
+	if err == IError(MyError{}) {
+		println('err == IError(MyError{})')
+	}
+	// TODO: tricky
+	// if StructA{} == StructA{} {
+	// 	println('StructA{} == StructA{}')
 	// }
 	if a == 1 {
 		println('a == $s')
@@ -295,6 +304,9 @@ fn main_a() {
 	*ptr_a = 0
 	(*ptr_a) = *ptr_a - 1
 	((*ptr_a)) = *ptr_a - 1
+	*(ptr_a) = *ptr_a - 1
+	*((ptr_a)) = *ptr_a - 1
+	(*(ptr_a)) = *ptr_a - 1
 	sumtype_a := SumTypeA(111)
 	match sumtype_a {
 		StructA { println('StructA') }
