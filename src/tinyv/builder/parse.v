@@ -11,7 +11,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 	mut ast_files := []ast.File{}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.get_vlib_module_path('builtin')))
+		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.pref.get_vlib_module_path('builtin')))
 	}
 	// parse user files
 	ast_files << parser_reused.parse_files(files)
@@ -26,7 +26,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 			if mod.name in parsed_imports {
 				continue
 			}
-			mod_path := b.get_module_path(mod.name, ast_file.path)
+			mod_path := b.pref.get_module_path(mod.name, ast_file.path)
 			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
 		}

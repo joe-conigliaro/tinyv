@@ -53,26 +53,3 @@ fn (mut b Builder) gen_v_files() {
 	}
 }
 
-// old - time scammer alone
-// fn scan_files() {
-// 	for file in files {
-// 		mut text := os.read_file('$file') or {
-// 			panic('error reading $file')
-// 		}
-// 		s := scanner.new_scanner(pref)
-// 		s.set_text(text)
-// 		t0 := time.ticks()
-// 		for {
-// 			kind := s.scan()
-// 			// kind, lit, pos := s.scan()
-// 			// println('lit: $s.lit - $kind - ' + int(kind).str())
-// 			if kind == .eof {
-// 				break
-// 			}
-// 		}
-// 		// s.scan_all()
-// 		t1 := time.ticks()
-// 		scan_time := t1 - t0
-// 		println('scan time for $file: ${scan_time}ms')
-// 	}
-// }
