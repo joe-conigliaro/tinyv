@@ -23,10 +23,10 @@ pub fn new_builder(prefs &pref.Preferences) &Builder {
 
 pub fn (mut b Builder) build(files []string) {
 	mut sw := time.new_stopwatch()
-	if b.pref.no_parallel {
-		b.files = b.parse_files(files)
+	b.files = if b.pref.no_parallel {
+		b.parse_files(files)
 	} else {
-		b.files = b.parse_files_parallel(files)
+		b.parse_files_parallel(files)
 	}
 	parse_time := sw.elapsed()
 	// b.check_files()

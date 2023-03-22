@@ -125,7 +125,6 @@ pub enum BindingPower {
 	two
 	three
 	four
-	five
 	highest
 }
 
@@ -133,15 +132,15 @@ pub enum BindingPower {
 pub fn (t Token) left_binding_power() BindingPower {
 	return match t {
 		// `||`
-		.logical_or { .one }
+		.logical_or { .lowest }
 		// `&&`
-		.and { .two }
+		.and { .one }
 		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge { .three }
+		.eq, .ne, .lt, .le, .gt, .ge { .two }
 		// `+` |  `-` |  `|` | `^`
-		.plus, .minus, .pipe, .xor { .four }
+		.plus, .minus, .pipe, .xor { .three }
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
-		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp { .five }
+		.mul, .div, .mod, .left_shift, .right_shift, .right_shift_unsigned, .amp { .four }
 		else { .lowest }
 	}
 }

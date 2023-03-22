@@ -42,9 +42,12 @@ struct StructA {
 	field_a int
 	field_b string
 	field_c fn(int) int
-	field_d string = 'foo' [attribute_a; attribute_b]
-	field_e int = 111 [attribute_a; attribute_b]
-	field_f int [attribute_a; attribute_b]
+	field_d string = 'foo'
+	field_e string = 'bar' [attribute_a; attribute_b]
+	field_f int = 111 [attribute_a; attribute_b]
+	// NOTE: currently parsed as index. no point fixing each case 
+	// since once the syntax is changed everything will just work
+	field_g int = field_g_default() [attribute_a]
 }
 
 struct StructB {

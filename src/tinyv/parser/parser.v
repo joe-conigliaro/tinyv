@@ -124,7 +124,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 			for p.tok == .dot {
 				p.next()
 				alias = p.expect_name()
-				name += '.$alias'
+				name += '.' + alias
 			}
 			is_aliased := p.tok == .key_as
 			if is_aliased {
@@ -402,6 +402,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				else { return ast.ComptimeExpr{expr: p.expr(.lowest)} }
 			}
 		}
+		// enum value `.green`
+		// TODO: use ast.EnumValue{} or stick with SelectorExpr?
+		// .dot {}
 		.lpar {
 			p.next()
 			// p.log('ast.ParenExpr:')
@@ -697,7 +700,7 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.error('expecting `(` or `{`')
 			}
 		}
-		// selector (enum value), range. handled in loop below
+		// selector, range. handled in expr chaining loop below
 		.dot, .dotdot, .ellipsis {}
 		else {
 			if p.tok.is_prefix() {
