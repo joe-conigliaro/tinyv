@@ -186,10 +186,6 @@ pub fn (mut s Scanner) scan() token.Token {
 				s.offset++
 				return .eq
 			}
-			else if c2 == `>` {
-				s.offset++
-				return .arrow
-			}
 			return .assign
 		}
 		`+` {
@@ -279,6 +275,10 @@ pub fn (mut s Scanner) scan() token.Token {
 			else if c2 == `=` {
 				s.offset++
 				return .le
+			}
+			else if c2 == `-` {
+				s.offset++
+				return .arrow
 			}
 			return .lt
 		}

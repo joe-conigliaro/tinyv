@@ -3,7 +3,7 @@
 // that can be found in the LICENSE file.
 module ast
 
-import token
+import tinyv.token
 
 // NOTE: this is just a very naive example of how it could possibly work.
 // actual implementation may work during AST -> IR (or not). it may also

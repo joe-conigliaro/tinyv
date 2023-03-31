@@ -9,8 +9,8 @@ import strings
 import time
 
 const(
-	tabs = build_tabs(16)
-	// tabs = build_tabs(24)
+	// tabs = build_tabs(16)
+	tabs = build_tabs(24)
 )
 
 struct Gen {
@@ -432,6 +432,15 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.write(')')
 		}
+		ast.ChannelInitExpr {
+			g.expr(expr.typ)
+			g.write('{')
+			if expr.cap !is ast.EmptyExpr {
+				g.write('cap: ')
+				g.expr(expr.cap)
+			}
+			g.write('}')
+		}
 		ast.ComptimeExpr {
 			g.write('$')
 			g.expr(expr.expr)
@@ -676,6 +685,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 						g.expr(expr.len)
 					}
 					g.write(']')
+					g.expr(expr.elem_type)
+				}
+				ast.ChannelType {
+					g.write('chan ')
 					g.expr(expr.elem_type)
 				}
 				ast.FnType {

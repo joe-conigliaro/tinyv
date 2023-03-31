@@ -659,6 +659,27 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					lhs = ast.Ident{name: 'map'}
 				}
+				'chan' {
+					p.next()
+					elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
+					if elem_type !is ast.EmptyExpr {
+						mut cap := ast.empty_expr
+						p.expect(.lcbr)
+						for p.tok != .rcbr {
+							key := p.expect_name()
+							match key {
+								'cap' {}
+								else { p.error('unknown channel attribute `$key`') }
+							}
+							p.expect(.colon)
+							cap = p.expr(.lowest)
+						}
+						p.next()
+						chan_type := ast.Type(ast.ChannelType{elem_type: elem_type, cap: cap})
+						return ast.ChannelInitExpr{typ: chan_type, cap: cap}
+					}
+					lhs = ast.Ident{name: 'chan'}
+				}
 				else { lhs = p.ident() }
 			}
 			// NOTE: since we're returning struct init here, we complete the selector

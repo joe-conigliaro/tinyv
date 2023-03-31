@@ -154,7 +154,7 @@ pub fn (t Token) right_binding_power() BindingPower {
 [inline]
 pub fn (t Token) is_prefix() bool {
 	return match t {
-		.minus, .amp, .mul, .not, .bit_not { true }
+		.minus, .amp, .mul, .not, .bit_not, .arrow { true }
 		else { false }
 	}
 }
@@ -165,7 +165,7 @@ pub fn (t Token) is_infix() bool {
 		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt,
 		.key_in, .key_as, .ge, .le, .logical_or, .xor, .not_in,
 		.key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
-		.right_shift, .right_shift_unsigned { true }
+		.right_shift, .right_shift_unsigned, .arrow { true }
 		else { false }
 	}
 }
@@ -219,7 +219,7 @@ pub fn (t Token) str() string {
 		.amp { '&' }
 		.and { '&&' }
 		.and_assign { '&=' }
-		.arrow { '=>' }
+		.arrow { '<-' }
 		.assign { '=' }
 		.at { '@' }
 		.bit_not { '~' }

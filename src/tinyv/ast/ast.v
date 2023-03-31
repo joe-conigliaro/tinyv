@@ -15,12 +15,12 @@ type EmptyStmt = u8
 
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
-	| CallOrCastExpr | CastExpr | ComptimeExpr | EmptyExpr | FnLiteral
-	| GenericArgs | GenericArgsOrIndexExpr | GoExpr | Ident | IfExpr
-	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr
-	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
-	| PrefixExpr | RangeExpr | SelectorExpr | StructInitExpr | Tuple | Type
-	| UnsafeExpr
+	| CallOrCastExpr | CastExpr | ChannelInitExpr | ComptimeExpr | EmptyExpr
+	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | GoExpr | Ident
+	| IfExpr | IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator
+	| LockExpr | MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr
+	| PostfixExpr | PrefixExpr | RangeExpr | SelectorExpr | StructInitExpr
+	| Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
@@ -30,7 +30,7 @@ pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
-pub type Type = ArrayType | ArrayFixedType | FnType | MapType
+pub type Type = ArrayType | ArrayFixedType | ChannelType | FnType | MapType
 	| NilType | NoneType | OptionType | ResultType | TupleType
 
 // File (AST container)
@@ -102,6 +102,12 @@ pub struct CastExpr {
 pub:
 	typ  Expr
 	expr Expr
+}
+
+pub struct ChannelInitExpr {
+pub:
+	typ Expr
+	cap Expr = empty_expr
 }
 
 pub struct ComptimeExpr {
@@ -259,8 +265,8 @@ pub:
 
 pub struct StructInitExpr {
 pub:
-	typ    		   Expr
-	fields        []FieldInit
+	typ    Expr
+	fields []FieldInit
 }
 
 pub struct UnsafeExpr {
@@ -280,14 +286,6 @@ pub:
 	lhs []Expr
 	rhs []Expr
 }
-
-// TODO: look at part 1 & 2 in parser
-// consider removing this completely
-// NOTE: don't use this instead attach global attrs to File
-// pub struct AttributeDecl {
-// pub:
-// 	attributes []Attribute
-// }
 
 pub struct Attribute {
 pub:
@@ -431,6 +429,12 @@ pub:
 pub struct ArrayFixedType {
 pub:
 	len       Expr
+	elem_type Expr
+}
+
+pub struct ChannelType {
+pub:
+	cap       Expr
 	elem_type Expr
 }
 

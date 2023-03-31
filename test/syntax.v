@@ -137,6 +137,12 @@ pub fn (a StructA) == (b StructA) bool {
 	return a.field_a == b.field_a
 }
 
+fn channel_test(arg_a chan string) {
+	ch := chan int{cap: 1}
+	ch <- 111
+	rec := <-ch
+}
+
 fn main_a() {
 	a := 1
 	b, c := 1, 2

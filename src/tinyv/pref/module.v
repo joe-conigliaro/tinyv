@@ -29,5 +29,5 @@ pub fn (p &Preferences) get_module_path(mod string, importing_file_path string) 
 	if os.is_dir(relative_path) {
 		return relative_path
 	}
-	panic('Preferences.get_module_path: cannot find module path for $mod')
+	panic('Preferences.get_module_path: cannot find module path for `$mod`')
 }

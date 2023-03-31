@@ -80,28 +80,41 @@ pub fn (mut p Parser) try_type() ast.Expr {
 			p.expect(.rsbr)
 			return ast.Type(ast.ArrayFixedType{len: len_expr, elem_type: p.expect_type()})
 		}
-		// name OR map
+		// name | chan | map
 		.name {
-			// map
-			if p.lit == 'map' {
-				p.next()
-				// map[string]string
-				if p.tok == .lsbr {
+			match p.lit {	
+				'map' {
 					p.next()
-					key_type := p.expect_type()
-					p.expect(.rsbr)
-					return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
+					// map[string]string
+					if p.tok == .lsbr {
+						p.next()
+						key_type := p.expect_type()
+						p.expect(.rsbr)
+						return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
+					}
+					// struct called `map` in builtin
+					return ast.Ident{name: 'map'}
 				}
-				// there is just struct called map in builtin
-				return ast.Ident{name: 'map'}
+				'chan' {
+					line := p.line
+					p.next()
+					elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
+					if elem_type !is ast.EmptyExpr {
+						return ast.Type(ast.ChannelType{elem_type: elem_type})
+					}
+					// struct called `chan` in builtin
+					return ast.Ident{name: 'chan'}
+				}
+				else {
+					// name
+					ident := p.ident()
+					if p.tok == .dot {
+						p.next()
+						return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
+					}
+					return ident
+				}
 			}
-			// name
-			ident := p.ident()
-			if p.tok == .dot {
-				p.next()
-				return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
-			}
-			return ident
 		}
 		// result
 		.not {
