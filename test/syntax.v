@@ -28,6 +28,10 @@ fn fn_after_type_fn_a() int {}
 type FnB = fn() ?
 fn fn_after_type_fn_b() int {}
 
+pub const const_array_followed_by_attribute_a = ['a', 'b']
+[attribute_after_array_init]
+fn fn_with_attribute_after_array_init() { println('v') }
+
 [attribute_a]
 enum EnumA {
 	value_a
@@ -249,6 +253,7 @@ fn main_a() {
 	}) < 2 {
 		println('if expr in if cond < 2')
 	}
+	if a > 0 { StructA{} } else { StructB{} }.method_a()
 	$if linux {
 		println('linux')
 	}
@@ -286,6 +291,9 @@ fn main_a() {
 	for idx_a:=0; idx_a<=100; {
 		idx_a++
 		println(idx_a)
+	}
+	for ; x < 100; {
+		println(x)
 	}
 	for x < 100 {
 		println(x)

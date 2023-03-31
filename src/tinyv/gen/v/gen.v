@@ -196,19 +196,28 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			in_init := g.in_init
 			g.in_init = true
 			mut is_plain := true
-			if stmt.init !is ast.EmptyStmt {
+			mut has_init := stmt.init !is ast.EmptyStmt
+			if has_init && stmt.init is ast.ForIn {
 				is_plain = false
 				g.stmt(stmt.init)
-			}
-			if stmt.cond !is ast.EmptyExpr {
-				is_plain = false
-				g.write('; ')
-				g.expr(stmt.cond)
-			}
-			if stmt.post !is ast.EmptyStmt {
-				is_plain = false
-				g.write('; ')
-				g.stmt(stmt.post)
+			} else {
+				mut has_post := stmt.post !is ast.EmptyStmt
+				if has_init {
+					is_plain = false
+					g.stmt(stmt.init)
+					g.write('; ')
+				}
+				if stmt.cond !is ast.EmptyExpr {
+					is_plain = false
+					g.expr(stmt.cond)
+				}
+				if has_init || has_post {
+					g.write('; ')
+				}
+				if has_post {
+					is_plain = false
+					g.stmt(stmt.post)
+				}
 			}
 			g.in_init = in_init
 			g.writeln(if is_plain { '{' } else { ' {'} )
