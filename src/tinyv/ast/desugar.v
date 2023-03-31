@@ -6,7 +6,7 @@ module ast
 import token
 
 // NOTE: this is just a very naive example of how it could possibly work.
-// actual implementation may work on IR instead of AST (or not). it will also
+// actual implementation may work during AST -> IR (or not). it may also
 // need type information which we don't have here. as I said, just an example.
 pub fn(m &MatchExpr) desugar() Expr {
 	mut branches := []Branch{}
