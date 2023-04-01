@@ -340,9 +340,9 @@ pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// update for call in expr loop
 			line = p.line
 		}
-		.key_go {
+		.key_go, .key_spawn {
 			p.next()
-			return ast.GoExpr{expr: p.expr(.lowest)}
+			return ast.SpawnExpr{expr: p.expr(.lowest)}
 		}
 		.key_if {
 			lhs = p.if_expr(false)

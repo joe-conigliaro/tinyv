@@ -414,6 +414,23 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.indent--
 			g.write('}')
 		}
+		ast.BasicLiteral {
+			if expr.kind == .char {
+				g.write('`')
+				g.write(expr.value)
+				g.write('`')
+			}
+			else if expr.kind == .string {
+				// TODO: proper (also raw etc)
+				quote := if expr.value.contains("'") { '"' } else { "'" }
+				g.write(quote)
+				g.write(expr.value)
+				g.write(quote)
+			}
+			else {
+				g.write(expr.value)
+			}
+		}
 		ast.CallExpr {
 			g.expr(expr.lhs)
 			g.write('(')
@@ -474,10 +491,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.generic_list(expr.exprs)
 		}
-		ast.GoExpr {
-			g.write('go ')
-			g.expr(expr.expr)
-		}
 		ast.Ident {
 			g.write(expr.name)
 		}
@@ -501,11 +514,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.IfGuardExpr {
-			g.write('/* IfGuardExpr */ ')
 			g.stmt(expr.stmt)
 		}
 		ast.IndexExpr {
-			g.write('/* ast.IndexExpr */')
 			g.expr(expr.lhs)
 			g.write('[')
 			g.expr(expr.expr)
@@ -523,28 +534,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('(')
 			g.expr(expr.expr)
 			g.write(')')
-		}
-		ast.Tuple {
-			g.write('/*tuple:start*/')
-			g.expr_list(expr.exprs, ', ')
-			g.write('/*tuple:end*/')
-		}
-		ast.BasicLiteral {
-			if expr.kind == .char {
-				g.write('`')
-				g.write(expr.value)
-				g.write('`')
-			}
-			else if expr.kind == .string {
-				// TODO: proper store extra info from scanner in BasicLiteral (also raw etc)
-				quote := if expr.value.contains("'") { '"' } else { "'" }
-				g.write(quote)
-				g.write(expr.value)
-				g.write(quote)
-			}
-			else {
-				g.write(expr.value)
-			}
 		}
 		ast.LockExpr {
 			g.write('$expr.kind ')
@@ -630,6 +619,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('.')
 			g.expr(expr.rhs)
 		}
+		ast.SpawnExpr {
+			g.write('spawn ')
+			g.expr(expr.expr)
+		}
 		ast.StructInitExpr {
 			g.expr(expr.typ)
 			// with field names
@@ -656,6 +649,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 			}
 			g.write('}')
+		}
+		ast.Tuple {
+			g.expr_list(expr.exprs, ', ')
 		}
 		ast.UnsafeExpr {
 			// NOTE: use in_init or stmts.len? check vfmt

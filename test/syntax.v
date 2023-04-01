@@ -143,6 +143,15 @@ fn channel_test(arg_a chan string) {
 	rec := <-ch
 }
 
+fn spawn_test() {
+	thread := spawn fn() {
+		for i in 0..100 {
+			println('$i...')
+		}
+	}()
+	thread.wait()
+}
+
 fn main_a() {
 	a := 1
 	b, c := 1, 2

@@ -44,7 +44,7 @@ pub enum Token {
 	key_fn
 	key_for
 	key_global
-	key_go
+	key_go // TODO: remove
 	key_goto
 	key_if
 	key_import
@@ -67,6 +67,7 @@ pub enum Token {
 	key_select
 	key_shared
 	key_sizeof
+	key_spawn
 	key_static
 	key_struct
 	key_true
@@ -93,7 +94,7 @@ pub enum Token {
 	name // user
 	ne // !=
 	// nilsbr // #[
-	nl
+	// nl
 	not // !
 	not_in // !in
 	not_is // !is
@@ -256,7 +257,7 @@ pub fn (t Token) str() string {
 		.key_fn { 'fn' }
 		.key_for { 'for' }
 		.key_global { '__global' }
-		.key_go { 'go' }
+		.key_go { 'go' } // TODO: remove
 		.key_goto { 'goto' }
 		.key_if { 'if' }
 		.key_import { 'import' }
@@ -279,6 +280,7 @@ pub fn (t Token) str() string {
 		.key_select { 'select' }
 		.key_shared { 'shared' }
 		.key_sizeof { 'sizeof' }
+		.key_spawn { 'spawn' }
 		.key_static { 'static' }
 		.key_struct { 'struct' }
 		.key_true { 'true' }
@@ -305,7 +307,7 @@ pub fn (t Token) str() string {
 		.name { 'name' }
 		.ne { '!=' }
 		// .nilsbr { '#[' }
-		.nl { 'NLL' }
+		// .nl { 'NLL' }
 		.not { '!' }
 		.not_in { '!in' }
 		.not_is { '!is' }

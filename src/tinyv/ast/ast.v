@@ -16,10 +16,10 @@ type EmptyStmt = u8
 // pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| CallOrCastExpr | CastExpr | ChannelInitExpr | ComptimeExpr | EmptyExpr
-	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | GoExpr | Ident
-	| IfExpr | IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator
-	| LockExpr | MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr
-	| PostfixExpr | PrefixExpr | RangeExpr | SelectorExpr | StructInitExpr
+	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | Ident | IfExpr
+	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
+	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
+	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StructInitExpr
 	| Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
@@ -149,11 +149,6 @@ pub:
 	exprs []Expr
 }
 
-pub struct GoExpr {
-pub:
-	expr Expr
-}
-
 pub struct Ident {
 pub:
 	name   string
@@ -261,6 +256,11 @@ pub struct SelectorExpr {
 pub:
 	lhs Expr
 	rhs Expr
+}
+
+pub struct SpawnExpr {
+pub:
+	expr Expr
 }
 
 pub struct StructInitExpr {
@@ -469,11 +469,3 @@ pub struct TupleType {
 pub:
 	types []Expr
 }
-
-
-// Other
-
-// pub struct Var {
-// pub:
-// 	name string
-// }

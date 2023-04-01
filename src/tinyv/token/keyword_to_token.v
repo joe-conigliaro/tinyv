@@ -434,6 +434,33 @@ pub fn keyword_to_token(name string) Token {
 						}
 					}
 				}
+				`s` {
+					match name[1] {
+						`p` {
+							match name[2] {
+								`a` {
+									match name[3] {
+										`w` {
+											match name[4] {
+												`n` { return .key_spawn }
+												else { return .unknown }
+											}
+										}
+										else {
+											return .unknown
+										}
+									}
+								}
+								else {
+									return .unknown
+								}
+							}
+						}
+						else {
+							return .unknown
+						}
+					}
+				}
 				`u` {
 					match name[1] {
 						`n` {
