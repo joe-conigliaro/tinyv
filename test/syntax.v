@@ -307,14 +307,17 @@ fn main_a() {
 		idx_a++
 		println(idx_a)
 	}
+	// currently erroring in this case
+	// for a := 1 {}
 	for ; x < 100; {
 		println(x)
 	}
 	for x < 100 {
 		println(x)
 	}
+	for ; ; { println('infinite loop') }
 	for {
-		println('infinate loop')
+		println('infinite loop')
 	}
 	for_label_a: for i := 4; true; i++ {
 		println(i)

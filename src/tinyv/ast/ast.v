@@ -57,13 +57,6 @@ pub fn(lang Language) str() string {
 }
 
 // Expressions
-pub struct Parameter {
-pub:
-	name   string
-	typ    Expr
-	is_mut bool
-}
-
 pub struct ArrayInitExpr {
 pub:
 	typ   Expr = empty_expr
@@ -78,6 +71,12 @@ pub:
 	typ    Expr
 	expr   Expr
 	fields []FieldInit
+}
+
+pub struct BasicLiteral {
+pub:
+	kind  token.Token
+	value string
 }
 
 pub struct Branch {
@@ -190,12 +189,6 @@ pub:
 	exprs []Expr
 }
 
-pub struct BasicLiteral {
-pub:
-	kind  token.Token
-	value string
-}
-
 pub struct LockExpr {
 pub:
 	kind  token.Token
@@ -226,6 +219,13 @@ pub struct OrExpr {
 pub:
 	expr  Expr
 	stmts []Stmt
+}
+
+pub struct Parameter {
+pub:
+	name   string
+	typ    Expr
+	is_mut bool
 }
 
 pub struct ParenExpr {

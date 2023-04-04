@@ -260,47 +260,51 @@ pub fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
-			expr := p.expr(.lowest)
-			// label `start:`
-			if p.tok == .colon {
-				name := match expr {
-					ast.Ident { expr.name }
-					else { p.error('expecting identifier') }
-				}
-				p.next()
-				return ast.LabelStmt{
-					name: name
-					stmt: if p.tok == .key_for { p.stmt() } else { ast.empty_stmt }
-				}
-			}
-			// stand alone expression in a statement list
-			// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
-			// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
-			if p.tok == .comma {
-				p.next()
-				// a little extra code, but also a little more efficient
-				mut exprs := [expr]
-				exprs << p.expr(.lowest)
-				for p.tok == .comma {
-					p.next()
-					exprs << p.expr(.lowest)
-				}
-				if p.tok.is_assignment() {
-					return p.assign(exprs)
-				}
-				return ast.ExprStmt{ast.Tuple{exprs: exprs}}
-			}
-			if p.tok.is_assignment() {
-				return p.assign([expr])
-			}
-			// TODO: add check for all ExprStmt eg.
-			// if expr is ast.ArrayInitExpr {
-			// 	p.error('UNUSED')
-			// }
-			return ast.ExprStmt{expr: expr}
+			return p.simple_stmt()
 		}
 	}
 	p.error('unknown stmt: $p.tok')
+}
+
+pub fn (mut p Parser) simple_stmt() ast.Stmt {
+	expr := p.expr(.lowest)
+	// label `start:`
+	if p.tok == .colon {
+		name := match expr {
+			ast.Ident { expr.name }
+			else { p.error('expecting identifier') }
+		}
+		p.next()
+		return ast.LabelStmt{
+			name: name
+			stmt: if p.tok == .key_for { p.for_stmt() } else { ast.empty_stmt }
+		}
+	}
+	// stand alone expression in a statement list
+	// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
+	// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
+	else if p.tok == .comma {
+		p.next()
+		// a little extra code, but also a little more efficient
+		mut exprs := [expr]
+		exprs << p.expr(.lowest)
+		for p.tok == .comma {
+			p.next()
+			exprs << p.expr(.lowest)
+		}
+		if p.tok.is_assignment() {
+			return p.assign(exprs)
+		}
+		return ast.ExprStmt{ast.Tuple{exprs: exprs}}
+	}
+	else if p.tok.is_assignment() {
+		return p.assign([expr])
+	}
+	// TODO: add check for all ExprStmt eg.
+	// if expr is ast.ArrayInitExpr {
+	// 	p.error('UNUSED')
+	// }
+	return ast.ExprStmt{expr: expr}
 }
 
 pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
@@ -1142,24 +1146,33 @@ pub fn (mut p Parser) for_stmt() ast.ForStmt {
 			expr: p.expr(.lowest)
 		}
 	}
-	// `for {` | `for x < y {` | `for x:=1; x<=10; x++ {`
-	else {
-		if p.tok !in [.lcbr] {
-			if p.tok != .semicolon {
-				lx := p.expr(.lowest)
-				if p.tok.is_assignment() {
-					init = p.assign([lx])
-				} else {
-					cond = lx
-				}
+	// `for x < y {` | `for x:=1; x<=10; x++ {`
+	else if p.tok != .lcbr {
+		if p.tok != .semicolon {
+			init = p.simple_stmt()
+		}
+		// `for x < y {`
+		if p.tok == .lcbr {
+			if mut init is ast.ExprStmt {
+				cond = init.expr
+				init = ast.empty_stmt
 			}
-			if p.tok == .semicolon {
-				p.next()
-				cond = p.expr(.lowest)
+			// `for x:=1 {` error here
+			// we are expecting a C style because we have
+			// a statement and not a conditional expression
+			else {
 				p.expect(.semicolon)
-				if p.tok != .lcbr {
-					post = p.stmt()
-				}
+			}
+		}
+		// `for x:=1; x<=10; x++ {`
+		else {
+			p.expect(.semicolon)
+			if p.tok != .semicolon {
+				cond = p.expr(.lowest)
+			}
+			p.expect(.semicolon)
+			if p.tok != .lcbr {
+				post = p.simple_stmt()
 			}
 		}
 	}
