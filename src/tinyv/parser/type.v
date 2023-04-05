@@ -6,7 +6,7 @@ module parser
 import tinyv.ast
 
 [inline]
-pub fn (mut p Parser) expect_type() ast.Expr {
+fn (mut p Parser) expect_type() ast.Expr {
 	// return p.try_type() or {
 	// 	p.error(err.msg())
 	// }
@@ -19,7 +19,7 @@ pub fn (mut p Parser) expect_type() ast.Expr {
 
 // TODO: use optional or stick with empty expr?
 // pub fn (mut p Parser) try_type() ?ast.Expr {
-pub fn (mut p Parser) try_type() ast.Expr {
+fn (mut p Parser) try_type() ast.Expr {
 	match p.tok {
 		// pointer
 		.amp {
@@ -141,7 +141,7 @@ pub fn (mut p Parser) try_type() ast.Expr {
 	}
 }
 
-pub fn (mut p Parser) fn_type() ast.FnType {
+fn (mut p Parser) fn_type() ast.FnType {
 	mut generic_params := []ast.Expr{}
 	if p.tok == .lsbr {
 		p.next()

@@ -52,6 +52,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	s.whitespace()
 	if s.offset == s.text.len {
 		s.lit = ''
+		s.line_offsets << s.offset
 		return .eof
 	}
 	c := s.text[s.offset]

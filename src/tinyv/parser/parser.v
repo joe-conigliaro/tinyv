@@ -89,7 +89,7 @@ pub fn (mut p Parser) parse_file(filename string) ast.File {
 	}
 }
 
-pub fn (mut p Parser) top_stmt() ast.Stmt {
+fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
@@ -206,7 +206,7 @@ pub fn (mut p Parser) top_stmt() ast.Stmt {
 	
 }
 
-pub fn (mut p Parser) stmt() ast.Stmt {
+fn (mut p Parser) stmt() ast.Stmt {
 	// p.log('STMT: $p.tok - $p.filename:$p.line')
 	match p.tok {
 		.dollar {
@@ -295,6 +295,7 @@ pub fn (mut p Parser) simple_stmt() ast.Stmt {
 		if p.tok.is_assignment() {
 			return p.assign(exprs)
 		}
+		// multi return values
 		return ast.ExprStmt{ast.Tuple{exprs: exprs}}
 	}
 	else if p.tok.is_assignment() {
@@ -307,7 +308,7 @@ pub fn (mut p Parser) simple_stmt() ast.Stmt {
 	return ast.ExprStmt{expr: expr}
 }
 
-pub fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
+fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line')
 	mut line := p.line
 	mut lhs := ast.empty_expr
@@ -948,7 +949,7 @@ fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
 // as I can retrieve it directly, no need to store somewhere.
 // this also help enforce the hard 1 token look ahead limit.
 [inline]
-pub fn (mut p Parser) peek() token.Token {
+fn (mut p Parser) peek() token.Token {
 	if p.tok_next_ == .unknown {
 		p.tok_next_ = p.scanner.scan()
 	}
@@ -956,7 +957,7 @@ pub fn (mut p Parser) peek() token.Token {
 }
 
 [inline]
-pub fn (mut p Parser) next() {
+fn (mut p Parser) next() {
 	if p.tok_next_ != .unknown {
 		p.tok = p.tok_next_
 		p.tok_next_ = .unknown
@@ -970,7 +971,7 @@ pub fn (mut p Parser) next() {
 
 // expect `tok` & go to next token
 [inline]
-pub fn (mut p Parser) expect(tok token.Token) {
+fn (mut p Parser) expect(tok token.Token) {
 	if p.tok != tok {
 		p.error_expected(tok, p.tok)
 	}
@@ -979,7 +980,7 @@ pub fn (mut p Parser) expect(tok token.Token) {
 
 // expect `.name` & return `p.lit` & go to next token
 [inline]
-pub fn (mut p Parser) expect_name() string {
+fn (mut p Parser) expect_name() string {
 	if p.tok != .name {
 		p.error_expected(.name, p.tok)
 	}
@@ -990,7 +991,7 @@ pub fn (mut p Parser) expect_name() string {
 
 // return `p.lit` & go to next token
 [inline]
-pub fn (mut p Parser) lit() string {
+fn (mut p Parser) lit() string {
 	// TODO: check if there is a better way to handle this?
 	// we should never use lit() in cases where p.lit is empty anyway
 	// lit := if p.lit.len == 0 { p.tok.str() } else { p.lit }
@@ -1001,14 +1002,14 @@ pub fn (mut p Parser) lit() string {
 
 // return `p.tok` & go to next token
 [inline]
-pub fn (mut p Parser) tok() token.Token {
+fn (mut p Parser) tok() token.Token {
 	tok := p.tok
 	p.next()
 	return tok
 }
 
 [inline]
-pub fn (mut p Parser) block() []ast.Stmt {
+fn (mut p Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
 	for p.tok != .rcbr {
@@ -1020,7 +1021,7 @@ pub fn (mut p Parser) block() []ast.Stmt {
 }
 
 [inline]
-pub fn (mut p Parser) expr_list() []ast.Expr {
+fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {
 		exprs << p.expr(.lowest)
@@ -1040,7 +1041,7 @@ pub fn (mut p Parser) expr_list() []ast.Expr {
 }
 
 // [attribute]
-pub fn (mut p Parser) attributes() []ast.Attribute {
+fn (mut p Parser) attributes() []ast.Attribute {
 	p.next()
 	mut attributes := []ast.Attribute{}
 	for {
@@ -1102,12 +1103,12 @@ pub fn (mut p Parser) attributes() []ast.Attribute {
 }
 
 [inline]
-pub fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
+fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
 	return ast.AssignStmt{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
 
 // TODO: should we use string or LabelStmt/Ident
-pub fn (mut p Parser) for_stmt() ast.ForStmt {
+fn (mut p Parser) for_stmt() ast.ForStmt {
 	p.next()
 	exp_lcbr := p.exp_lcbr
 	p.exp_lcbr = true
@@ -1185,7 +1186,7 @@ pub fn (mut p Parser) for_stmt() ast.ForStmt {
 	}
 }
 
-pub fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
+fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	// p.log('ast.IfExpr')
 	// .key_if
 	p.next()
@@ -1236,7 +1237,7 @@ pub fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	}
 }
 
-pub fn (mut p Parser) directive() ast.Directive {
+fn (mut p Parser) directive() ast.Directive {
 	// value := p.lit() // if we scan whole line see scanner
 	p.next()
 	line := p.line
@@ -1252,7 +1253,7 @@ pub fn (mut p Parser) directive() ast.Directive {
 	}
 }
 
-pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
+fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	p.next()
 	is_grouped := p.tok == .lpar
 	if is_grouped {
@@ -1280,7 +1281,7 @@ pub fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 	}
 }
 
-pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl {
+fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl {
 	p.next()
 	line := p.line
 	// method
@@ -1347,7 +1348,7 @@ pub fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.Fn
 	}
 }
 
-pub fn (mut p Parser) fn_parameters() []ast.Parameter {
+fn (mut p Parser) fn_parameters() []ast.Parameter {
 	p.expect(.lpar)
 	mut params := []ast.Parameter{}
 	for p.tok != .rpar {
@@ -1375,7 +1376,7 @@ pub fn (mut p Parser) fn_parameters() []ast.Parameter {
 	return params
 }
 
-pub fn (mut p Parser) fn_arguments() []ast.Expr {
+fn (mut p Parser) fn_arguments() []ast.Expr {
 	p.expect(.lpar)
 	// args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
 	// NOTE: not using p.expr_list() as I need to support config syntax
@@ -1408,7 +1409,7 @@ pub fn (mut p Parser) fn_arguments() []ast.Expr {
 	return args
 }
 
-pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.EnumDecl {
+fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.EnumDecl {
 	p.next()
 	name := p.expect_name()
 	// p.log('ast.EnumDecl: $name')
@@ -1435,7 +1436,7 @@ pub fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.
 	}
 }
 
-pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
+fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 	p.next()
     // NOTE: this got changed at some stage (or perhaps was never forced)
     // if p.tok != .lpar {
@@ -1475,7 +1476,7 @@ pub fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 	}
 }
 
-pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
+fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	p.next()
 	mut name := p.expect_name()
 	for p.tok == .dot {
@@ -1505,7 +1506,7 @@ pub fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	}
 }
 
-pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.StructDecl {
+fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.StructDecl {
 	// TODO: union
 	// is_union := p.tok == .key_union
 	p.next()
@@ -1577,7 +1578,7 @@ pub fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) as
 	}
 }
 
-pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
+fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 	p.next() // .lcbr
 	// assoc
 	if p.tok == .ellipsis {
@@ -1633,7 +1634,7 @@ pub fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
 	return ast.StructInitExpr{typ: typ, fields: fields}
 }
 
-pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
+fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.expect_name()
 	// p.log('ast.TypeDecl: $name')
@@ -1664,7 +1665,7 @@ pub fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 
 [inline]
 [direct_array_access]
-pub fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
+fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
 	name := p.expect_name()
 	if p.tok == .dot {
 		p.next()
@@ -1680,11 +1681,11 @@ pub fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
 }
 
 [inline]
-pub fn (mut p Parser) ident() ast.Ident {
+fn (mut p Parser) ident() ast.Ident {
 	return ast.Ident{name: p.expect_name()}
 }
 
-pub fn (mut p Parser) log(msg string) {
+fn (mut p Parser) log(msg string) {
 	if p.pref.verbose {
 		println(msg)
 	}
@@ -1712,17 +1713,17 @@ fn (mut p Parser) error_message(msg string, kind util.ErrorKind, pos token.Posit
 	util.error(msg, p.scanner.error_details(pos, 2), kind, pos)
 }
 
-pub fn (mut p Parser) warn(msg string) {
+fn (mut p Parser) warn(msg string) {
 	p.error_message(msg, .warning, p.position())
 }
 
 [noreturn]
-pub fn (mut p Parser) error(msg string) {
+fn (mut p Parser) error(msg string) {
 	p.error_with_position(msg, p.position())
 }
 
 [noreturn]
-pub fn (mut p Parser) error_with_position(msg string, pos token.Position) {
+fn (mut p Parser) error_with_position(msg string, pos token.Position) {
 	p.error_message(msg, .error, pos)
 	exit(1)
 }

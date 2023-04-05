@@ -26,7 +26,8 @@ I love the simplicity of V, although over time the complexity of the compiler ha
       - Function: `function.$metadata.return_type`
 3. Language / Syntax Changes:
    - I don't want to break backwards compatibility, however there are various small changes which I feel would help unify the language (TODO: Add).
-   - Explicit mutable references: `mut &x`
+   - Explicit mutable references: `mut &x` but this doesn't make sense for fn args, because then what is a mutable non reference? `mut x`
+   - Add a Tuple type: a fast fixed list type. Multi return could use this.
    - Ability to take the underlying Sum Type pointer address. Extremely useful for:
       - Comparison
       - Map Keys
