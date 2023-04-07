@@ -93,11 +93,10 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			// NOTE: expr() could handle this if we blindly return an ExprStmt.
-			// however it is being done this way for better error detection.
 			match p.tok {
 				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
-				else { p.error('unexpected comptime: $p.tok') }
+				else { return ast.ExprStmt{expr: p.expr(.lowest)} }
+				// else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
 		.hash {
@@ -211,13 +210,10 @@ fn (mut p Parser) stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
 			p.next()
-			// NOTE: we could remove this branch completely in which case it would be
-			// handled in the else branch below by expr() and returned as ExprStmt.
-			// expr() could also handle this if we blindly return an ExprStmt here.
-			// however it is being done this way for better error detection.
 			match p.tok {
 				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
-				else { p.error('unexpected comptime: $p.tok') }
+				else { return ast.ExprStmt{expr: p.expr(.lowest)} }
+				// else { p.error('unexpected comptime: $p.tok') }
 			}
 		}
 		.hash {
@@ -894,6 +890,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return ast.RangeExpr{
 				op: p.tok()
 				start: lhs
+				// if range ever gets used in other places, wont be able to check .rsbr
 				end: if p.tok == .rsbr { ast.empty_expr } else { p.expr(.lowest) }
 			}
 		}
@@ -1243,9 +1240,15 @@ fn (mut p Parser) directive() ast.Directive {
 	line := p.line
 	name := p.expect_name()
 	// TODO: handle properly
-	mut value := p.lit()
+	mut value := ''
+	// mut value := p.lit()
 	for p.line == line {
-		value += p.lit()
+		if p.tok == .name {
+			value += p.lit()
+		} else {
+			value += p.tok.str()
+			p.next()
+		}
 	}
 	return ast.Directive{
 		name: name

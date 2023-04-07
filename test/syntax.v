@@ -197,6 +197,9 @@ fn main_a() {
 	call_f := array_init_k[0]()
 	call_g := array_init_k[fn() { return 0 }()]()
 	call_h := array_init_k[array_init_b[0]]()
+	call_comptime_a := $fn_a('string', 1)
+	// comptime call as expr stmt only
+	$fn_a('string', 1)
 	cast_a := u8(1)
 	cast_b := &[]u8([1,2,3,4])
 	// the following casts should error later about not being
@@ -229,7 +232,7 @@ fn main_a() {
 	index_range_c := array_init_a[..2]
 	index_range_d := [[1,2,3,4]][0][2..4]
 	index_or_a := array_init_a[0] or { 1 }
-	index_or_b := array_init_b[0] or { [5,6,7,8] }[0]
+	index_or_b := array_init_c[0] or { [5,6,7,8] }[0]
 	index_or_c := fn() []int { return [array_init_a[0] or { 1 }] }()[0] or { 1 }
 	index_or_d := match index_a {
 		int { array_init_a }
@@ -330,12 +333,14 @@ fn main_a() {
 		}
 	}
 	mut ptr_a := &voidptr(0)
-	*ptr_a = 0
-	(*ptr_a) = *ptr_a - 1
-	((*ptr_a)) = *ptr_a - 1
-	*(ptr_a) = *ptr_a - 1
-	*((ptr_a)) = *ptr_a - 1
-	(*(ptr_a)) = *ptr_a - 1
+	unsafe {
+		*ptr_a = 0
+		(*ptr_a) = *ptr_a - 1
+		((*ptr_a)) = *ptr_a - 1
+		*(ptr_a) = *ptr_a - 1
+		*((ptr_a)) = *ptr_a - 1
+		(*(ptr_a)) = *ptr_a - 1
+	}
 	sumtype_a := SumTypeA(111)
 	match sumtype_a {
 		StructA { println('StructA') }
