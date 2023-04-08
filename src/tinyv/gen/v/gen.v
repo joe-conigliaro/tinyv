@@ -91,6 +91,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
+		ast.ComptimeStmt {
+			g.write('$')
+			g.stmt(stmt.stmt)
+		}
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')

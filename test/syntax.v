@@ -322,6 +322,9 @@ fn main_a() {
 	for {
 		println('infinite loop')
 	}
+	$for x == 1 {
+		println('comptime for')
+	}
 	for_label_a: for i := 4; true; i++ {
 		println(i)
 		for {

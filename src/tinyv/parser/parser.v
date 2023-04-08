@@ -92,12 +92,7 @@ pub fn (mut p Parser) parse_file(filename string) ast.File {
 fn (mut p Parser) top_stmt() ast.Stmt {
 	match p.tok {
 		.dollar {
-			p.next()
-			match p.tok {
-				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
-				else { return ast.ExprStmt{expr: p.expr(.lowest)} }
-				// else { p.error('unexpected comptime: $p.tok') }
-			}
+			return p.comptime_stmt()
 		}
 		.hash {
 			return p.directive()
@@ -209,12 +204,7 @@ fn (mut p Parser) stmt() ast.Stmt {
 	// p.log('STMT: $p.tok - $p.filename:$p.line')
 	match p.tok {
 		.dollar {
-			p.next()
-			match p.tok {
-				.key_if { return ast.ExprStmt{expr: ast.ComptimeExpr{expr: p.if_expr(true)}} }
-				else { return ast.ExprStmt{expr: p.expr(.lowest)} }
-				// else { p.error('unexpected comptime: $p.tok') }
-			}
+			return p.comptime_stmt()
 		}
 		.hash {
 			return p.directive()
@@ -389,10 +379,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.dollar {
 			p.next()
-			match p.tok {
-				.key_if { return ast.ComptimeExpr{expr: p.if_expr(true)} }
-				else { return ast.ComptimeExpr{expr: p.expr(.lowest)} }
-			}
+			return p.comptime_expr()
 		}
 		// enum value `.green`
 		// TODO: use ast.EnumValue{} or stick with SelectorExpr?
@@ -1103,6 +1090,25 @@ fn (mut p Parser) attributes() []ast.Attribute {
 fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
 	return ast.AssignStmt{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
+
+[inline]
+fn (mut p Parser) comptime_expr() ast.Expr {
+	match p.tok {
+		.key_if { return ast.ComptimeExpr{expr: p.if_expr(true)} }
+		.name { return ast.ComptimeExpr{expr: p.expr(.lowest)} }
+		else { p.error('unexpected comptime: $p.tok') }
+	}
+}
+
+[inline]
+fn (mut p Parser) comptime_stmt() ast.Stmt {
+	p.next()
+	match p.tok {
+		.key_for { return ast.ComptimeStmt{stmt: p.for_stmt() } }
+		else { return ast.ExprStmt{expr: p.comptime_expr() } }
+	}
+}
+
 
 // TODO: should we use string or LabelStmt/Ident
 fn (mut p Parser) for_stmt() ast.ForStmt {

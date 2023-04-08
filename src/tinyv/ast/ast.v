@@ -24,9 +24,9 @@ pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
-	| Directive | EmptyStmt | EnumDecl | ExprStmt | FlowControlStmt
-	| FnDecl | ForStmt | ForIn | GlobalDecl | ImportStmt | InterfaceDecl
-	| LabelStmt | ModuleStmt | ReturnStmt | StructDecl | TypeDecl
+	| ComptimeStmt | Directive | EmptyStmt | EnumDecl | ExprStmt
+	| FlowControlStmt | FnDecl | ForStmt | ForIn | GlobalDecl | ImportStmt
+	| InterfaceDecl | LabelStmt | ModuleStmt | ReturnStmt | StructDecl | TypeDecl
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
@@ -297,6 +297,11 @@ pub:
 pub struct Block {
 pub:
 	stmts []Stmt
+}
+
+pub struct ComptimeStmt {
+pub:
+	stmt Stmt
 }
 
 pub struct ConstDecl {
