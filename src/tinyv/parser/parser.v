@@ -1095,8 +1095,14 @@ fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
 fn (mut p Parser) comptime_expr() ast.Expr {
 	match p.tok {
 		.key_if { return ast.ComptimeExpr{expr: p.if_expr(true)} }
-		.name { return ast.ComptimeExpr{expr: p.expr(.lowest)} }
-		else { p.error('unexpected comptime: $p.tok') }
+		else {
+			pos := p.pos
+			expr := p.expr(.lowest)
+			if expr !in [ast.CallExpr, ast.CallOrCastExpr] {
+				p.error_with_position('unsupported comptime', p.position(pos))
+			}
+			return ast.ComptimeExpr{expr: expr}
+		}
 	}
 }
 
@@ -1700,11 +1706,19 @@ fn (mut p Parser) log(msg string) {
 	}
 }
 
-// TEMP/TODO: remove this & use file / fileset position + helper fns
-fn (mut p Parser) position() token.Position {
-	// NOTE: use scanner.position() when all we know is pos (later stages)
-	// since we already know line here we use it instead
-	// line, col := p.scanner.position(p.pos)
+// TEMP/TODO: move these position methods somewhere
+// consider using file / fileset position + helper fns
+fn (mut p Parser) position(pos int) token.Position {
+	line, column := p.scanner.position(pos)
+	return token.Position{
+		filename: p.filename
+		line: line
+		offset: pos
+		column: column
+	}
+}
+
+fn (mut p Parser) current_position() token.Position {
 	return token.Position{
 		filename: p.filename
 		line: p.line
@@ -1723,12 +1737,12 @@ fn (mut p Parser) error_message(msg string, kind util.ErrorKind, pos token.Posit
 }
 
 fn (mut p Parser) warn(msg string) {
-	p.error_message(msg, .warning, p.position())
+	p.error_message(msg, .warning, p.current_position())
 }
 
 [noreturn]
 fn (mut p Parser) error(msg string) {
-	p.error_with_position(msg, p.position())
+	p.error_with_position(msg, p.current_position())
 }
 
 [noreturn]
