@@ -79,12 +79,6 @@ pub:
 	value string
 }
 
-pub struct Branch {
-pub:
-	cond  []Expr
-	stmts []Stmt
-}
-
 pub struct CallExpr {
 pub:
 	lhs  Expr
@@ -155,8 +149,9 @@ pub:
 
 pub struct IfExpr {
 pub:
-	branches    []Branch
-	is_comptime bool
+	cond		Expr = empty_expr
+	else_expr 	Expr = empty_expr
+	stmts       []Stmt
 }
 
 pub struct IfGuardExpr {
@@ -203,10 +198,16 @@ pub:
 	vals []Expr
 }
 
+pub struct MatchBranch {
+pub:
+	cond  []Expr
+	stmts []Stmt
+}
+
 pub struct MatchExpr {
 pub:
 	expr     Expr
-	branches []Branch
+	branches []MatchBranch
 }
 
 pub struct Modifier {

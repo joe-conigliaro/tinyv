@@ -499,23 +499,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(expr.name)
 		}
 		ast.IfExpr {
-			for i, branch in expr.branches {
-				in_init := g.in_init
-				g.in_init = true
-				if i == 0 {
-					g.write('if ')
-				} else {
-					if expr.is_comptime { g.write(' \$else') } else { g.write(' else') }
-					if branch.cond[0] !is ast.EmptyExpr {
-						if expr.is_comptime { g.write(' \$if ') } else { g.write('if ') }
-					}
-				}
-				g.expr(branch.cond[0])
-				g.in_init = in_init
-				g.writeln(' {')
-				g.stmts(branch.stmts)
-				g.write('}')
-			}
+			g.if_expr(expr)
 		}
 		ast.IfGuardExpr {
 			g.stmt(expr.stmt)
@@ -587,6 +571,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.indent--
 			g.write('}')
+			// g.writeln(' ==== DESUGARED ==== ')
+			// g.expr(expr.desugar())
 		}
 		ast.Modifier {
 			g.write(expr.kind.str())
@@ -729,6 +715,26 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				//ast.Type {}
 			}
 		}
+	}
+}
+
+// NOTE: I purposefully left out `$` from every branch of comptime if
+// Hopefully this will be removed from the syntax. if not ill add it.
+fn (mut g Gen) if_expr(expr ast.IfExpr) {
+	if expr.cond !is ast.EmptyExpr {
+		g.write('if ')
+		in_init := g.in_init
+		g.in_init = true
+		g.expr(expr.cond)
+		g.in_init = in_init
+		g.write(' ')
+	}
+	g.writeln('{')
+	g.stmts(expr.stmts)
+	g.write('}')
+	if expr.else_expr is ast.IfExpr {
+		g.write(' else ')
+		g.if_expr(expr.else_expr)
 	}
 }
 

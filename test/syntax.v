@@ -248,6 +248,16 @@ fn main_a() {
 	prefix_c := -infix_a + 2
 	prefix_optional_a := ?mod_a.StructA{}
 	prefix_optional_b := ?mod_a.StructA(none)
+	if res := fn_optional_a() {
+		println('if guard: $res')
+	}
+	// NOTE: can be easily allowed if needed
+	// if res2, res2 := fn_optional_a(), fn_optional_b() {
+	// 	println('why? lol')
+	// }
+	if val := array_init_a[0] {
+		println(val)
+	}
 	if err == IError(MyError{}) {
 		println('err == IError(MyError{})')
 	}
@@ -256,10 +266,10 @@ fn main_a() {
 	// 	println('StructA{} == StructA{}')
 	// }
 	if a == 1 {
-		println('a == $s')
+		println('1 a == $s')
 	}
 	else if a == 2 {
-		println('a == $s')
+		println('2 a == $s')
 	}
 	else {
 		println('a == $s')
@@ -335,6 +345,12 @@ fn main_a() {
 			}
 		}
 	}
+	sumtype_a := SumTypeA(111)
+	match sumtype_a {
+		StructA { println('StructA') }
+		int { println('int') }
+		string { println('string') }
+	}
 	mut ptr_a := &voidptr(0)
 	unsafe {
 		*ptr_a = 0
@@ -344,14 +360,8 @@ fn main_a() {
 		*((ptr_a)) = *ptr_a - 1
 		(*(ptr_a)) = *ptr_a - 1
 	}
-	sumtype_a := SumTypeA(111)
-	match sumtype_a {
-		StructA { println('StructA') }
-		int { println('int') }
-		string { println('string') }
-	}
+	mut ptr_b := &voidptr(0)
 	unsafe {
-		mut ptr_b := &voidptr(0)
 		*ptr_b = 0
 	}
 	unsafe_a := unsafe { mut d := 1 d++ d }

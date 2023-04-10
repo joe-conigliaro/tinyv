@@ -246,30 +246,35 @@ fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		else {
-			return p.simple_stmt()
+			expr := p.expr(.lowest)
+			// label `start:`
+			if p.tok == .colon {
+				name := match expr {
+					ast.Ident { expr.name }
+					else { p.error('expecting identifier') }
+				}
+				p.next()
+				return ast.LabelStmt{
+					name: name
+					stmt: if p.tok == .key_for { p.for_stmt() } else { ast.empty_stmt }
+				}
+			}
+			return p.complete_simple_stmt(expr)
 		}
 	}
 	p.error('unknown stmt: $p.tok')
 }
 
+[inline]
 pub fn (mut p Parser) simple_stmt() ast.Stmt {
-	expr := p.expr(.lowest)
-	// label `start:`
-	if p.tok == .colon {
-		name := match expr {
-			ast.Ident { expr.name }
-			else { p.error('expecting identifier') }
-		}
-		p.next()
-		return ast.LabelStmt{
-			name: name
-			stmt: if p.tok == .key_for { p.for_stmt() } else { ast.empty_stmt }
-		}
-	}
+	return p.complete_simple_stmt(p.expr(.lowest))
+}
+
+pub fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
 	// stand alone expression in a statement list
 	// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
 	// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
-	else if p.tok == .comma {
+	if p.tok == .comma {
 		p.next()
 		// a little extra code, but also a little more efficient
 		mut exprs := [expr]
@@ -279,13 +284,13 @@ pub fn (mut p Parser) simple_stmt() ast.Stmt {
 			exprs << p.expr(.lowest)
 		}
 		if p.tok.is_assignment() {
-			return p.assign(exprs)
+			return p.assign_stmt(exprs)
 		}
-		// multi return values
+		// multi return values (last statement, no return keyword)
 		return ast.ExprStmt{ast.Tuple{exprs: exprs}}
 	}
 	else if p.tok.is_assignment() {
-		return p.assign([expr])
+		return p.assign_stmt([expr])
 	}
 	// TODO: add check for all ExprStmt eg.
 	// if expr is ast.ArrayInitExpr {
@@ -589,19 +594,19 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			expr := p.expr(.lowest)
 			p.exp_lcbr = exp_lcbr
 			p.expect(.lcbr)
-			mut branches := []ast.Branch{}
+			mut branches := []ast.MatchBranch{}
 			for p.tok != .rcbr {
 				exp_lcbr = p.exp_lcbr
 				p.exp_lcbr = true
 				cond := p.expr_list()
 				p.exp_lcbr = exp_lcbr
-				branches << ast.Branch {
+				branches << ast.MatchBranch {
 					cond: cond
 					stmts: p.block()
 				}
 				if p.tok == .key_else {
 					p.next()
-					branches << ast.Branch {
+					branches << ast.MatchBranch {
 						stmts: p.block()
 					}
 				}
@@ -684,7 +689,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// `if err == IError(Eof{}) {`
 			// `if Foo{} == Foo{} {`
 			if p.tok == .lcbr && !p.exp_lcbr {
-				return p.assoc_or_struct_init(lhs)
+				return p.assoc_or_struct_init_expr(lhs)
 			}
 		}
 		// native optionals `x := ?mod_a.StructA{}`
@@ -694,7 +699,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// only handle where actually needed instead of expr loop
 			// I may change my mind, however for now this seems best
 			if p.tok == .lcbr && !p.exp_lcbr {
-				return p.assoc_or_struct_init(lhs)
+				return p.assoc_or_struct_init_expr(lhs)
 			}
 			if p.tok != .lpar && !p.exp_pt {
 				p.error('expecting `(` or `{`')
@@ -768,7 +773,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
 		// else if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
-		// 	lhs = p.assoc_or_struct_init(lhs)
+		// 	lhs = p.assoc_or_struct_init_expr(lhs)
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
 		else if p.tok in [.hash, .lsbr] && p.line == line {
@@ -817,7 +822,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
 				if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
-					lhs = p.assoc_or_struct_init(ast.GenericArgs{lhs: lhs, args: exprs})
+					lhs = p.assoc_or_struct_init_expr(ast.GenericArgs{lhs: lhs, args: exprs})
 				}
 				// `array[0]()` | `fn[int]()`
 				else if p.tok == .lpar {
@@ -1087,7 +1092,7 @@ fn (mut p Parser) attributes() []ast.Attribute {
 }
 
 [inline]
-fn (mut p Parser) assign(lhs []ast.Expr) ast.AssignStmt {
+fn (mut p Parser) assign_stmt(lhs []ast.Expr) ast.AssignStmt {
 	return ast.AssignStmt{op: p.tok(), lhs: lhs, rhs: p.expr_list()}
 }
 
@@ -1158,24 +1163,16 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 	}
 	// `for x < y {` | `for x:=1; x<=10; x++ {`
 	else if p.tok != .lcbr {
-		if p.tok != .semicolon {
-			init = p.simple_stmt()
-		}
+		expr := if p.tok != .semicolon { p.expr(.lowest) } else { ast.empty_expr }
 		// `for x < y {`
 		if p.tok == .lcbr {
-			if mut init is ast.ExprStmt {
-				cond = init.expr
-				init = ast.empty_stmt
-			}
-			// `for x:=1 {` error here
-			// we are expecting a C style because we have
-			// a statement and not a conditional expression
-			else {
-				p.expect(.semicolon)
-			}
+			cond = expr
 		}
 		// `for x:=1; x<=10; x++ {`
 		else {
+			if p.tok !=.semicolon {
+				init = p.complete_simple_stmt(expr)
+			}
 			p.expect(.semicolon)
 			if p.tok != .semicolon {
 				cond = p.expr(.lowest)
@@ -1197,52 +1194,50 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 
 fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	// p.log('ast.IfExpr')
-	// .key_if
 	p.next()
-	mut branches := []ast.Branch{}
-	for {
-		exp_lcbr := p.exp_lcbr
-		p.exp_lcbr = true
-		// mut cond := p.expr(.lowest)
-		// NOTE: the line above works, but avoid calling p.expr()
-		mut cond := if p.tok == .lcbr { ast.empty_expr }  else { p.expr(.lowest) }
-		if p.tok == .question {
-			// TODO: handle individual cases like this or globally
-			// use postfix for this and add to token.is_postfix()?
-			cond = ast.PostfixExpr{expr: cond, op: p.tok}
-			p.next()
-		}
-		// if guard
-		// if p.tok in [.assign. .decl_assign] {
-		if p.tok == .decl_assign {
-			cond = ast.IfGuardExpr{
-				stmt: p.assign([cond])
-			}
-		}
-		p.exp_lcbr = exp_lcbr
-		branches << ast.Branch{
-			cond: [cond]
-			stmts: p.block()
-		}
-		// else
-		if p.tok == .key_else || (p.tok == .dollar && p.peek() == .key_else) {
-			// we are using expect instead of next to ensure we error when `is_comptime`
-			// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
-			// the same applies for the `else if` condition directly below.
-			if is_comptime { p.expect(.dollar) }
-			p.expect(.key_else)
-			// else if
-			if p.tok == .key_if || (p.tok == .dollar && p.peek() == .key_if) {
-				if is_comptime { p.expect(.dollar) }
-				p.expect(.key_if)
-			}
-		} else {
-			break
+	// else if
+	// NOTE: it's a bit weird to parse because of the way comptime has
+	// `$` on every branch. Removing this would simplify things
+	if p.tok == .key_if || (p.tok == .dollar && p.peek() == .key_if) {
+		if is_comptime { p.expect(.dollar) }
+		// p.expect(.key_if)
+		p.next()
+	}
+	exp_lcbr := p.exp_lcbr
+	p.exp_lcbr = true
+	// mut cond := p.expr(.lowest)
+	// NOTE: the line above works, but avoid calling p.expr()
+	mut cond := if p.tok == .lcbr { ast.empty_expr }  else { p.expr(.lowest) }
+	mut else_expr := ast.empty_expr
+	if p.tok == .question {
+		// TODO: handle individual cases like this or globally
+		// use postfix for this and add to token.is_postfix()?
+		cond = ast.PostfixExpr{expr: cond, op: p.tok}
+		p.next()
+	}
+	// if guard
+	// TODO: is `if a, b := multi_return_opt() {` allowed?
+	else if p.tok == .decl_assign {
+		cond = ast.IfGuardExpr{
+			stmt: p.assign_stmt([cond])
 		}
 	}
+	p.exp_lcbr = exp_lcbr
+	stmts := p.block()
+	// else
+	if p.tok == .key_else || (p.tok == .dollar && p.peek() == .key_else) {
+		// we are using expect instead of next to ensure we error when `is_comptime`
+		// and not all branches have `$`, or `!is_comptime` and any branches have `$`.
+		// the same applies for the `else if` condition directly below.
+		if is_comptime { p.expect(.dollar) }
+		// p.expect(.key_else)
+		// p.next()
+		else_expr = p.if_expr(is_comptime)
+	}
 	return ast.IfExpr{
-		branches: branches
-		is_comptime: is_comptime
+		cond: cond
+		else_expr: else_expr
+		stmts: stmts
 	}
 }
 
@@ -1593,7 +1588,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	}
 }
 
-fn (mut p Parser) assoc_or_struct_init(typ ast.Expr) ast.Expr {
+fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 	p.next() // .lcbr
 	// assoc
 	if p.tok == .ellipsis {

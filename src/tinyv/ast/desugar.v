@@ -9,8 +9,8 @@ import tinyv.token
 // actual implementation may work during AST -> IR (or not). it may also
 // need type information which we don't have here. as I said, just an example.
 pub fn(m &MatchExpr) desugar() Expr {
-	mut branches := []Branch{}
-	for branch in m.branches {
+	mut if_expr := ast.IfExpr{}
+	for i, branch in m.branches {
 		mut branch_cond := empty_expr
 		for cond in branch.cond {
 			op := if cond in [ast.Ident, ast.SelectorExpr] { token.Token.key_is } else { token.Token.eq }
@@ -21,12 +21,15 @@ pub fn(m &MatchExpr) desugar() Expr {
 				branch_cond = c
 			}
 		}
-		branches << Branch{
-			cond: [branch_cond]
+		if_expr2 := ast.IfExpr{
+			cond: branch_cond
 			stmts: branch.stmts
 		}
+		if i == 0 {
+			if_expr = if_expr2
+		} else {
+			if_expr = ast.IfExpr{...if_expr else_expr: if_expr2}
+		}
 	}
-	return IfExpr{
-		branches: branches
-	}
+	return if_expr
 }
