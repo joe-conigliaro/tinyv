@@ -26,6 +26,7 @@ I love the simplicity of V, although over time the complexity of the compiler ha
       - Function: `function.$metadata.return_type`
 3. Language / Syntax Changes:
    - I don't want to break backwards compatibility, however there are various small changes which I feel would help unify the language (TODO: Add).
+   - Explicit references, no auto-magic referencing and dereferencing.
    - Explicit mutable references: `mut &x` but this doesn't make sense for fn args, because then what is a mutable non reference? `mut x`
    - Add a Tuple type: a fast fixed list type. Multi return could use this.
    - Ability to take the underlying Sum Type pointer address. Extremely useful for:
@@ -36,19 +37,19 @@ I love the simplicity of V, although over time the complexity of the compiler ha
    - Named parameters & default parameters
    - Uninitialized objects: Consider the possibility of uninitialized objects. This would need to be `unsafe`, and would probably rarely be used. However there are certain areas, for example game development where the lack of this feature could be a non starter. For example when dealing with huge arrays of data structures like game assets or entities.
 
-## Design Details / Status
+## Design Details / Stages (status)
 1. Frontend
    - Scanner (working)
    - Parser (working)
    - AST Generation (working)
-   - AST -> SSA (in progress)
-   - Optimization passes (planned), operating on SSA form
-   - SSA -> Bytecode (planned)
-2. Interpreter - Bytecode VM (planned). Some notable advantages to operating as a Bytecode VM:
-   - No matter what kind of syntactic sugar or higher level abstractions we start off with in code / AST, once lowered to Bytecode the interpreter will handle it with no modifications.
-   - Compile time code execution
-   - Close to machine code / registers
-3. Backends / Code Generation
+2. Middle
+   - Type Checking
+   - AST -> SSA IR (in progress)
+   - Optimization passes
+3. Interpreter (Bytecode VM)
+   - SSA IR -> Bytecode
+   - Used for Compile time code execution
+4. Backend / Code Generation
    - V (working): AST -> V Generates V code from the AST, useful for testing the parser
-   - x64 (planned): Bytecode -> x64 machine code
-   - C (under consideration): Bytecode - > C
+   - x64 (planned): IR -> x64 machine code
+   - C (under consideration)
