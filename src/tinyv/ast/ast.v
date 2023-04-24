@@ -149,9 +149,9 @@ pub:
 
 pub struct IfExpr {
 pub:
-	cond		Expr = empty_expr
-	else_expr 	Expr = empty_expr
-	stmts       []Stmt
+	cond	  Expr = empty_expr
+	else_expr Expr = empty_expr
+	stmts	  []Stmt
 }
 
 pub struct IfGuardExpr {

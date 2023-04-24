@@ -60,6 +60,11 @@ mut: // TODO: modifiers
 	field_b string
 }
 
+struct StructC {
+	field_a shared int
+	field_b shared []int = [0]
+}
+
 struct C.StructA {}
 
 interface InterfaceA {

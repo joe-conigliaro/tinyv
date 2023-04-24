@@ -16,15 +16,12 @@ pub struct Scanner {
 	pref          &pref.Preferences
 	scan_comments bool
 mut:
-	text          string
+	file   &token.File = &token.File{}
+	src    string
 pub mut:
-	// it slows things down a tiny bit appending to this but it
-	// means the only position we need to store per token is `pos`
-	// TODO: test and consider switching to base position instead.
-	line_offsets  []int = [0] // start of each line
-	offset        int    // current char offset
-	pos           int    // token offset (start of current token)
-	lit           string
+	offset int // current char offset
+	pos    int // token offset (start of current token)
+	lit    string
 }
 
 pub fn new_scanner(prefs &pref.Preferences, scan_comments bool) &Scanner {
@@ -34,39 +31,37 @@ pub fn new_scanner(prefs &pref.Preferences, scan_comments bool) &Scanner {
 	} }
 }
 
-pub fn (mut s Scanner) set_text(text string) {
-	s.text = text
-}
-
-pub fn (mut s Scanner) reset() {
-	s.text = ''
-	s.line_offsets = [0]
+pub fn (mut s Scanner) init(file &token.File, src string) {
+	// reset since scanner instance may be reused
 	s.offset = 0
 	s.pos = 0
 	s.lit = ''
+	// init
+	s.file = unsafe { file }
+	s.src = src
 }
 
 [direct_array_access]
 pub fn (mut s Scanner) scan() token.Token {
 	start:
 	s.whitespace()
-	if s.offset == s.text.len {
+	if s.offset == s.src.len {
 		s.lit = ''
-		s.line_offsets << s.offset
+		s.file.add_line(s.offset)
 		return .eof
 	}
-	c := s.text[s.offset]
+	c := s.src[s.offset]
 	s.pos = s.offset
 	// comment | `/=` | `/`
 	if c == `/` {
-		c2 := s.text[s.offset+1]
+		c2 := s.src[s.offset+1]
 		// comment
 		if c2 in [`/`, `*`] {
 			s.comment()
 			if !s.scan_comments {
 				unsafe { goto start }
 			}
-			s.lit = s.text[s.pos..s.offset]
+			s.lit = s.src[s.pos..s.offset]
 			return .comment
 		}
 		// `/=`
@@ -81,14 +76,14 @@ pub fn (mut s Scanner) scan() token.Token {
 	// number
 	else if c >= `0` && c <= `9` {
 		s.number()
-		s.lit = s.text[s.pos..s.offset]
+		s.lit = s.src[s.pos..s.offset]
 		return .number
 	}
 	// c/raw string | keyword | name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
 		s.offset++
 		// `c'c string"` | `r'raw string'`
-		if s.text[s.offset] in [`'`, `"`] {
+		if s.src[s.offset] in [`'`, `"`] {
 			// TODO: maybe move & need to make use of these
 			string_lit_kind := if c == `c` { StringLiteralKind.c } 
 				else if c == `r` { StringLiteralKind.raw }
@@ -96,19 +91,19 @@ pub fn (mut s Scanner) scan() token.Token {
 			// TODO: need a way to use the correct quote when string includes quotes
 			// best done before gen so it wont need to worry about it (prob parser)
 			s.string_literal(string_lit_kind)
-			s.lit = s.text[s.pos+2..s.offset-1]
+			s.lit = s.src[s.pos+2..s.offset-1]
 			return .string
 		}
 		// keyword | name
-		for s.offset < s.text.len {
-			c2 := s.text[s.offset]
+		for s.offset < s.src.len {
+			c2 := s.src[s.offset]
 			if  (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) || (c2 >= `0` && c2 <= `9`) || c2 == `_` {
 				s.offset++
 				continue
 			}
 			break
 		}
-		s.lit = s.text[s.pos..s.offset]
+		s.lit = s.src[s.pos..s.offset]
 		tok := token.keyword_to_token(s.lit)
 		if tok != .unknown {
 			return tok
@@ -118,7 +113,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	// string
 	else if c in [`'`, `"`] {
 		s.string_literal(.v)
-		s.lit = s.text[s.pos+1..s.offset-1]
+		s.lit = s.src[s.pos+1..s.offset-1]
 		return .string
 	}
 	// byte (char) `a`
@@ -127,7 +122,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		// NOTE: if there is more than one char still scan it
 		// we can error at a later stage. should we error now?
 		for {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == c { break }
 			else if c2 == `\\` {
 				s.offset+=2
@@ -136,7 +131,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			s.offset++
 		}
 		s.offset++
-		s.lit = s.text[s.pos+1..s.offset-1]
+		s.lit = s.src[s.pos+1..s.offset-1]
 		return .char
 	}
 	// s.lit not set, as tokens below get converted directly to string
@@ -144,9 +139,9 @@ pub fn (mut s Scanner) scan() token.Token {
 	s.offset++
 	match c {
 		`.` {
-			if s.text[s.offset] == `.` {
+			if s.src[s.offset] == `.` {
 				s.offset++
-				if s.text[s.offset] == `.` {
+				if s.src[s.offset] == `.` {
 					s.offset++
 					return .ellipsis
 				}
@@ -155,21 +150,21 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .dot
 		}
 		`:` {
-			if s.text[s.offset] == `=` {
+			if s.src[s.offset] == `=` {
 				s.offset++
 				return .decl_assign
 			}
 			return .colon
 		}
 		`!` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `=` {
 				s.offset++
 				return .ne
 			}
 			else if c2 == `i` {
-				c3 := s.text[s.offset+1]
-				c4_is_space := s.text[s.offset+2] in [` `, `\t`]
+				c3 := s.src[s.offset+1]
+				c4_is_space := s.src[s.offset+2] in [` `, `\t`]
 				if c3 == `n` && c4_is_space {
 					s.offset+=2
 					return .not_in
@@ -182,7 +177,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .not
 		}
 		`=` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `=` {
 				s.offset++
 				return .eq
@@ -190,7 +185,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .assign
 		}
 		`+` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `+` {
 				s.offset++
 				return .inc
@@ -202,7 +197,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .plus
 		}
 		`-` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `-` {
 				s.offset++
 				return .dec
@@ -214,33 +209,33 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .minus
 		}
 		`%` {
-			if s.text[s.offset] == `=` {
+			if s.src[s.offset] == `=` {
 				s.offset++
 				return .mod_assign
 			}
 			return .mod
 		}
 		`*` {
-			if s.text[s.offset] == `=` {
+			if s.src[s.offset] == `=` {
 				s.offset++
 				return .mul_assign
 			}
 			return .mul
 		}
 		`^` {
-			if s.text[s.offset] == `=` {
+			if s.src[s.offset] == `=` {
 				s.offset++
 				return .xor_assign
 			}
 			return .xor
 		}
 		`&` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `&` {
 				// so that we parse &&Type as two .amp instead of .and
 				// but this requires there is a space. we could check
 				// for capital or some other way, this is simplest for now.
-				if s.offset+1 <= s.text.len && s.text[s.offset+1] in [` `, `\t`] {
+				if s.offset+1 <= s.src.len && s.src[s.offset+1] in [` `, `\t`] {
 					s.offset++
 					return .and
 				}
@@ -252,7 +247,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .amp
 		}
 		`|` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `|` {
 				s.offset++
 				return .logical_or
@@ -264,10 +259,10 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .pipe
 		}
 		`<` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `<` {
 				s.offset++
-				if s.text[s.offset] == `=` {
+				if s.src[s.offset] == `=` {
 					s.offset++
 					return .left_shift_assign
 				}
@@ -284,13 +279,13 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .lt
 		}
 		`>` {
-			c2 := s.text[s.offset]
+			c2 := s.src[s.offset]
 			if c2 == `>` {
 				s.offset++
-				c3 := s.text[s.offset]
+				c3 := s.src[s.offset]
 				if c3 == `>` {
 					s.offset++
-					if s.text[s.offset] == `=` {
+					if s.src[s.offset] == `=` {
 						s.offset++
 						return .right_shift_unsigned_assign
 					}
@@ -332,15 +327,14 @@ pub fn (mut s Scanner) scan() token.Token {
 // skip whitespace
 [direct_array_access]
 fn (mut s Scanner) whitespace() {
-	for s.offset < s.text.len {
-		c := s.text[s.offset]
+	for s.offset < s.src.len {
+		c := s.src[s.offset]
 		if c in [` `, `\t`, `\r`] {
 			s.offset++
 			continue
-		}
-		else if c == `\n` {
+		} else if c == `\n` {
 			s.offset++
-			s.line_offsets << s.offset
+			s.file.add_line(s.offset)
 			continue
 		}
 		break
@@ -351,8 +345,8 @@ fn (mut s Scanner) whitespace() {
 fn (mut s Scanner) line() {
 	// a newline reached here will get recorded by next whitespace call
 	// we could add them manually here, but whitespace is called anyway
-	for s.offset < s.text.len {
-		if s.text[s.offset] == `\n` {
+	for s.offset < s.src.len {
+		if s.src[s.offset] == `\n` {
 			break
 		}
 		s.offset++
@@ -362,7 +356,7 @@ fn (mut s Scanner) line() {
 [direct_array_access]
 fn (mut s Scanner) comment() {
 	s.offset++
-	c := s.text[s.offset]
+	c := s.src[s.offset]
 	// single line
 	if c == `/` {
 		s.line()
@@ -370,12 +364,12 @@ fn (mut s Scanner) comment() {
 	// multi line
 	else if c == `*` {
 		mut ml_comment_depth := 1
-		for s.offset < s.text.len {
-			c2 := s.text[s.offset]
-			c3 := s.text[s.offset+1]
+		for s.offset < s.src.len {
+			c2 := s.src[s.offset]
+			c3 := s.src[s.offset+1]
 			if c2 == `\n` {
 				s.offset++
-				s.line_offsets << s.offset
+				s.file.add_line(s.offset)
 			}
 			else if c2 == `/` && c3 == `*` {
 				s.offset+=2
@@ -397,12 +391,12 @@ fn (mut s Scanner) comment() {
 
 [direct_array_access]
 fn (mut s Scanner) string_literal(kind StringLiteralKind) {
-	c_quote := s.text[s.offset]
+	c_quote := s.src[s.offset]
 	s.offset++
 	mut in_interpolation := false
-	for s.offset < s.text.len {
-		c2 := s.text[s.offset]
-		c3 := s.text[s.offset+1]
+	for s.offset < s.src.len {
+		c2 := s.src[s.offset]
+		c3 := s.src[s.offset+1]
 		// skip escape \n | \'
 		if c2 == `\\` && kind != .raw {
 			s.offset+=2
@@ -410,7 +404,7 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		}
 		else if c2 == `\n` && kind != .raw {
 			s.offset++
-			s.line_offsets << s.offset
+			s.file.add_line(s.offset)
 			continue
 		}
 		else if c2 == `$` && c3 == `{` {
@@ -437,14 +431,14 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 
 [direct_array_access]
 fn (mut s Scanner) number() {
-	if s.text[s.offset] == `0` {
+	if s.src[s.offset] == `0` {
 		s.offset++
-		c := s.text[s.offset]
+		c := s.src[s.offset]
 		// TODO: impl proper underscore support
 		// 0b (binary)
 		if c in [`b`, `B`] {
 			s.offset++
-			for s.text[s.offset] in [`0`, `1`] {
+			for s.src[s.offset] in [`0`, `1`] {
 				s.offset++
 			}
 			return
@@ -453,8 +447,9 @@ fn (mut s Scanner) number() {
 		else if c in [`x`, `X`] {
 			s.offset++
 			for {
-				c2 := s.text[s.offset]
-				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `f`) || (c2 >= `A` && c2 <= `F`) || c2 == `_` {
+				c2 := s.src[s.offset]
+				if (c2 >= `0` && c2 <= `9`) || (c2 >= `a` && c2 <= `f`)
+					|| (c2 >= `A` && c2 <= `F`) || c2 == `_` {
 					s.offset++
 					continue
 				}
@@ -465,7 +460,7 @@ fn (mut s Scanner) number() {
 		else if c in [`o`, `O`] {
 			s.offset++
 			for {
-				c2 := s.text[s.offset]
+				c2 := s.src[s.offset]
 				if c2 >= `0` && c2 <= `7` {
 					s.offset++
 					continue
@@ -478,14 +473,14 @@ fn (mut s Scanner) number() {
 	mut has_exponent := false
 	// TODO: proper impl of fraction / exponent
 	// continue decimal (and also completion of bin/octal)
-	for s.offset < s.text.len {
-		c := s.text[s.offset]
+	for s.offset < s.src.len {
+		c := s.src[s.offset]
 		if (c >= `0` && c <= `9`) || c == `_` {
 			s.offset++
 			continue
 		}
 		// fraction
-		else if !has_decimal && c == `.` && s.text[s.offset+1] != `.` /* range */ {
+		else if !has_decimal && c == `.` && s.src[s.offset+1] != `.` /* range */ {
 			has_decimal = true
 			s.offset++
 			continue
@@ -500,39 +495,23 @@ fn (mut s Scanner) number() {
 	}
 }
 
-// TODO: move this somewhere maybe as a helper to ast file
-// returns line, col when passed pos
-pub fn (s &Scanner) position(pos int) (int, int) {
-	mut min, mut max := 0, s.line_offsets.len
-	for min < max {
-		mid := (min+max)/2
-		// println('# min: $min, mid: $mid, max: $max')
-		if s.line_offsets[mid] <= pos {
-			min = mid + 1
-		} else {
-			max = mid
-		}
-	}
-	return min, pos-s.line_offsets[min-1]+1
-}
-
 // TODO: move to appropriate place
 pub fn (s &Scanner) error_details(pos token.Position, row_padding int) string {
 	line_start := if pos.line-row_padding-1 > 0 {
-		s.line_offsets[pos.line-row_padding-1]
+		s.file.line_start(pos.line - row_padding)
 	} else {
-		s.line_offsets[0]
+		0
 	}
 	mut line_end := pos.offset+1
-	for i := 0; line_end<s.text.len; {
-		if s.text[line_end] == `\n` {
+	for i := 0; line_end<s.src.len; {
+		if s.src[line_end] == `\n` {
 			i++
 			if i == row_padding+1 { break }
 		}
 		line_end++
 	}
-	lines_src := s.text[line_start..line_end].split('\n')
-	line_no_start, _ := s.position(line_start)
+	lines_src := s.src[line_start..line_end].split('\n')
+	line_no_start, _ := s.file.find_line_and_column(line_start)
 	mut lines_formatted := []string{}
 	for i in 0..lines_src.len {
 		line_no := line_no_start+i

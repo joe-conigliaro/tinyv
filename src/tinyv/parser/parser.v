@@ -14,15 +14,15 @@ import tinyv.util
 pub struct Parser {
 	pref      &pref.Preferences
 mut:
+	file	  &token.File = &token.File{}
 	scanner   &scanner.Scanner
-	filename  string
 	// track state
 	exp_lcbr  bool // expecting `{` parsing `x` in `for|if|match x {` etc
 	exp_pt    bool // expecting (p)ossible (t)ype from `p.expr()`
 	// start token info
 	line      int
 	lit       string
-	pos       int
+	pos       token.CompactPosition
 	tok       token.Token = .unknown
 	tok_next_ token.Token = .unknown // DO NOT access directly, use `p.peek()`
 	// end token info
@@ -35,13 +35,18 @@ pub fn new_parser(prefs &pref.Preferences) &Parser {
 	} }
 }
 
-pub fn (mut p Parser) reset() {
-	p.scanner.reset()
+pub fn (mut p Parser) init(filename string, src string) {
+	// reset since parser instance may be reused
 	p.line = 0
 	p.lit = ''
 	p.pos = 0
 	p.tok = .unknown
 	p.tok_next_ = .unknown
+	// init
+	// TODO: file set. consider passing in or construct in builder
+	// p.file = file_set.add_file(filename, -1, src.len)
+	p.file = &token.File{name: filename}
+	p.scanner.init(p.file, src)
 }
 
 pub fn (mut p Parser) parse_files(files []string) []ast.File {
@@ -53,20 +58,15 @@ pub fn (mut p Parser) parse_files(files []string) []ast.File {
 }
 
 pub fn (mut p Parser) parse_file(filename string) ast.File {
-	// reset if we are reusing parser instance
-	if p.scanner.pos > 0 {
-		p.reset()
-	}
 	if !p.pref.verbose {
 		unsafe { goto start_no_time }
 	}
 	mut sw := time.new_stopwatch()
 	start_no_time:
-	p.filename = filename
-	text := os.read_file(filename) or {
+	src := os.read_file(filename) or {
 		p.error('error reading $filename')
 	}
-	p.scanner.set_text(text)
+	p.init(filename, src)
 	// start
 	p.next()
 	mut top_stmts := []ast.Stmt{}
@@ -80,10 +80,10 @@ pub fn (mut p Parser) parse_file(filename string) ast.File {
 	}
 	if p.pref.verbose {
 		parse_time := sw.elapsed()
-		println('scan & parse $filename ($p.scanner.line_offsets.len LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
+		println('scan & parse $filename ($p.file.line_count() LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
-		path: filename
+		// path: filename
 		imports: imports
 		stmts: top_stmts
 	}
@@ -194,14 +194,14 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 			}
 		}
 		else {
-			p.error('unknown top stmt: $p.tok - $p.filename:$p.line')
+			p.error('unknown top stmt: $p.tok - $p.file.name:$p.line')
 		}
 	}
 	
 }
 
 fn (mut p Parser) stmt() ast.Stmt {
-	// p.log('STMT: $p.tok - $p.filename:$p.line')
+	// p.log('STMT: $p.tok - $p.file.name:$p.line')
 	match p.tok {
 		.dollar {
 			return p.comptime_stmt()
@@ -325,7 +325,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.next()
 			}
-			if p.tok == .lsbr { panic('generic closure') }
+			if p.tok == .lsbr { p.error('generic closure') }
 			typ := p.fn_type()
 			if p.exp_pt && p.tok != .lcbr { return ast.Type(typ) }
 			lhs = ast.FnLiteral{
@@ -398,43 +398,44 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.expect(.rpar)
 		}
 		.lcbr {
+			if p.exp_lcbr {
+				p.error('unexpected `{`')
+			}
 			// shorthand map / struct init
-			if !p.exp_lcbr {
-				// NOTE: config syntax handled in `p.fn_arguments()`
-				// which afaik is the only place it's supported
-				// lhs = p.struct_init()
+			// NOTE: config syntax handled in `p.fn_arguments()`
+			// which afaik is the only place it's supported
+			// lhs = p.struct_init()
+			p.next()
+			if p.tok == .ellipsis {
+				p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
+			}
+			// empty map init `{}`
+			if p.tok == .rcbr {
 				p.next()
-				if p.tok == .ellipsis {
-					p.error('this assoc syntax is no longer supported `{...`. You must explicitly specify a type `MyType{...`')
+				return ast.MapInitExpr{}
+			}
+			// map init
+			mut keys := []ast.Expr{}
+			mut vals := []ast.Expr{}
+			for p.tok != .rcbr {
+				key := p.expr(.lowest)
+				if key is ast.InfixExpr {
+					if key.op == .pipe {
+						p.error('this assoc syntax is no longer supported `{MyType|`. Use `MyType{...` instead')
+					}
 				}
-				// empty map init `{}`
-				if p.tok == .rcbr {
+				keys << key
+				p.expect(.colon)
+				val := p.expr(.lowest)
+				vals << val
+				if p.tok == .comma {
 					p.next()
-					return ast.MapInitExpr{}
 				}
-				// map init
-				mut keys := []ast.Expr{}
-				mut vals := []ast.Expr{}
-				for p.tok != .rcbr {
-					key := p.expr(.lowest)
-					if key is ast.InfixExpr {
-						if key.op == .pipe {
-							p.error('this assoc syntax is no longer supported `{MyType|`. Use `MyType{...` instead')
-						}
-					}
-					keys << key
-					p.expect(.colon)
-					val := p.expr(.lowest)
-					vals << val
-					if p.tok == .comma {
-						p.next()
-					}
-				}
-				p.next()
-				lhs = ast.MapInitExpr{
-					keys: keys
-					vals: vals
-				}
+			}
+			p.next()
+			lhs = ast.MapInitExpr{
+				keys: keys
+				vals: vals
 			}
 		}
 		.lsbr {
@@ -953,7 +954,7 @@ fn (mut p Parser) next() {
 	} else {
 		p.tok = p.scanner.scan()
 	}
-	p.line = p.scanner.line_offsets.len
+	p.line = p.file.line_count()
 	p.lit = p.scanner.lit
 	p.pos = p.scanner.pos
 }
@@ -1703,10 +1704,10 @@ fn (mut p Parser) log(msg string) {
 
 // TEMP/TODO: move these position methods somewhere
 // consider using file / fileset position + helper fns
-fn (mut p Parser) position(pos int) token.Position {
-	line, column := p.scanner.position(pos)
+fn (mut p Parser) position(pos token.CompactPosition) token.Position {
+	line, column := p.file.find_line_and_column(pos)
 	return token.Position{
-		filename: p.filename
+		filename: p.file.name
 		line: line
 		offset: pos
 		column: column
@@ -1715,10 +1716,10 @@ fn (mut p Parser) position(pos int) token.Position {
 
 fn (mut p Parser) current_position() token.Position {
 	return token.Position{
-		filename: p.filename
+		filename: p.file.name
 		line: p.line
 		offset: p.pos
-		column: p.pos-p.scanner.line_offsets[p.line-1]+1
+		column: p.pos-p.file.line_start(p.line)+1
 	}
 }
 

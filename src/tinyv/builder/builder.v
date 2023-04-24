@@ -6,7 +6,9 @@ module builder
 import tinyv.ast
 import tinyv.gen.v as gen_v
 import tinyv.pref
+// import tinyv.token
 import tinyv.types
+// import tinyv.ir.ssa
 import time
 
 struct Builder {
@@ -23,23 +25,34 @@ pub fn new_builder(prefs &pref.Preferences) &Builder {
 
 pub fn (mut b Builder) build(files []string) {
 	mut sw := time.new_stopwatch()
+	// TODO: build here, or pass into Parser and add there?
+	// mut file_set := &token.FileSet{}
 	b.files = if b.pref.no_parallel {
 		b.parse_files(files)
 	} else {
 		b.parse_files_parallel(files)
 	}
 	parse_time := sw.elapsed()
-	// b.check_files()
+	// b.type_check_files()
+	// type_check_time := time.Duration(sw.elapsed() - parse_time)
 	b.gen_v_files()
+	// gen_v_time := time.Duration(sw.elapsed() - type_check_time)
 	gen_v_time := time.Duration(sw.elapsed() - parse_time)
 	total_time := sw.elapsed()
-	println(' * Scan & Parse: ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
-	println(' * Gen (v): ${gen_v_time.milliseconds()}ms (${gen_v_time.microseconds()}us)')
-	println(' * Total: ${total_time.milliseconds()}ms (${total_time.microseconds()}us)')
+	print_time('Scan & Parse', parse_time)
+	// print_time('Type Check', type_check_time)
+	print_time('Gen (v)', gen_v_time)
+	print_time('Total', total_time)
+
+	// for file in b.files {
+	// 	mut ssa_builder := ssa.new_builder(b.pref)
+	// 	program := ssa_builder.build_file(file)
+	// 	println(program)
+	// }
 }
 
-fn (mut b Builder) check_files() {
-	checker := types.new_checker()
+fn (mut b Builder) type_check_files() {
+	mut checker := types.new_checker()
 	checker.check_files(b.files)
 }
 
@@ -53,3 +66,6 @@ fn (mut b Builder) gen_v_files() {
 	}
 }
 
+fn print_time(title string, time_d time.Duration) {
+	println(' * $title: ${time_d.milliseconds()}ms (${time_d.microseconds()}us)')
+}
