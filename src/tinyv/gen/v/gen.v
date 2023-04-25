@@ -571,7 +571,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.indent--
 			g.write('}')
-			// g.writeln(' ==== DESUGARED ==== ')
+			// g.writeln(' ==== DeSugared MatchExpr  ==== ')
 			// g.expr(expr.desugar())
 		}
 		ast.Modifier {
@@ -584,6 +584,8 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.writeln(' or {')
 			g.stmts(expr.stmts)
 			g.write('}')
+			// g.writeln('==== DeSugared OrExpr ====')
+			// g.expr(expr.desugar())
 		}
 		ast.ParenExpr {
 			g.write('(')
