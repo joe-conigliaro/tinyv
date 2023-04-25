@@ -1121,8 +1121,6 @@ fn (mut p Parser) comptime_stmt() ast.Stmt {
 	}
 }
 
-
-// TODO: should we use string or LabelStmt/Ident
 fn (mut p Parser) for_stmt() ast.ForStmt {
 	p.next()
 	exp_lcbr := p.exp_lcbr
