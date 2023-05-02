@@ -162,6 +162,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.type_decl(false)
 		}
 		.lsbr {
+			// NOTE: could also return AttributeStmt{attributes: attributes, stmt: stmt}
 			attributes := p.attributes()
 			mut is_pub := false
 			if p.tok == .key_pub {
@@ -240,8 +241,8 @@ fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.lcbr {
-			// anonymous block `{ a := 1 }`
-			return ast.Block {
+			// anonymous / scoped block `{ a := 1 }`
+			return ast.BlockStmt {
 				stmts: p.block()
 			}
 		}
@@ -304,9 +305,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	mut line := p.line
 	mut lhs := ast.empty_expr
 	match p.tok {
-		.char, .key_true, .key_false, .number, .string {
+		.char, .key_true, .key_false, .number {
 			lhs = ast.BasicLiteral{
 				kind: p.tok
+				value: p.lit()
+			}
+		}
+		.string {
+			info := p.scanner.info.string_literal()
+			lhs = ast.StringLiteral{
+				kind: info.kind
+				quote: info.quote
 				value: p.lit()
 			}
 		}
@@ -676,6 +685,34 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				else { lhs = p.ident() }
 			}
+			// typ := p.ident_or_named_type()
+			// lhs = typ
+			// if typ is ast.Type {
+			// 	if typ is ast.MapType {
+			// 		if p.exp_pt && p.tok != .lcbr { return lhs }
+			// 		p.expect(.lcbr)
+			// 		p.expect(.rcbr)
+			// 		return ast.MapInitExpr{typ: lhs}
+			// 	}
+			// 	else if typ is ast.ChannelType {
+			// 		if p.exp_pt && p.tok != .lcbr { return lhs }
+			// 		mut cap := ast.empty_expr
+			// 		p.expect(.lcbr)
+			// 		for p.tok != .rcbr {
+			// 			key := p.expect_name()
+			// 			match key {
+			// 				'cap' {}
+			// 				else { p.error('unknown channel attribute `$key`') }
+			// 			}
+			// 			p.expect(.colon)
+			// 			cap = p.expr(.lowest)
+			// 		}
+			// 		p.next()
+			// 		// chan_type := ast.Type(ast.ChannelType{elem_type: elem_type, cap: cap})
+			// 		return ast.ChannelInitExpr{typ: lhs, cap: cap}
+			// 	}
+			// }
+			// lhs = typ
 			// NOTE: since we're returning struct init here, we complete the selector
 			// but if we move the init to expr loop then we can use if instead of for
 			// if p.tok == .dot {
@@ -1153,7 +1190,7 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 			value = p.expect_name()
 		}
 		p.expect(.key_in)
-		init = ast.ForIn{
+		init = ast.ForInStmt{
 			key: key
 			value: value
 			value_is_mut: value_is_mut
@@ -1361,24 +1398,22 @@ fn (mut p Parser) fn_parameters() []ast.Parameter {
 	p.expect(.lpar)
 	mut params := []ast.Parameter{}
 	for p.tok != .rpar {
+		// TODO: parse all modifiers (shared)
 		is_mut := p.tok == .key_mut
 		if is_mut { p.next() }
-		// TODO: proper
 		mut typ := p.expect_type()
 		mut name := ''
-		if p.tok == .name {
+		if p.tok !in [.comma, .rpar] {
 			name = (typ as ast.Ident).name
 			typ = p.expect_type()
-		}
-		// name := if p.tok == .name && p.tok_next_ != .dot { p.expect_name() } else { 'param_$params.len' }
-		// typ := if p.tok !in [.comma, .rpar] { p.expect_type() } else { ast.empty_expr }
-		if p.tok == .comma {
-			p.next()
 		}
 		params << ast.Parameter{
 			name: name
 			typ: typ
 			is_mut: is_mut
+		}
+		if p.tok == .comma {
+			p.next()
 		}
 	}
 	p.next()
@@ -1620,6 +1655,7 @@ fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 		if p.tok == .colon {
 			match mut value {
 				ast.BasicLiteral { field_name = value.value }
+				ast.StringLiteral { field_name = value.value }
 				ast.Ident { field_name = value.name }
 				else { p.error('expected field name, got $value.type_name()') }
 			}
@@ -1688,6 +1724,14 @@ fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
 	}
 	return ast.Language.v, name
 }
+
+// fn (mut p Parser) ident_or_type() ast.Expr {
+// 	match p.tok {
+// 		.key_mut, /*.key_atomic,*/ .key_shared, .key_static {
+// 			return p.
+// 		}
+// 	}
+// }
 
 [inline]
 fn (mut p Parser) ident() ast.Ident {

@@ -26,7 +26,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 			if mod.name in parsed_imports {
 				continue
 			}
-			mod_path := b.pref.get_module_path(mod.name, ast_file.path)
+			mod_path := b.pref.get_module_path(mod.name, ast_file.name)
 			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path))
 			parsed_imports << mod.name
 		}

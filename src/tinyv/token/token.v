@@ -3,6 +3,20 @@
 // that can be found in the LICENSE file.
 module token
 
+pub enum StringLiteralKind {
+	c
+	raw
+	v
+}
+
+pub fn (s StringLiteralKind) str() string {
+	return match s {
+		.c { 'c' }
+		.raw { 'r' }
+		.v { 'v' }
+	}
+}
+
 pub enum Token {
 	amp // &
 	and // &&

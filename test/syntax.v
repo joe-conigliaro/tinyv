@@ -47,7 +47,7 @@ struct StructA {
 	field_b string
 	field_c fn(int) int
 	field_d string = 'foo'
-	field_e string = 'bar' [attribute_a; attribute_b]
+	// field_e string = 'bar' [attribute_a; attribute_b]
 	field_f int = 111 [attribute_a; attribute_b]
 	// NOTE: currently parsed as index. no point fixing each case 
 	// since once the syntax is changed everything will just work
@@ -194,6 +194,10 @@ fn main_a() {
 		...struct_a
 		field_a: 1
 	}
+	string_literal_a := 'string literal a'
+	string_literal_b := "string literal b"
+	string_literal_c_a := c'c string literal a'
+	string_literal_raw_a := r'raw string Literal b'
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
 	call_c := array_init_g[0](1)

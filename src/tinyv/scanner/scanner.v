@@ -6,10 +6,18 @@ module scanner
 import tinyv.token
 import tinyv.pref
 
-enum StringLiteralKind {
-	c
-	raw
-	v
+type EmptyInfo = u8
+type Info = EmptyInfo | StringLiteralInfo
+const empty_info = Info(EmptyInfo(0))
+
+struct StringLiteralInfo {
+pub:
+	kind token.StringLiteralKind
+	quote u8
+}
+
+pub fn (i Info) string_literal() StringLiteralInfo {
+	return i as StringLiteralInfo
 }
 
 pub struct Scanner {
@@ -22,6 +30,7 @@ pub mut:
 	offset int // current char offset
 	pos    int // token offset (start of current token)
 	lit    string
+	info   Info
 }
 
 pub fn new_scanner(prefs &pref.Preferences, scan_comments bool) &Scanner {
@@ -39,6 +48,7 @@ pub fn (mut s Scanner) init(file &token.File, src string) {
 	// init
 	s.file = unsafe { file }
 	s.src = src
+	s.info = empty_info
 }
 
 [direct_array_access]
@@ -85,13 +95,19 @@ pub fn (mut s Scanner) scan() token.Token {
 		// `c'c string"` | `r'raw string'`
 		if s.src[s.offset] in [`'`, `"`] {
 			// TODO: maybe move & need to make use of these
-			string_lit_kind := if c == `c` { StringLiteralKind.c } 
-				else if c == `r` { StringLiteralKind.raw }
-				else { panic('unknown string prefix `$c`') /* :) */ StringLiteralKind.v }
+			string_lit_kind := if c == `c` { token.StringLiteralKind.c } 
+				else if c == `r` { token.StringLiteralKind.raw }
+				else { panic('unknown string prefix `$c`') /* :) */ token.StringLiteralKind.v }
+			c_quote := s.src[s.offset]
 			// TODO: need a way to use the correct quote when string includes quotes
 			// best done before gen so it wont need to worry about it (prob parser)
 			s.string_literal(string_lit_kind)
 			s.lit = s.src[s.pos+2..s.offset-1]
+			// NOTE: i'm not sure if this is useful enough to keep, it saves
+			// re checkin information in parser we have alrerady checked here
+			// however it might be better just to do it the normal way and
+			// remove this all together! just an idea.
+			s.info = StringLiteralInfo{kind: string_lit_kind, quote: c_quote}
 			return .string
 		}
 		// keyword | name
@@ -114,6 +130,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	else if c in [`'`, `"`] {
 		s.string_literal(.v)
 		s.lit = s.src[s.pos+1..s.offset-1]
+		s.info = StringLiteralInfo{kind: .v, quote: c}
 		return .string
 	}
 	// byte (char) `a`
@@ -390,19 +407,30 @@ fn (mut s Scanner) comment() {
 }
 
 [direct_array_access]
-fn (mut s Scanner) string_literal(kind StringLiteralKind) {
+fn (mut s Scanner) string_literal(kind token.StringLiteralKind) {
 	c_quote := s.src[s.offset]
 	s.offset++
+	// shortcut raw strings
+	if kind == .raw {
+		for s.src[s.offset] != c_quote && s.offset < s.src.len {
+			s.offset++
+		}
+		s.offset++
+		return
+	}
+	// everything else
 	mut in_interpolation := false
 	for s.offset < s.src.len {
 		c2 := s.src[s.offset]
 		c3 := s.src[s.offset+1]
 		// skip escape \n | \'
 		if c2 == `\\` && kind != .raw {
+		// if c2 == `\\` {
 			s.offset+=2
 			continue
 		}
 		else if c2 == `\n` && kind != .raw {
+		// else if c2 == `\n` {
 			s.offset++
 			s.file.add_line(s.offset)
 			continue
@@ -417,10 +445,10 @@ fn (mut s Scanner) string_literal(kind StringLiteralKind) {
 		// for efficiency rather than doing it later in parser, I still
 		// don't think I want to break strings apart in scanner though
 		// else if c2 == `$` {}
+		// Actually, with the v style interpolation this won't be possible.
+		// I will just break them apart so I can parse exprs in parser.
 		// TODO: since support for non escaped quotes inside ${} was added
-		// i will need to do some checking here, I still would prefer to store
-		// positions here and scan it as a whole string.. then parser can use
-		// the positions. I may change my mind about this. needs more thought.
+		// i will need to do some checking here
 		else if c2 == c_quote && !in_interpolation {
 			s.offset++
 			break

@@ -19,13 +19,13 @@ pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | Ident | IfExpr
 	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
 	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
-	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StructInitExpr
-	| Tuple | Type | UnsafeExpr
+	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StringLiteral
+	| StructInitExpr | Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
-pub type Stmt = AssertStmt | AssignStmt | Block | ConstDecl | DeferStmt
+pub type Stmt = AssertStmt | AssignStmt | BlockStmt | ConstDecl | DeferStmt
 	| ComptimeStmt | Directive | EmptyStmt | EnumDecl | ExprStmt
-	| FlowControlStmt | FnDecl | ForStmt | ForIn | GlobalDecl | ImportStmt
+	| FlowControlStmt | FnDecl | ForStmt | ForInStmt | GlobalDecl | ImportStmt
 	| InterfaceDecl | LabelStmt | ModuleStmt | ReturnStmt | StructDecl | TypeDecl
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
@@ -36,7 +36,7 @@ pub type Type = ArrayType | ArrayFixedType | ChannelType | FnType | MapType
 // File (AST container)
 pub struct File {
 pub:
-	path       string
+	name       string
 	// attributes []Attribute
 	stmts      []Stmt
 	imports    []ImportStmt
@@ -264,6 +264,13 @@ pub:
 	expr Expr
 }
 
+pub struct StringLiteral {
+pub:
+	kind  token.StringLiteralKind
+	quote rune
+	value string
+}
+
 pub struct StructInitExpr {
 pub:
 	typ    Expr
@@ -295,7 +302,7 @@ pub:
 	comptime_cond Expr
 }
 
-pub struct Block {
+pub struct BlockStmt {
 pub:
 	stmts []Stmt
 }
@@ -363,12 +370,16 @@ pub:
 }
 
 // NOTE: used as the initializer for ForStmt
-pub struct ForIn {
+pub struct ForInStmt {
 pub:
 	key   		 string
 	value 		 string
 	value_is_mut bool
-	expr  		 Expr
+	expr	     Expr
+	// TODO:
+	// key   		 Expr = empty_expr
+	// value 		 Expr
+	// expr  		 Expr
 }
 
 pub struct GlobalDecl {

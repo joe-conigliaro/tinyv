@@ -61,7 +61,7 @@ pub fn (mut g Gen) gen(file ast.File) {
 	g.stmts(g.file.stmts)
 	if g.pref.verbose {
 		gen_time := sw.elapsed()
-		println('gen (v) $file.path: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
+		println('gen (v) $file.name: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
 	}
 }
 
@@ -86,7 +86,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.expr_list(stmt.rhs, ', ')
 			if !g.in_init { g.writeln('') }
 		}
-		ast.Block {
+		ast.BlockStmt {
 			g.writeln('{')
 			g.stmts(stmt.stmts)
 			g.writeln('}')
@@ -201,7 +201,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.in_init = true
 			mut is_plain := true
 			mut has_init := stmt.init !is ast.EmptyStmt
-			if has_init && stmt.init is ast.ForIn {
+			if has_init && stmt.init is ast.ForInStmt {
 				is_plain = false
 				g.stmt(stmt.init)
 			} else {
@@ -228,7 +228,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
-		ast.ForIn {
+		ast.ForInStmt {
 			if stmt.key.len > 0 {
 				g.write(stmt.key)
 				g.write(', ')
@@ -424,13 +424,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(expr.value)
 				g.write('`')
 			}
-			else if expr.kind == .string {
-				// TODO: proper (also raw etc)
-				quote := if expr.value.contains("'") { '"' } else { "'" }
-				g.write(quote)
-				g.write(expr.value)
-				g.write(quote)
-			}
 			else {
 				g.write(expr.value)
 			}
@@ -614,6 +607,18 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.SpawnExpr {
 			g.write('spawn ')
 			g.expr(expr.expr)
+		}
+		ast.StringLiteral {
+			// TODO: proper (also raw etc)
+			if expr.kind != .v {
+				g.write(expr.kind.str())
+			}
+			// TODO: correct quote
+			// quote := if expr.value.contains("'") { '"' } else { "'" }
+			quote := expr.quote.str()
+			g.write(quote)
+			g.write(expr.value)
+			g.write(quote)
 		}
 		ast.StructInitExpr {
 			g.expr(expr.typ)

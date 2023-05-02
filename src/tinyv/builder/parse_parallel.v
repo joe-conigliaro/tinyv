@@ -53,7 +53,7 @@ fn (mut pstate ParsingSharedState) worker(prefs &pref.Preferences, ch_in chan st
 					continue
 				}
 				pstate.mark_module_as_parsed(mod.name)
-				mod_path := prefs.get_module_path(mod.name, ast_file.path)
+				mod_path := prefs.get_module_path(mod.name, ast_file.name)
 				pstate.queue_files(ch_in, get_v_files_from_dir(mod_path))
 			}
 		}
