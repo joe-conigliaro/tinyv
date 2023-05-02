@@ -53,3 +53,10 @@ I love the simplicity of V, although over time the complexity of the compiler ha
    - V (working): AST -> V Generates V code from the AST, useful for testing the parser
    - x64 (planned): IR -> x64 machine code
    - C (under consideration)
+
+## Running tinyv
+```bash
+ln -s /path/to/code/tinyv/src/tinyv $HOME/.vmodules/tinyv
+v run src/cmd/tinyv/tinyv.v --skip-builtin --skip-imports -d test/syntax.v
+```
+
