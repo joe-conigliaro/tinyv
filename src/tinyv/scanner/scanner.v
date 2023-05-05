@@ -6,23 +6,15 @@ module scanner
 import tinyv.token
 import tinyv.pref
 
-type EmptyInfo = u8
-type Info = EmptyInfo | StringLiteralInfo
-const empty_info = Info(EmptyInfo(0))
-
-struct StringLiteralInfo {
-pub:
-	kind token.StringLiteralKind
-	quote u8
-}
-
-pub fn (i Info) string_literal() StringLiteralInfo {
-	return i as StringLiteralInfo
+[flag]
+pub enum Mode {
+	scan_comments
+	skip_interpolation
 }
 
 pub struct Scanner {
-	pref          &pref.Preferences
-	scan_comments bool
+	pref   &pref.Preferences
+	mode   Mode
 mut:
 	file   &token.File = &token.File{}
 	src    string
@@ -30,13 +22,18 @@ pub mut:
 	offset int // current char offset
 	pos    int // token offset (start of current token)
 	lit    string
-	info   Info
+	// strings literals & interpolation
+	in_str 	     bool
+	in_str_inter bool
+	str_inter_cbr_depth int
+	str_kind     token.StringLiteralKind
+	str_quote    u8
 }
 
-pub fn new_scanner(prefs &pref.Preferences, scan_comments bool) &Scanner {
+pub fn new_scanner(prefs &pref.Preferences, mode Mode) &Scanner {
 	unsafe { return &Scanner{
 		pref: prefs
-		scan_comments: scan_comments
+		mode: mode
 	} }
 }
 
@@ -45,15 +42,24 @@ pub fn (mut s Scanner) init(file &token.File, src string) {
 	s.offset = 0
 	s.pos = 0
 	s.lit = ''
+	// s.in_str = false
+	// s.in_str_inter = false
+	// s.str_inter_cbr_depth = 0
 	// init
 	s.file = unsafe { file }
 	s.src = src
-	s.info = empty_info
 }
 
 [direct_array_access]
 pub fn (mut s Scanner) scan() token.Token {
 	start:
+	// before whitespace call to keep whitepsaces in string
+	if !s.mode.has(.skip_interpolation) && s.in_str && !s.in_str_inter {
+		s.pos = s.offset
+		s.string_literal(false, s.str_quote)
+		s.lit = s.src[s.pos..s.offset]
+		return .string
+	}
 	s.whitespace()
 	if s.offset == s.src.len {
 		s.lit = ''
@@ -68,7 +74,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		// comment
 		if c2 in [`/`, `*`] {
 			s.comment()
-			if !s.scan_comments {
+			if !s.mode.has(.scan_comments) {
 				unsafe { goto start }
 			}
 			s.lit = s.src[s.pos..s.offset]
@@ -92,28 +98,25 @@ pub fn (mut s Scanner) scan() token.Token {
 	// c/raw string | keyword | name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
 		s.offset++
+		c2 := s.src[s.offset]
 		// `c'c string"` | `r'raw string'`
-		if s.src[s.offset] in [`'`, `"`] {
-			// TODO: maybe move & need to make use of these
+		if c2 in [`'`, `"`] {
+			// TODO: parser should probably handle this
 			string_lit_kind := if c == `c` { token.StringLiteralKind.c } 
 				else if c == `r` { token.StringLiteralKind.raw }
-				else { panic('unknown string prefix `$c`') /* :) */ token.StringLiteralKind.v }
-			c_quote := s.src[s.offset]
-			// TODO: need a way to use the correct quote when string includes quotes
-			// best done before gen so it wont need to worry about it (prob parser)
-			s.string_literal(string_lit_kind)
-			s.lit = s.src[s.pos+2..s.offset-1]
-			// NOTE: i'm not sure if this is useful enough to keep, it saves
-			// re checkin information in parser we have alrerady checked here
-			// however it might be better just to do it the normal way and
-			// remove this all together! just an idea.
-			s.info = StringLiteralInfo{kind: string_lit_kind, quote: c_quote}
+				else { panic('unknown string prefix `${c.ascii_str()}`') /* :) */ token.StringLiteralKind.v }
+			s.offset++
+			s.str_quote = c2
+			s.str_kind = string_lit_kind
+			s.string_literal(string_lit_kind == .raw, c2)
+			// s.lit = s.src[s.pos+2..s.offset-1]
+			s.lit = s.src[s.pos..s.offset]
 			return .string
 		}
 		// keyword | name
 		for s.offset < s.src.len {
-			c2 := s.src[s.offset]
-			if  (c2 >= `a` && c2 <= `z`) || (c2 >= `A` && c2 <= `Z`) || (c2 >= `0` && c2 <= `9`) || c2 == `_` {
+			c3 := s.src[s.offset]
+			if  (c3 >= `a` && c3 <= `z`) || (c3 >= `A` && c3 <= `Z`) || (c3 >= `0` && c3 <= `9`) || c3 == `_` {
 				s.offset++
 				continue
 			}
@@ -128,9 +131,13 @@ pub fn (mut s Scanner) scan() token.Token {
 	}
 	// string
 	else if c in [`'`, `"`] {
-		s.string_literal(.v)
-		s.lit = s.src[s.pos+1..s.offset-1]
-		s.info = StringLiteralInfo{kind: .v, quote: c}
+		s.offset++
+		s.str_kind = .v
+		if !s.in_str_inter {
+			s.str_quote = c
+		}
+		s.string_literal(s.in_str_inter, c)
+		s.lit = s.src[s.pos+1..s.offset]
 		return .string
 	}
 	// byte (char) `a`
@@ -329,8 +336,21 @@ pub fn (mut s Scanner) scan() token.Token {
 		`~` { return .bit_not }
 		`,` { return .comma }
 		`$` { return .dollar }
-		`{` { return .lcbr }
-		`}` { return .rcbr }
+		`{` {
+			if s.in_str_inter {
+				s.str_inter_cbr_depth++
+			}
+			return .lcbr
+		}
+		`}` {
+			if s.in_str_inter {
+				s.str_inter_cbr_depth--
+				if s.str_inter_cbr_depth == 0 {
+					s.in_str_inter = false			
+				}
+			}
+			return .rcbr
+		}
 		`(` { return .lpar }
 		`)` { return .rpar }
 		`[` { return .lsbr }
@@ -407,49 +427,43 @@ fn (mut s Scanner) comment() {
 }
 
 [direct_array_access]
-fn (mut s Scanner) string_literal(kind token.StringLiteralKind) {
-	c_quote := s.src[s.offset]
-	s.offset++
-	// shortcut raw strings
-	if kind == .raw {
-		for s.src[s.offset] != c_quote && s.offset < s.src.len {
+fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
+	// shortcut, scan whole string
+	if scan_as_raw {
+		for s.offset < s.src.len && s.src[s.offset] != c_quote {
 			s.offset++
 		}
 		s.offset++
 		return
 	}
-	// everything else
-	mut in_interpolation := false
+	skip_interpolation := s.mode.has(.skip_interpolation)
+	// normal strings
 	for s.offset < s.src.len {
 		c2 := s.src[s.offset]
 		c3 := s.src[s.offset+1]
 		// skip escape \n | \'
-		if c2 == `\\` && kind != .raw {
-		// if c2 == `\\` {
+		if c2 == `\\` {
 			s.offset+=2
 			continue
 		}
-		else if c2 == `\n` && kind != .raw {
-		// else if c2 == `\n` {
+		else if c2 == `\n` {
 			s.offset++
 			s.file.add_line(s.offset)
 			continue
 		}
+		// TODO: optimize branches below
 		else if c2 == `$` && c3 == `{` {
-			in_interpolation = true
+			s.in_str = true
+			s.in_str_inter = true
+			if !skip_interpolation {
+				return
+			}
 		}
-		else if c2 == `}` && in_interpolation {
-			in_interpolation = false
+		else if skip_interpolation && c2 == `}` && s.in_str_inter {
+			s.in_str_inter = false
 		}
-		// TODO: I will probably store replacement positions in scanner
-		// for efficiency rather than doing it later in parser, I still
-		// don't think I want to break strings apart in scanner though
-		// else if c2 == `$` {}
-		// Actually, with the v style interpolation this won't be possible.
-		// I will just break them apart so I can parse exprs in parser.
-		// TODO: since support for non escaped quotes inside ${} was added
-		// i will need to do some checking here
-		else if c2 == c_quote && !in_interpolation {
+		else if c2 == c_quote && !s.in_str_inter {
+			s.in_str = false
 			s.offset++
 			break
 		}

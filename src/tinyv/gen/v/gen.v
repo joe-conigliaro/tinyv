@@ -609,13 +609,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 		}
 		ast.StringLiteral {
-			// TODO: proper (also raw etc)
 			if expr.kind != .v {
 				g.write(expr.kind.str())
 			}
-			// TODO: correct quote
 			// quote := if expr.value.contains("'") { '"' } else { "'" }
-			quote := expr.quote.str()
+			quote := expr.quote.ascii_str()
 			g.write(quote)
 			g.write(expr.value)
 			g.write(quote)

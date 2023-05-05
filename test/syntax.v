@@ -194,10 +194,10 @@ fn main_a() {
 		...struct_a
 		field_a: 1
 	}
-	string_literal_a := 'string literal a'
-	string_literal_b := "string literal b"
+	string_literal_v_a := 'string literal a'
+	string_literal_v_b := "string literal b"
 	string_literal_c_a := c'c string literal a'
-	string_literal_raw_a := r'raw string Literal b'
+	string_literal_raw_a := r'string $literal raw a'
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
 	call_c := array_init_g[0](1)

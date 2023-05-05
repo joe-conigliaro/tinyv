@@ -264,11 +264,52 @@ pub:
 	expr Expr
 }
 
+// TODO: finish
 pub struct StringLiteral {
 pub:
-	kind  token.StringLiteralKind
-	quote rune
-	value string
+	kind   token.StringLiteralKind
+	quote  u8
+	value  string
+	inters []StringInter
+}
+
+pub struct StringInter {
+	format    StringInterFormat
+	width     int
+	precision int
+	expr      Expr
+}
+
+enum StringInterFormat {
+	binary
+	exponent
+	exponent_short
+	float
+	hex
+	octal
+}
+
+fn string_inter_format_from_string(c string) StringInterFormat {
+	return match c {
+		'b' 	 { .binary }
+		'e', 'E' { .exponent }
+		'g', 'G' { .exponent_short }
+		'f', 'F' { .float }
+		'x', 'X' { .hex }
+		'o' 	 { .octal }
+		else     { panic('unknown formatter `$c`') }
+	}
+}
+
+pub fn (sif StringInterFormat) str() string {
+	return match sif {
+		.binary 	    { 'b' }
+		.exponent 		{ 'e' }
+		.exponent_short { 'g' }
+		.float			{ 'f' }
+		.hex			{ 'x' }
+		.octal			{ 'o' }
+	}
 }
 
 pub struct StructInitExpr {

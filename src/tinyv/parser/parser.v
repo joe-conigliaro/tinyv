@@ -31,7 +31,8 @@ mut:
 pub fn new_parser(prefs &pref.Preferences) &Parser {
 	unsafe { return &Parser{
 		pref: prefs
-		scanner: scanner.new_scanner(prefs, false)
+		scanner: scanner.new_scanner(prefs, scanner.Mode(0))
+		// scanner: scanner.new_scanner(prefs, .skip_interpolation)
 	} }
 }
 
@@ -83,7 +84,7 @@ pub fn (mut p Parser) parse_file(filename string) ast.File {
 		println('scan & parse $filename ($p.file.line_count() LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
-		// path: filename
+		name: filename
 		imports: imports
 		stmts: top_stmts
 	}
@@ -312,11 +313,44 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.string {
-			info := p.scanner.info.string_literal()
+			// mut value := p.lit()
+			mut value := ''
+			mut exprs := []ast.Expr{}
+			for p.tok == .string {
+				value += p.lit()
+				// TODO: try not to rely on scanner fields, only read in tokens
+				if p.scanner.in_str_inter && p.tok == .dollar {
+					p.next()
+					p.expect(.lcbr)
+					value += '%'
+					exprs << p.expr(.lowest)
+					// TODO: proper
+					if p.tok == .colon {
+						p.next()
+						// TODO: should be part of numver in scanner?
+						if p.tok == .dot {
+							p.next()
+						}
+						if p.tok == .minus {
+							p.next()
+						}
+						else if p.tok == .plus {
+							p.next()
+						}
+						if p.tok == .number {
+							_ = p.lit()
+						}
+						if p.tok == .name {
+							_ = p.lit()
+						}
+					}
+					p.expect(.rcbr)
+				}
+			}
 			lhs = ast.StringLiteral{
-				kind: info.kind
-				quote: info.quote
-				value: p.lit()
+				kind: p.scanner.str_kind
+				quote: p.scanner.str_quote
+				value: value
 			}
 		}
 		.key_fn {
