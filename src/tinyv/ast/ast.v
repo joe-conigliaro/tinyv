@@ -19,8 +19,8 @@ pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | Ident | IfExpr
 	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
 	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
-	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StringLiteral
-	| StructInitExpr | Tuple | Type | UnsafeExpr
+	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StringInterLiteral
+    | StringLiteral | StructInitExpr | Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = AssertStmt | AssignStmt | BlockStmt | ConstDecl | DeferStmt
@@ -264,51 +264,71 @@ pub:
 	expr Expr
 }
 
-// TODO: finish
+// NOTE: I'm using two nodes StringLiteral & StringInterLiteral
+// to avoid the extra array allocations when not needed. 
 pub struct StringLiteral {
 pub:
 	kind   token.StringLiteralKind
 	quote  u8
 	value  string
+}
+
+pub struct StringInterLiteral {
+pub:
+	kind   token.StringLiteralKind
+	quote  u8
+	values []string
 	inters []StringInter
 }
 
 pub struct StringInter {
+pub:
 	format    StringInterFormat
 	width     int
 	precision int
 	expr      Expr
 }
 
-enum StringInterFormat {
+pub enum StringInterFormat {
+	unformatted
 	binary
+	character
+	decimal
 	exponent
 	exponent_short
 	float
 	hex
 	octal
+	string
 }
 
-fn string_inter_format_from_string(c string) StringInterFormat {
+pub fn string_inter_format_from_u8(c u8) !StringInterFormat {
 	return match c {
-		'b' 	 { .binary }
-		'e', 'E' { .exponent }
-		'g', 'G' { .exponent_short }
-		'f', 'F' { .float }
-		'x', 'X' { .hex }
-		'o' 	 { .octal }
-		else     { panic('unknown formatter `$c`') }
+		`b` 	 { .binary }
+		`c`      { .character }
+		`d`      { .decimal }
+		`e`, `E` { .exponent }
+		`g`, `G` { .exponent_short }
+		`f`, `F` { .float }
+		`x`, `X` { .hex }
+		`o` 	 { .octal }
+		`s`		 { .string }
+		else     { error('unknown formatter `${c.ascii_str()}`') }
 	}
 }
 
 pub fn (sif StringInterFormat) str() string {
 	return match sif {
+		.unformatted	{ '' }
 		.binary 	    { 'b' }
+		.character      { 'c' }
+		.decimal        { 'd' }
 		.exponent 		{ 'e' }
 		.exponent_short { 'g' }
 		.float			{ 'f' }
 		.hex			{ 'x' }
 		.octal			{ 'o' }
+		.string         { 's' }
 	}
 }
 

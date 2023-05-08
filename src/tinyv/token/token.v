@@ -5,16 +5,37 @@ module token
 
 pub enum StringLiteralKind {
 	c
+	js
 	raw
 	v
 }
 
 pub fn (s StringLiteralKind) str() string {
 	return match s {
-		.c { 'c' }
+		.c   { 'c' }
+		.js  { 'js' }
 		.raw { 'r' }
-		.v { 'v' }
+		.v   { 'v' }
 	}
+}
+
+[direct_array_access]
+pub fn string_literal_kind_from_string(s string) !StringLiteralKind {
+	match s[0] {
+		`c` {
+			return .c
+		}
+		`j` {
+			if s[1] == `s` {
+				return .js
+			}
+		}
+		`r`  {
+			return .raw
+		}
+		else {}
+	}
+	return error('invalid string prefix `${s}`')
 }
 
 pub enum Token {
@@ -126,7 +147,7 @@ pub enum Token {
 	rpar // )
 	rsbr // ]
 	semicolon // ;
-	// str_dollar
+	str_dollar
 	// str_inter // 'name=$user.name'
 	string // 'foo'
 	unknown
@@ -339,7 +360,7 @@ pub fn (t Token) str() string {
 		.rpar { ')' }
 		.rsbr { ']' }
 		.semicolon { ';' }
-		// .str_dollar { '$2' }
+		.str_dollar { '\${' }
 		.string { 'string' }
 		.unknown { 'unknown' }
 		.xor { '^' }

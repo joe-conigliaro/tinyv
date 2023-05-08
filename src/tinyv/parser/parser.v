@@ -313,45 +313,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.string {
-			// mut value := p.lit()
-			mut value := ''
-			mut exprs := []ast.Expr{}
-			for p.tok == .string {
-				value += p.lit()
-				// TODO: try not to rely on scanner fields, only read in tokens
-				if p.scanner.in_str_inter && p.tok == .dollar {
-					p.next()
-					p.expect(.lcbr)
-					value += '%'
-					exprs << p.expr(.lowest)
-					// TODO: proper
-					if p.tok == .colon {
-						p.next()
-						// TODO: should be part of numver in scanner?
-						if p.tok == .dot {
-							p.next()
-						}
-						if p.tok == .minus {
-							p.next()
-						}
-						else if p.tok == .plus {
-							p.next()
-						}
-						if p.tok == .number {
-							_ = p.lit()
-						}
-						if p.tok == .name {
-							_ = p.lit()
-						}
-					}
-					p.expect(.rcbr)
-				}
-			}
-			lhs = ast.StringLiteral{
-				kind: p.scanner.str_kind
-				quote: p.scanner.str_quote
-				value: value
-			}
+			lhs = p.string_literal(.v)
 		}
 		.key_fn {
 			p.next()
@@ -717,7 +679,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					lhs = ast.Ident{name: 'chan'}
 				}
-				else { lhs = p.ident() }
+				else {
+					name := p.lit()
+					if p.tok == .string {
+						kind := token.string_literal_kind_from_string(name) or {
+							p.error(err.msg())
+						}
+						lhs = p.string_literal(kind)
+					} else {
+						lhs = ast.Ident{name: name}
+					}
+				}
 			}
 			// typ := p.ident_or_named_type()
 			// lhs = typ
@@ -1711,6 +1683,78 @@ fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 	}
 	p.next()
 	return ast.StructInitExpr{typ: typ, fields: fields}
+}
+
+fn (mut p Parser) string_literal(kind token.StringLiteralKind) ast.Expr {
+	value0 := p.lit()
+	if p.tok != .str_dollar {
+		return ast.StringLiteral{
+			kind:  kind
+			quote: p.scanner.str_quote
+			value: value0
+	    }
+	}
+	mut values := []string{}
+	mut inters := []ast.StringInter{}
+	values << value0
+	p.next()
+	p.expect(.lcbr)
+	inters << p.string_inter()
+	p.expect(.rcbr)
+	for p.tok == .string {
+		value := p.lit()
+		values << value
+		if p.tok == .str_dollar {
+			p.next()
+			p.expect(.lcbr)
+			inters << p.string_inter()
+			p.expect(.rcbr)
+		}
+	}
+	return ast.StringInterLiteral{
+		kind: kind
+		quote: p.scanner.str_quote
+		values: values
+		inters: inters
+	}
+}
+
+// TODO: finish
+fn (mut p Parser) string_inter() ast.StringInter {
+	expr := p.expr(.lowest)
+	mut format := ast.StringInterFormat.unformatted
+	// TODO: proper
+	if p.tok == .colon {
+		p.next()
+		// TODO:
+		if p.tok in [.dot, .number, .minus, .plus] {
+			number_expr := p.expr(.lowest)
+			_ = number_expr
+		}
+		// TODO: .dot should be part of number in scanner?
+		// if p.tok == .dot {
+		// 	p.next()
+		// }
+		// if p.tok == .minus {
+		// 	p.next()
+		// }
+		// else if p.tok == .plus {
+		// 	p.next()
+		// }
+		// if p.tok == .number {
+		// 	_ = p.lit()
+		// }
+		if p.tok == .name {
+			format = ast.string_inter_format_from_u8(p.lit[0]) or {
+				p.error(err.msg())
+			}
+			p.next()
+		}
+	}
+	return ast.StringInter {
+		format: format
+		expr: expr
+	}
 }
 
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {

@@ -15,6 +15,7 @@ pub enum Mode {
 pub struct Scanner {
 	pref   &pref.Preferences
 	mode   Mode
+	skip_interpolation bool
 mut:
 	file   &token.File = &token.File{}
 	src    string
@@ -23,17 +24,17 @@ pub mut:
 	pos    int // token offset (start of current token)
 	lit    string
 	// strings literals & interpolation
-	in_str 	     bool
-	in_str_inter bool
+	in_str_incomplete   bool
+	in_str_inter        bool
 	str_inter_cbr_depth int
-	str_kind     token.StringLiteralKind
-	str_quote    u8
+	str_quote u8
 }
 
 pub fn new_scanner(prefs &pref.Preferences, mode Mode) &Scanner {
 	unsafe { return &Scanner{
 		pref: prefs
 		mode: mode
+		skip_interpolation: mode.has(.skip_interpolation)
 	} }
 }
 
@@ -42,7 +43,7 @@ pub fn (mut s Scanner) init(file &token.File, src string) {
 	s.offset = 0
 	s.pos = 0
 	s.lit = ''
-	// s.in_str = false
+	// s.in_str_incomplete = false
 	// s.in_str_inter = false
 	// s.str_inter_cbr_depth = 0
 	// init
@@ -52,14 +53,17 @@ pub fn (mut s Scanner) init(file &token.File, src string) {
 
 [direct_array_access]
 pub fn (mut s Scanner) scan() token.Token {
-	start:
 	// before whitespace call to keep whitepsaces in string
-	if !s.mode.has(.skip_interpolation) && s.in_str && !s.in_str_inter {
+	// NOTE: before start: simply for a little more efficiency
+	// if !s.skip_interpolation && s.in_str_incomplete {
+	if s.in_str_incomplete {
+		s.in_str_incomplete = false
 		s.pos = s.offset
 		s.string_literal(false, s.str_quote)
 		s.lit = s.src[s.pos..s.offset]
 		return .string
 	}
+	start:
 	s.whitespace()
 	if s.offset == s.src.len {
 		s.lit = ''
@@ -98,21 +102,6 @@ pub fn (mut s Scanner) scan() token.Token {
 	// c/raw string | keyword | name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
 		s.offset++
-		c2 := s.src[s.offset]
-		// `c'c string"` | `r'raw string'`
-		if c2 in [`'`, `"`] {
-			// TODO: parser should probably handle this
-			string_lit_kind := if c == `c` { token.StringLiteralKind.c } 
-				else if c == `r` { token.StringLiteralKind.raw }
-				else { panic('unknown string prefix `${c.ascii_str()}`') /* :) */ token.StringLiteralKind.v }
-			s.offset++
-			s.str_quote = c2
-			s.str_kind = string_lit_kind
-			s.string_literal(string_lit_kind == .raw, c2)
-			// s.lit = s.src[s.pos+2..s.offset-1]
-			s.lit = s.src[s.pos..s.offset]
-			return .string
-		}
 		// keyword | name
 		for s.offset < s.src.len {
 			c3 := s.src[s.offset]
@@ -132,12 +121,12 @@ pub fn (mut s Scanner) scan() token.Token {
 	// string
 	else if c in [`'`, `"`] {
 		s.offset++
-		s.str_kind = .v
 		if !s.in_str_inter {
 			s.str_quote = c
 		}
-		s.string_literal(s.in_str_inter, c)
-		s.lit = s.src[s.pos+1..s.offset]
+		// TODO: I would prefer a better way to handle raw
+		s.string_literal(s.in_str_inter || s.src[s.offset-2] == `r`, c)
+		s.lit = s.src[s.pos..s.offset]
 		return .string
 	}
 	// byte (char) `a`
@@ -335,7 +324,12 @@ pub fn (mut s Scanner) scan() token.Token {
 		// `@` { return .at }
 		`~` { return .bit_not }
 		`,` { return .comma }
-		`$` { return .dollar }
+		`$` {
+			if s.in_str_inter {
+				return .str_dollar
+			}
+			return .dollar
+		}
 		`{` {
 			if s.in_str_inter {
 				s.str_inter_cbr_depth++
@@ -346,7 +340,8 @@ pub fn (mut s Scanner) scan() token.Token {
 			if s.in_str_inter {
 				s.str_inter_cbr_depth--
 				if s.str_inter_cbr_depth == 0 {
-					s.in_str_inter = false			
+					s.in_str_incomplete = true
+					s.in_str_inter = false
 				}
 			}
 			return .rcbr
@@ -436,12 +431,11 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 		s.offset++
 		return
 	}
-	skip_interpolation := s.mode.has(.skip_interpolation)
 	// normal strings
 	for s.offset < s.src.len {
 		c2 := s.src[s.offset]
 		c3 := s.src[s.offset+1]
-		// skip escape \n | \'
+		// escape `\\n` | `\'`
 		if c2 == `\\` {
 			s.offset+=2
 			continue
@@ -451,19 +445,27 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 			s.file.add_line(s.offset)
 			continue
 		}
-		// TODO: optimize branches below
 		else if c2 == `$` && c3 == `{` {
-			s.in_str = true
 			s.in_str_inter = true
-			if !skip_interpolation {
+			if s.skip_interpolation {
+				// TODO: fix case listed in `test/string_interpolation.v`
+				// NOTE: this is only done for the skip case to ensure
+				// we end on the correct quote, same as thing happens
+				// in the non skip case, however handled in .lcbr & .rcbr
+				s.str_inter_cbr_depth++
+				s.offset+=2
+				continue
+			} else {
 				return
 			}
 		}
-		else if skip_interpolation && c2 == `}` && s.in_str_inter {
-			s.in_str_inter = false
+		else if s.skip_interpolation && c2 == `}` && s.in_str_inter {
+			s.str_inter_cbr_depth--
+			if s.str_inter_cbr_depth == 0 {
+				s.in_str_inter = false
+			}
 		}
 		else if c2 == c_quote && !s.in_str_inter {
-			s.in_str = false
 			s.offset++
 			break
 		}
