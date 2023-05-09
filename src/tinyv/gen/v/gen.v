@@ -665,14 +665,17 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr_list(expr.exprs, ', ')
 		}
 		ast.UnsafeExpr {
-			// NOTE: use in_init or stmts.len? check vfmt
-			if g.in_init {
+			one_liner := g.in_init || expr.stmts.len == 1
+			if one_liner {
 				g.write('unsafe { ')
 			} else {
 				g.writeln('unsafe {')
 			}
+			in_init := g.in_init
+			g.in_init = one_liner
 			g.stmts(expr.stmts)
-			if g.in_init {
+			g.in_init = in_init
+			if one_liner {
 				g.write(' }')
 			} else {
 				g.write('}')
