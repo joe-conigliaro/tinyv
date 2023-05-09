@@ -20,7 +20,7 @@ pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
 	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
 	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StringInterLiteral
-    | StringLiteral | StructInitExpr | Tuple | Type | UnsafeExpr
+	| StringLiteral | StructInitExpr | Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
 pub type Stmt = AssertStmt | AssignStmt | BlockStmt | ConstDecl | DeferStmt
@@ -264,18 +264,54 @@ pub:
 	expr Expr
 }
 
+pub enum StringLiteralKind {
+	c
+	js
+	raw
+	v
+}
+
+pub fn (s StringLiteralKind) str() string {
+	return match s {
+		.c   { 'c' }
+		.js  { 'js' }
+		.raw { 'r' }
+		.v   { 'v' }
+	}
+}
+
+[direct_array_access]
+pub fn string_literal_kind_from_string(s string) !StringLiteralKind {
+	match s[0] {
+		`c` {
+			return .c
+		}
+		`j` {
+			if s[1] == `s` {
+				return .js
+			}
+		}
+		`r`  {
+			return .raw
+		}
+		else {}
+	}
+	return error('invalid string prefix `${s}`')
+}
+
+
 // NOTE: I'm using two nodes StringLiteral & StringInterLiteral
 // to avoid the extra array allocations when not needed. 
 pub struct StringLiteral {
 pub:
-	kind   token.StringLiteralKind
+	kind   StringLiteralKind
 	quote  u8
 	value  string
 }
 
 pub struct StringInterLiteral {
 pub:
-	kind   token.StringLiteralKind
+	kind   StringLiteralKind
 	quote  u8
 	values []string
 	inters []StringInter
@@ -304,31 +340,31 @@ pub enum StringInterFormat {
 
 pub fn string_inter_format_from_u8(c u8) !StringInterFormat {
 	return match c {
-		`b` 	 { .binary }
-		`c`      { .character }
-		`d`      { .decimal }
+		`b`		 { .binary }
+		`c`		 { .character }
+		`d`		 { .decimal }
 		`e`, `E` { .exponent }
 		`g`, `G` { .exponent_short }
 		`f`, `F` { .float }
 		`x`, `X` { .hex }
-		`o` 	 { .octal }
+		`o`		 { .octal }
 		`s`		 { .string }
-		else     { error('unknown formatter `${c.ascii_str()}`') }
+		else	 { error('unknown formatter `${c.ascii_str()}`') }
 	}
 }
 
 pub fn (sif StringInterFormat) str() string {
 	return match sif {
 		.unformatted	{ '' }
-		.binary 	    { 'b' }
-		.character      { 'c' }
-		.decimal        { 'd' }
-		.exponent 		{ 'e' }
-		.exponent_short { 'g' }
+		.binary			{ 'b' }
+		.character		{ 'c' }
+		.decimal		{ 'd' }
+		.exponent		{ 'e' }
+		.exponent_short	{ 'g' }
 		.float			{ 'f' }
 		.hex			{ 'x' }
 		.octal			{ 'o' }
-		.string         { 's' }
+		.string			{ 's' }
 	}
 }
 

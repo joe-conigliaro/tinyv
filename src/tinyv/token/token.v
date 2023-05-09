@@ -3,41 +3,6 @@
 // that can be found in the LICENSE file.
 module token
 
-pub enum StringLiteralKind {
-	c
-	js
-	raw
-	v
-}
-
-pub fn (s StringLiteralKind) str() string {
-	return match s {
-		.c   { 'c' }
-		.js  { 'js' }
-		.raw { 'r' }
-		.v   { 'v' }
-	}
-}
-
-[direct_array_access]
-pub fn string_literal_kind_from_string(s string) !StringLiteralKind {
-	match s[0] {
-		`c` {
-			return .c
-		}
-		`j` {
-			if s[1] == `s` {
-				return .js
-			}
-		}
-		`r`  {
-			return .raw
-		}
-		else {}
-	}
-	return error('invalid string prefix `${s}`')
-}
-
 pub enum Token {
 	amp // &
 	and // &&

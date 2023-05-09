@@ -152,7 +152,14 @@ pub fn (mut s Scanner) scan() token.Token {
 	s.offset++
 	match c {
 		`.` {
-			if s.src[s.offset] == `.` {
+			c2 := s.src[s.offset]
+			if c2 >= `0` && c2 <= `9` {
+				// TODO: only really need decimal
+				s.number()
+				s.lit = s.src[s.pos..s.offset]
+				return .number
+			}
+			else if c2 == `.` {
 				s.offset++
 				if s.src[s.offset] == `.` {
 					s.offset++

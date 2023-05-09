@@ -682,7 +682,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				else {
 					name := p.lit()
 					if p.tok == .string {
-						kind := token.string_literal_kind_from_string(name) or {
+						kind := ast.string_literal_kind_from_string(name) or {
 							p.error(err.msg())
 						}
 						lhs = p.string_literal(kind)
@@ -691,6 +691,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
+			// NOTE: alternate way to acheive the above code
 			// typ := p.ident_or_named_type()
 			// lhs = typ
 			// if typ is ast.Type {
@@ -726,7 +727,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				lhs = ast.SelectorExpr{lhs:lhs, rhs: p.ident()}
 			}
-			// TODO: move inits to expr loop
+			// TODO: move inits to expr loop? currently just handled where needed
+			// since this is not very many places. consider if it should be moved
 			// NOTE: since we are not relying on capital for types
 			// and therefore struct init, it's not so simple to parse
 			// the following cases without trickery (TODO: consider).
@@ -1685,7 +1687,7 @@ fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 	return ast.StructInitExpr{typ: typ, fields: fields}
 }
 
-fn (mut p Parser) string_literal(kind token.StringLiteralKind) ast.Expr {
+fn (mut p Parser) string_literal(kind ast.StringLiteralKind) ast.Expr {
 	value0 := p.lit()
 	if p.tok != .str_dollar {
 		return ast.StringLiteral{
@@ -1727,14 +1729,10 @@ fn (mut p Parser) string_inter() ast.StringInter {
 	if p.tok == .colon {
 		p.next()
 		// TODO:
-		if p.tok in [.dot, .number, .minus, .plus] {
+		if p.tok in [.number, .minus, .plus] {
 			number_expr := p.expr(.lowest)
 			_ = number_expr
 		}
-		// TODO: .dot should be part of number in scanner?
-		// if p.tok == .dot {
-		// 	p.next()
-		// }
 		// if p.tok == .minus {
 		// 	p.next()
 		// }

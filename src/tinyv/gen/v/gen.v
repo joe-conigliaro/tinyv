@@ -5,7 +5,6 @@ module v
 
 import tinyv.ast
 import tinyv.pref
-import tinyv.token
 import strings
 import time
 
@@ -806,7 +805,7 @@ fn (mut g Gen) generic_list(exprs []ast.Expr) {
 }
 
 [inline]
-fn (mut g Gen) string_literal(kind token.StringLiteralKind, quote u8, value string) {
+fn (mut g Gen) string_literal(kind ast.StringLiteralKind, quote u8, value string) {
 	if kind != .v {
 		g.write(kind.str())
 	}
