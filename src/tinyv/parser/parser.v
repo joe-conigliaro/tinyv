@@ -1725,14 +1725,15 @@ fn (mut p Parser) string_literal(kind ast.StringLiteralKind) ast.Expr {
 fn (mut p Parser) string_inter() ast.StringInter {
 	expr := p.expr(.lowest)
 	mut format := ast.StringInterFormat.unformatted
+	mut format_expr := ast.empty_expr
 	// TODO: proper
 	if p.tok == .colon {
 		p.next()
-		// TODO:
+		// temp
 		if p.tok in [.number, .minus, .plus] {
-			number_expr := p.expr(.lowest)
-			_ = number_expr
+			format_expr = p.expr(.lowest)
 		}
+		// TODO
 		// if p.tok == .minus {
 		// 	p.next()
 		// }
@@ -1751,6 +1752,7 @@ fn (mut p Parser) string_inter() ast.StringInter {
 	}
 	return ast.StringInter {
 		format: format
+		format_expr: format_expr
 		expr: expr
 	}
 }

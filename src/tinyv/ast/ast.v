@@ -319,10 +319,11 @@ pub:
 
 pub struct StringInter {
 pub:
-	format    StringInterFormat
-	width     int
-	precision int
-	expr      Expr
+	format      StringInterFormat
+	width       int
+	precision   int
+	expr        Expr
+	format_expr Expr = empty_expr
 }
 
 pub enum StringInterFormat {

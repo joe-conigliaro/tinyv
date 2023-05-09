@@ -609,19 +609,30 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 		}
 		ast.StringInterLiteral {
-			mut final_value := strings.new_builder(265)
+			if expr.kind != .v { g.write(expr.kind.str()) }
+			quote_str := expr.quote.ascii_str()
+			g.write(quote_str)
 			for i, value in expr.values {
-				final_value.write_string(value)
+				g.write(value)
 				if inter := expr.inters[i] {
-					// TODO: proper
-					final_value.write_string('%')
-					final_value.write_string(inter.format.str())
+					g.write('\${')
+					g.expr(inter.expr)
+					if inter.format != .unformatted {
+						g.write(':')
+						g.expr(inter.format_expr)
+						g.write(inter.format.str())
+					}
+					g.write('}')
 				}
 			}
-			g.string_literal(expr.kind, expr.quote, final_value.str())
+			g.write(quote_str)
 		}
 		ast.StringLiteral {
-			g.string_literal(expr.kind, expr.quote, expr.value)
+			if expr.kind != .v { g.write(expr.kind.str()) }
+			quote_str := expr.quote.ascii_str()
+			g.write(quote_str)
+			g.write(expr.value)
+			g.write(quote_str)
 		}
 		ast.StructInitExpr {
 			g.expr(expr.typ)
@@ -802,17 +813,6 @@ fn (mut g Gen) generic_list(exprs []ast.Expr) {
 	g.write('[')
 	g.expr_list(exprs, ', ')
 	g.write(']')
-}
-
-[inline]
-fn (mut g Gen) string_literal(kind ast.StringLiteralKind, quote u8, value string) {
-	if kind != .v {
-		g.write(kind.str())
-	}
-	quote_str := quote.ascii_str()
-	g.write(quote_str)
-	g.write(value)
-	g.write(quote_str)
 }
 
 [inline]
