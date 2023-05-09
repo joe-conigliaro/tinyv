@@ -640,93 +640,49 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.name {
-			// NOTE: we could also use expect_type() here since it also returns
-			// ident & selector, but we are repeating some code for efficiency
-			match p.lit {
-				'map' {
-					p.next()
-					if p.tok == .lsbr {
-						p.next()
-						key_type := p.expect_type()
-						p.expect(.rsbr)
-						value_type := p.expect_type()
-						map_type := ast.Type(ast.MapType{key_type: key_type, value_type: value_type})
-						if p.exp_pt && p.tok != .lcbr { return map_type }
-						p.expect(.lcbr)
-						p.expect(.rcbr)
-						return ast.MapInitExpr{typ: map_type}
-					}
-					lhs = ast.Ident{name: 'map'}
+			// NOTE: if we do decide to handle inits globally this can be simplified
+			lit := p.lit
+			ident_or_type := p.ident_or_named_type()
+			lhs = ident_or_type
+			if ident_or_type is ast.Type {
+				if ident_or_type is ast.MapType {
+					if p.exp_pt && p.tok != .lcbr { return lhs }
+					p.expect(.lcbr)
+					p.expect(.rcbr)
+					return ast.MapInitExpr{typ: lhs}
 				}
-				'chan' {
+				else if ident_or_type is ast.ChannelType {
+					if p.exp_pt && p.tok != .lcbr { return lhs }
+					mut cap := ast.empty_expr
+					p.expect(.lcbr)
+					for p.tok != .rcbr {
+						key := p.expect_name()
+						match key {
+							'cap' {}
+							else { p.error('unknown channel attribute `$key`') }
+						}
+						p.expect(.colon)
+						cap = p.expr(.lowest)
+					}
 					p.next()
-					elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
-					if elem_type !is ast.EmptyExpr {
-						mut cap := ast.empty_expr
-						p.expect(.lcbr)
-						for p.tok != .rcbr {
-							key := p.expect_name()
-							match key {
-								'cap' {}
-								else { p.error('unknown channel attribute `$key`') }
-							}
-							p.expect(.colon)
-							cap = p.expr(.lowest)
-						}
-						p.next()
-						chan_type := ast.Type(ast.ChannelType{elem_type: elem_type, cap: cap})
-						return ast.ChannelInitExpr{typ: chan_type, cap: cap}
-					}
-					lhs = ast.Ident{name: 'chan'}
+					return ast.ChannelInitExpr{typ: lhs, cap: cap}
 				}
-				else {
-					name := p.lit()
-					if p.tok == .string {
-						kind := ast.string_literal_kind_from_string(name) or {
-							p.error(err.msg())
-						}
-						lhs = p.string_literal(kind)
-					} else {
-						lhs = ast.Ident{name: name}
+			} else {
+				if p.tok == .string {
+					kind := ast.string_literal_kind_from_string(lit) or {
+						p.error(err.msg())
 					}
+					lhs = p.string_literal(kind)
 				}
 			}
-			// NOTE: alternate way to acheive the above code
-			// typ := p.ident_or_named_type()
-			// lhs = typ
-			// if typ is ast.Type {
-			// 	if typ is ast.MapType {
-			// 		if p.exp_pt && p.tok != .lcbr { return lhs }
-			// 		p.expect(.lcbr)
-			// 		p.expect(.rcbr)
-			// 		return ast.MapInitExpr{typ: lhs}
-			// 	}
-			// 	else if typ is ast.ChannelType {
-			// 		if p.exp_pt && p.tok != .lcbr { return lhs }
-			// 		mut cap := ast.empty_expr
-			// 		p.expect(.lcbr)
-			// 		for p.tok != .rcbr {
-			// 			key := p.expect_name()
-			// 			match key {
-			// 				'cap' {}
-			// 				else { p.error('unknown channel attribute `$key`') }
-			// 			}
-			// 			p.expect(.colon)
-			// 			cap = p.expr(.lowest)
-			// 		}
-			// 		p.next()
-			// 		// chan_type := ast.Type(ast.ChannelType{elem_type: elem_type, cap: cap})
-			// 		return ast.ChannelInitExpr{typ: lhs, cap: cap}
-			// 	}
-			// }
-			// lhs = typ
+			// TODO: check if there are any cases where this is needed?
 			// NOTE: since we're returning struct init here, we complete the selector
 			// but if we move the init to expr loop then we can use if instead of for
 			// if p.tok == .dot {
-			for p.tok == .dot {
-				p.next()
-				lhs = ast.SelectorExpr{lhs:lhs, rhs: p.ident()}
-			}
+			// for p.tok == .dot {
+			// 	p.next()
+			// 	lhs = ast.SelectorExpr{lhs:lhs, rhs: p.ident()}
+			// }
 			// TODO: move inits to expr loop? currently just handled where needed
 			// since this is not very many places. consider if it should be moved
 			// NOTE: since we are not relying on capital for types
@@ -1802,14 +1758,6 @@ fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
 	}
 	return ast.Language.v, name
 }
-
-// fn (mut p Parser) ident_or_type() ast.Expr {
-// 	match p.tok {
-// 		.key_mut, /*.key_atomic,*/ .key_shared, .key_static {
-// 			return p.
-// 		}
-// 	}
-// }
 
 [inline]
 fn (mut p Parser) ident() ast.Ident {

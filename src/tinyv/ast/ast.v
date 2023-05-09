@@ -323,6 +323,8 @@ pub:
 	width       int
 	precision   int
 	expr        Expr
+	// TEMP: prob removed once individual
+	// fields are set, precision etc
 	format_expr Expr = empty_expr
 }
 

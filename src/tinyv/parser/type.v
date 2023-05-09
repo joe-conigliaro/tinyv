@@ -82,39 +82,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// name | chan | map
 		.name {
-			match p.lit {	
-				'map' {
-					p.next()
-					// map[string]string
-					if p.tok == .lsbr {
-						p.next()
-						key_type := p.expect_type()
-						p.expect(.rsbr)
-						return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
-					}
-					// struct called `map` in builtin
-					return ast.Ident{name: 'map'}
-				}
-				'chan' {
-					line := p.line
-					p.next()
-					elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
-					if elem_type !is ast.EmptyExpr {
-						return ast.Type(ast.ChannelType{elem_type: elem_type})
-					}
-					// struct called `chan` in builtin
-					return ast.Ident{name: 'chan'}
-				}
-				else {
-					// name
-					ident := p.ident()
-					if p.tok == .dot {
-						p.next()
-						return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
-					}
-					return ident
-				}
-			}
+			return p.ident_or_named_type()
 		}
 		// result
 		.not {
@@ -159,4 +127,36 @@ fn (mut p Parser) fn_type() ast.FnType {
 		params: params,
 		return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
 	}
+}
+
+[direct_array_access]
+fn (mut p Parser) ident_or_named_type() ast.Expr {
+	if p.lit.len == 4 &&  p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
+		line := p.line
+		p.next()
+		elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
+		if elem_type !is ast.EmptyExpr {
+			return ast.Type(ast.ChannelType{elem_type: elem_type})
+		}
+		// struct called `chan` in builtin
+		return ast.Ident{name: 'chan'}
+	}
+	else if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
+		p.next()
+		// map[string]string
+		if p.tok == .lsbr {
+			p.next()
+			key_type := p.expect_type()
+			p.expect(.rsbr)
+			return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
+		}
+		// struct called `map` in builtin
+		return ast.Ident{name: 'map'}
+	}
+	ident := p.ident()
+	if p.tok == .dot {
+		p.next()
+		return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
+	}
+	return ident
 }

@@ -440,40 +440,38 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 	}
 	// normal strings
 	for s.offset < s.src.len {
-		c2 := s.src[s.offset]
+		c := s.src[s.offset]
 		// escape `\\n` | `\'`
-		if c2 == `\\` {
+		if c == `\\` {
 			s.offset+=2
 			continue
 		}
-		else if c2 == `\n` {
+		else if c == `\n` {
 			s.offset++
 			s.file.add_line(s.offset)
 			continue
 		}
-		else if c2 == `$` {
-			if s.src[s.offset+1] == `{` {
-				s.in_str_inter = true
-				if s.skip_interpolation {
-					// TODO: fix case listed in `test/string_interpolation.v`
-					// NOTE: this is only done for the skip case to ensure
-					// we end on the correct quote, same as thing happens
-					// in the non skip case, however handled in .lcbr & .rcbr
-					s.str_inter_cbr_depth++
-					s.offset+=2
-					continue
-				} else {
-					return
-				}
+		else if c == `$` && s.src[s.offset+1] == `{` {
+			s.in_str_inter = true
+			if s.skip_interpolation {
+				// TODO: fix case listed in `test/string_interpolation.v`
+				// NOTE: this is only done for the skip case to ensure
+				// we end on the correct quote, same as thing happens
+				// in the non skip case, however handled in .lcbr & .rcbr
+				s.str_inter_cbr_depth++
+				s.offset+=2
+				continue
+			} else {
+				return
 			}
 		}
-		else if s.skip_interpolation && c2 == `}` && s.in_str_inter {
+		else if s.skip_interpolation && c == `}` && s.in_str_inter {
 			s.str_inter_cbr_depth--
 			if s.str_inter_cbr_depth == 0 {
 				s.in_str_inter = false
 			}
 		}
-		else if c2 == c_quote && !s.in_str_inter {
+		else if c == c_quote && !s.in_str_inter {
 			s.offset++
 			break
 		}
