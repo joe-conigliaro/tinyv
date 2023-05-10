@@ -610,8 +610,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.StringInterLiteral {
 			if expr.kind != .v { g.write(expr.kind.str()) }
-			quote_str := expr.quote.ascii_str()
-			g.write(quote_str)
+			// TODO: smart quote
+			// quote_str := "'"
+			// g.write(quote_str)
 			for i, value in expr.values {
 				g.write(value)
 				if inter := expr.inters[i] {
@@ -625,14 +626,15 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.write('}')
 				}
 			}
-			g.write(quote_str)
+			// g.write(quote_str)
 		}
 		ast.StringLiteral {
 			if expr.kind != .v { g.write(expr.kind.str()) }
-			quote_str := expr.quote.ascii_str()
-			g.write(quote_str)
+			// TODO: smart quote
+			// quote_str := "'"
+			// g.write(quote_str)
 			g.write(expr.value)
-			g.write(quote_str)
+			// g.write(quote_str)
 		}
 		ast.StructInitExpr {
 			g.expr(expr.typ)

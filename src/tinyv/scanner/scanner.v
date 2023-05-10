@@ -454,10 +454,6 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 		else if c == `$` && s.src[s.offset+1] == `{` {
 			s.in_str_inter = true
 			if s.skip_interpolation {
-				// TODO: fix case listed in `test/string_interpolation.v`
-				// NOTE: this is only done for the skip case to ensure
-				// we end on the correct quote, same as thing happens
-				// in the non skip case, however handled in .lcbr & .rcbr
 				s.str_inter_cbr_depth++
 				s.offset+=2
 				continue
@@ -465,10 +461,14 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 				return
 			}
 		}
-		else if s.skip_interpolation && c == `}` && s.in_str_inter {
-			s.str_inter_cbr_depth--
-			if s.str_inter_cbr_depth == 0 {
-				s.in_str_inter = false
+		else if s.skip_interpolation && s.in_str_inter {
+			if c == `{` {
+				s.str_inter_cbr_depth++
+			} else if c == `}` {
+				s.str_inter_cbr_depth--
+				if s.str_inter_cbr_depth == 0 {
+					s.in_str_inter = false
+				}
 			}
 		}
 		else if c == c_quote && !s.in_str_inter {

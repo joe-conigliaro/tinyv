@@ -811,10 +811,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// `array[idx]` | `array[fn_idx]()` | fn[int]()` | `GenericStruct[int]{}`
 			else {
 				p.next() // .lsbr
-				// NOTE: it would be nice to only use array when we have multiple exprs
-				// however this would require more conditions and duplicate code
-				// only use `ast.GenericArgsOrIndexExpr` for cases which
-				// absolutely cannot be determined until a later stage
+				// NOTE: `ast.GenericArgsOrIndexExpr` is only used for cases
+				// which absolutely cannot be determined until a later stage
 				expr := p.type_or_expr(.lowest)
 				mut exprs := [expr]
 				for p.tok == .comma {
@@ -1648,7 +1646,6 @@ fn (mut p Parser) string_literal(kind ast.StringLiteralKind) ast.Expr {
 	if p.tok != .str_dollar {
 		return ast.StringLiteral{
 			kind:  kind
-			quote: p.scanner.str_quote
 			value: value0
 	    }
 	}
@@ -1671,7 +1668,6 @@ fn (mut p Parser) string_literal(kind ast.StringLiteralKind) ast.Expr {
 	}
 	return ast.StringInterLiteral{
 		kind: kind
-		quote: p.scanner.str_quote
 		values: values
 		inters: inters
 	}

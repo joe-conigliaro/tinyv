@@ -304,15 +304,13 @@ pub fn string_literal_kind_from_string(s string) !StringLiteralKind {
 // to avoid the extra array allocations when not needed. 
 pub struct StringLiteral {
 pub:
-	kind   StringLiteralKind
-	quote  u8
-	value  string
+	kind  StringLiteralKind
+	value string
 }
 
 pub struct StringInterLiteral {
 pub:
 	kind   StringLiteralKind
-	quote  u8
 	values []string
 	inters []StringInter
 }
