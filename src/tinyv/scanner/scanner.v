@@ -112,11 +112,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			break
 		}
 		s.lit = s.src[s.pos..s.offset]
-		tok := token.keyword_to_token(s.lit)
-		if tok != .unknown {
-			return tok
-		}
-		return .name
+		return token.token_from_ident(s.lit)
 	}
 	// string
 	else if c in [`'`, `"`] {

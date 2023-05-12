@@ -93,8 +93,6 @@ pub enum Token {
 	mul_assign // *=
 	name // user
 	ne // !=
-	// nilsbr // #[
-	// nl
 	not // !
 	not_in // !in
 	not_is // !is
@@ -113,7 +111,6 @@ pub enum Token {
 	rsbr // ]
 	semicolon // ;
 	str_dollar
-	// str_inter // 'name=$user.name'
 	string // 'foo'
 	unknown
 	xor // ^
@@ -306,8 +303,6 @@ pub fn (t Token) str() string {
 		.mul_assign { '*=' }
 		.name { 'name' }
 		.ne { '!=' }
-		// .nilsbr { '#[' }
-		// .nl { 'NLL' }
 		.not { '!' }
 		.not_in { '!in' }
 		.not_is { '!is' }
