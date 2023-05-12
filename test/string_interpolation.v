@@ -8,6 +8,8 @@ fn test_main() {
 	// NOTE: d) tests nested quotes of same kind (although why is this allowed?)
 	string_literal_inter_d := '${mod.fn_call(1)} | ${mod.fn_call(unsafe {1}, mod.fn_call('a')).join(' ')} > out'
 	string_literal_inter_e := "${mod.fn_call(1)} | ${mod.fn_call(mod.fn_call('a')).join(' ')} > out"
+	// TODO: remember to talk to alex to confirm behaviour of nested strings
+	// x := 'hello ${foo('${x}')} ${x}'
 }
 
 fn test_basic() {

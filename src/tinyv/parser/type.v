@@ -17,18 +17,20 @@ fn (mut p Parser) expect_type() ast.Expr {
 	return typ
 }
 
-// TODO: use optional or stick with empty expr?
-// pub fn (mut p Parser) try_type() ?ast.Expr {
+// TODO: use result or stick with empty expr?
+// pub fn (mut p Parser) try_type() !ast.Expr {
 fn (mut p Parser) try_type() ast.Expr {
 	match p.tok {
-		// pointer
+		// pointer: `&type`
 		.amp {
-			return ast.PrefixExpr{op: p.tok(), expr: p.expect_type()}
+			p.next()
+			return ast.PrefixExpr{op: .amp, expr: p.expect_type()}
 		}
-		// TODO: variadic
+		// variadic: `...type`
 		.ellipsis {
 			p.next()
-			return p.expect_type()
+			// TODO: what will we use here?
+			return ast.PrefixExpr{op: .ellipsis, expr: p.expect_type()}
 		}
 		// atomic | shared
 		// eg. typespec in struct field with modifier. other cases handled in expr()
@@ -37,7 +39,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			p.next()
 			return ast.Modifier{kind: kind, expr: p.expect_type()}
 		}
-		// function `fn(int) int`
+		// function: `fn(type) type`
 		.key_fn {
 			p.next()
 			return ast.Type(p.fn_type())
@@ -52,7 +54,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			p.next()
 			return ast.Type(ast.NoneType{})
 		}
-		// Tuple (multi return)
+		// tuple (multi return): `(type, type)`
 		.lpar {
 			p.next()
 			// expect at least two (so we otherwise error)
@@ -67,7 +69,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			p.expect(.rpar)
 			return ast.Type(ast.TupleType{types: types})
 		}
-		// array
+		// array: `[]type` | `[len]type`
 		.lsbr {
 			p.next()
 			// dynamic array
@@ -84,7 +86,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		.name {
 			return p.ident_or_named_type()
 		}
-		// result
+		// result: `!` | `!type`
 		.not {
 			line := p.line
 			p.next()
@@ -93,7 +95,7 @@ fn (mut p Parser) try_type() ast.Expr {
 				// base_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
-		// optional
+		// option: `?` | `?type`
 		.question {
 			line := p.line
 			p.next()
@@ -109,6 +111,7 @@ fn (mut p Parser) try_type() ast.Expr {
 	}
 }
 
+// function type / signature
 fn (mut p Parser) fn_type() ast.FnType {
 	mut generic_params := []ast.Expr{}
 	if p.tok == .lsbr {
@@ -131,7 +134,8 @@ fn (mut p Parser) fn_type() ast.FnType {
 
 [direct_array_access]
 fn (mut p Parser) ident_or_named_type() ast.Expr {
-	if p.lit.len == 4 &&  p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
+	// `chan` | `chan type` 
+	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
 		line := p.line
 		p.next()
 		elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
@@ -141,9 +145,9 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 		// struct called `chan` in builtin
 		return ast.Ident{name: 'chan'}
 	}
+	// `map[type]type`
 	else if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
 		p.next()
-		// map[string]string
 		if p.tok == .lsbr {
 			p.next()
 			key_type := p.expect_type()

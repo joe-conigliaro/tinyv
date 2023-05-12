@@ -219,7 +219,7 @@ fn (mut p Parser) stmt() ast.Stmt {
 			line := p.line
 			op := p.tok()
 			if p.line == line && p.tok == .name {
-				return ast.FlowControlStmt{op: op, label: p.expect_name()}
+				return ast.FlowControlStmt{op: op, label: p.lit()}
 			} else {
 				return ast.FlowControlStmt{op: op}
 			}
@@ -268,11 +268,11 @@ fn (mut p Parser) stmt() ast.Stmt {
 }
 
 [inline]
-pub fn (mut p Parser) simple_stmt() ast.Stmt {
+fn (mut p Parser) simple_stmt() ast.Stmt {
 	return p.complete_simple_stmt(p.expr(.lowest))
 }
 
-pub fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
+fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
 	// stand alone expression in a statement list
 	// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
 	// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
@@ -640,11 +640,18 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.name {
-			// NOTE: if we do decide to handle inits globally this can be simplified
 			lit := p.lit
 			ident_or_type := p.ident_or_named_type()
 			lhs = ident_or_type
-			if ident_or_type is ast.Type {
+			// raw/c/js string: `r'hello'`
+			if p.tok == .string {
+				lhs = p.string_literal(ast.string_literal_kind_from_string(lit) or {
+					p.error(err.msg())
+				})
+			}
+			// `map[type]type{}` | (`chan{}` | `chan type{}`)
+			// reutrns type without init when `p.exp_pt` is true
+			else if ident_or_type is ast.Type {
 				if ident_or_type is ast.MapType {
 					if p.exp_pt && p.tok != .lcbr { return lhs }
 					p.expect(.lcbr)
@@ -667,30 +674,16 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 					return ast.ChannelInitExpr{typ: lhs, cap: cap}
 				}
-			} else {
-				if p.tok == .string {
-					kind := ast.string_literal_kind_from_string(lit) or {
-						p.error(err.msg())
-					}
-					lhs = p.string_literal(kind)
-				}
 			}
-			// TODO: check if there are any cases where this is needed?
-			// NOTE: since we're returning struct init here, we complete the selector
-			// but if we move the init to expr loop then we can use if instead of for
-			// if p.tok == .dot {
-			// for p.tok == .dot {
-			// 	p.next()
-			// 	lhs = ast.SelectorExpr{lhs:lhs, rhs: p.ident()}
-			// }
-			// TODO: move inits to expr loop? currently just handled where needed
-			// since this is not very many places. consider if it should be moved
-			// NOTE: since we are not relying on capital for types
-			// and therefore struct init, it's not so simple to parse
-			// the following cases without trickery (TODO: consider).
-			// `if err == IError(Eof{}) {`
-			// `if Foo{} == Foo{} {`
-			if p.tok == .lcbr && !p.exp_lcbr {
+			// `ident{}`
+			else if p.tok == .lcbr && !p.exp_lcbr {
+				// TODO: move inits to expr loop? currently just handled where needed
+				// since this is not very many places. consider if it should be moved
+				// NOTE: since we are not relying on capital for types
+				// and therefore struct init, it's not so simple to parse
+				// the following cases without trickery (TODO: consider).
+				// `if err == IError(Eof{}) {`
+				// `if Foo{} == Foo{} {`
 				return p.assoc_or_struct_init_expr(lhs)
 			}
 		}
