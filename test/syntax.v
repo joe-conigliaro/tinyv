@@ -270,7 +270,13 @@ fn main_a() {
 	if err == IError(MyError{}) {
 		println('err == IError(MyError{})')
 	}
+	if struct_init_a == (StructA{}) {
+		println('struct_init_a == (StructA{})')
+	}
 	// TODO: tricky
+	// if struct_init_a == StructA{} {
+	// 	println('struct_init_a == StructA{}')
+	// }
 	// if StructA{} == StructA{} {
 	// 	println('StructA{} == StructA{}')
 	// }

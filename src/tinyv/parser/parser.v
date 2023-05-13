@@ -392,10 +392,13 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// .dot {}
 		.lpar {
 			p.next()
+			exp_lcbr := p.exp_lcbr
+			p.exp_lcbr = false
 			// p.log('ast.ParenExpr:')
 			lhs = ast.ParenExpr{
 				expr: p.expr(.lowest)
 			}
+			p.exp_lcbr = exp_lcbr
 			p.expect(.rpar)
 		}
 		.lcbr {

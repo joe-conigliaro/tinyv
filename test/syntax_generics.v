@@ -10,16 +10,16 @@ struct GenericStructB[T,U] {
 	field_b U
 }
 
-fn fn_generic_a[T](arg_a T, arg_b string, arg_c int) int {
-	println('fn_generic_a: $arg_a.type, $arg_b.type, $arg_c.type')
+fn fn_generic_a[T](param_a T, param_b string, param_c int) int {
+	println('fn_generic_a: $param_a.type, $param_b.type, $param_c.type')
 	return 1
 }
 
-fn fn_generic_b[T,Y](arg_a T, arg_b Y) int {
-	println('fn_generic_a: $arg_a.type, $arg_b.type')
+fn fn_generic_b[T,Y](param_a T, param_b Y) int {
+	println('fn_generic_a: $param_a.type, $param_b.type')
 }
 
-fn fn_generic_c[fn[U,I](U, I) U, Y](arg_a T, arg_b Y) int {
+fn fn_generic_c[fn[U,I](U, I) U, Y](param_a T, param_b Y) int {
 	println('fn_generic_c')
 	return 1
 }
@@ -28,6 +28,20 @@ fn test_generic_struct_init() {
 	a := GenericStructA[int] {
 		field_a: 1
 	}
+}
+
+fn fn_generic_init_a[T](param_a T) {
+	// TODO: infer correct init after type checking
+	// eg. array, chan, map, or struct init.
+	mut a := T{}
+	for k, v in param_a {
+		a[k] = v
+	}
+	println(a)
+}
+
+fn test_generic_init() {
+	fn_generic_init_a[map[string]string]({'a': 'apple'})
 }
 
 // assoc works with generic structs although
