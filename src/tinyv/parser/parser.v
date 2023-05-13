@@ -306,7 +306,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	mut line := p.line
 	mut lhs := ast.empty_expr
 	match p.tok {
-		.char, .key_true, .key_false, .number {
+		.char, .key_false, .key_true, .number {
 			lhs = ast.BasicLiteral{
 				kind: p.tok
 				value: p.lit()
@@ -338,7 +338,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				stmts: p.block()
 				captured_vars: captured_vars
 			}
-			// update for call in expr loop
+			// support chaining (eg. direct call `fn () int { return 1 }()`)
 			line = p.line
 		}
 		.key_go, .key_spawn {
@@ -348,24 +348,20 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			lhs = p.if_expr(false)
 		}
-		// NOTE: handle all these using KeywordOperator for now, if or
-		// as needed later we can split them off into their own types.
 		// NOTE: I would much rather dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
-		.key_typeof {
+		.key_isreftype, .key_sizeof, .key_typeof {
 			op := p.tok()
 			p.expect(.lpar)
-			expr := p.type_or_expr(.lowest)
+			lhs = ast.KeywordOperator{op: op, expr: p.type_or_expr(.lowest)}
 			p.expect(.rpar)
-			lhs = ast.KeywordOperator{op: op, expr: expr}
 		}
-		.key_dump, .key_likely, .key_unlikely, .key_isreftype, .key_sizeof /* , .key_typeof */ {
+		.key_dump, .key_likely, .key_unlikely {
 			op := p.tok()
 			p.expect(.lpar)
-			expr := p.expr(.lowest)
+			lhs = ast.KeywordOperator{op: op, expr: p.expr(.lowest)}
 			p.expect(.rpar)
-			lhs = ast.KeywordOperator{op: op, expr: expr}
 		}
 		.key_nil {
 			p.next()
@@ -617,7 +613,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// update linr_nr to support chaining
+			// support chaining
 			line = p.line
 			// rcbr
 			p.next()
@@ -915,9 +911,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 // parse type or expr, eg. `typeof(type|expr)` | `array_or_generic_call[type|expr]()`
 [inline]
 fn (mut p Parser) type_or_expr(min_bp token.BindingPower) ast.Expr {
-	// TODO: try better way (also no dupe code), see uses of `p.exp_pt` above.
-	// perhaps use `p.try_type()` in `p.expr()` for `.name, .key_fn, .question`
-	// and then we can either return the type directly or continue to init/call.
+	// TODO: is there a better way to do this? see uses of `p.exp_pt`
 	exp_pt := p.exp_pt
 	p.exp_pt = true
 	expr := p.expr(min_bp)
