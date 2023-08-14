@@ -3,10 +3,13 @@
 // that can be found in the LICENSE file.
 module token
 
+import os
+import sync
+
 // TODO: finish fileset / file / base pos etc
 
 // compact encoding of a source position within a file set
-type CompactPosition = int
+type Pos = int
 
 pub struct Position {
 pub:
@@ -32,11 +35,59 @@ mut:
 pub struct FileSet {
 mut:
 	base  int
-	files shared []&File
+	// files shared []&File
+	files []&File
+	mu    sync.Mutex
+}
+
+pub fn (f &File) pos(offset int) Pos {
+	if offset > f.size {
+		panic('invalid offset')
+	}
+	return Pos(f.base + offset)
+}
+
+// loads the source file and generates the error message including the source
+// line and column. offending token is highlighted in the snipped of source code.
+// since this is used on errors, loading the source file isnt an issue.
+// TODO: probably needs a better name
+pub fn (f &File) error_details(pos Position, row_padding int) string {
+	src := os.read_file(f.name) or {
+		// TODO: error util
+		panic('error reading ${f.name}')
+	}
+	line_start := if pos.line-row_padding-1 > 0 {
+		f.line_start(pos.line - row_padding)
+	} else {
+		0
+	}
+	mut line_end := pos.offset+1
+	for i := 0; line_end<src.len; {
+		if src[line_end] == `\n` {
+			i++
+			if i == row_padding+1 { break }
+		}
+		line_end++
+	}
+	lines_src := src[line_start..line_end].split('\n')
+	line_no_start, _ := f.find_line_and_column(line_start)
+	mut lines_src_formatted := []string{}
+	for i in 0..lines_src.len {
+		line_no := line_no_start+i
+		line_src := lines_src[i]
+		line_spaces := line_src.replace('\t', '    ')
+		lines_src_formatted << '${line_no:5d} | ' + line_spaces
+		if line_no == pos.line {
+			space_diff := line_spaces.len - line_src.len
+			lines_src_formatted << '        ' + ' '.repeat(space_diff+pos.column-1) + '^'
+		}
+	}
+	return lines_src_formatted.join('\n')
 }
 
 // TODO:
 pub fn (mut fs FileSet) add_file(filename string, base_ int, size int) &File {
+	fs.mu.@lock()
 	mut base := if base_ < 0 { fs.base } else { base_ }
 	if base < fs.base {
 		panic('invalid base $base (should be >= $fs.base')
@@ -50,19 +101,74 @@ pub fn (mut fs FileSet) add_file(filename string, base_ int, size int) &File {
 		panic('token.Pos offset overflow (> 2G of source code in file set)')
 	}
 	// add the file to the file set
-	fs.base = base
-	lock fs.files {
-		fs.files << file
-	}
+	// fs.base = base
+	// lock fs.files {
+	// 	// TODO: add shared to fs.base (fix compiler errors first)
+	// 	fs.files << file
+	// }
 	// fs.last = file
+	fs.base = base
+	fs.files << file
+	fs.mu.unlock()
 	return file
 }
 
-pub fn new_file(filename string) File {
-	return File{
-		name: filename
+fn search_files(files []&File, x int) int {
+	// binary search
+	mut min, mut max := 0, files.len
+	for min < max {
+		mid := (min+max)/2
+		// println('# min: $min, mid: $mid, max: $max')
+		if files[mid].base <= x {
+			min = mid + 1
+		} else {
+			max = mid
+		}
 	}
+	return min-1
+	
+	// linear seach
+	// for i := files.len-1; i>=0; i-- {
+	// 	file := files[i]
+	// 	if file.base < x && x <= file.base + file.size {
+	// 		// println('found file for pos `$x` i = $i:')
+	// 		// dump(file)
+	// 		return i
+	// 	}
+	// }
+	// return -1
 }
+
+pub fn (mut fs FileSet) file(pos Pos) &File {
+	// lock fs.files 
+	// last file
+	// if last_file := fs.files.last() {
+	// 	// p_int 
+	// 	if last_file.base <= int(pos) && int(p) <- f.base+f.size {
+	// 		return last_file
+	// 	}
+	// }
+	// i := search_files(lock fs.files { fs.files }, pos)
+	fs.mu.@lock()
+	i := search_files(fs.files, pos)
+	fs.mu.unlock()
+	if i >= 0 {
+		file := fs.files[i]
+		if int(pos) <= file.base+file.size {
+			// we could store last and retrieve and try above
+			return file
+		}
+	}
+
+	panic('cannot find file for pos: $pos')
+}
+
+	
+// pub fn new_file(filename string) File {
+// 	return File{
+// 		name: filename
+// 	}
+// }
 
 [inline]
 pub fn (mut f File) add_line(offset int) {
@@ -80,11 +186,11 @@ pub fn (f &File) line_start(line int) int {
 	}
 }
 
-pub fn (f &File) line(pos CompactPosition) int {
+pub fn (f &File) line(pos Pos) int {
 	return f.find_line(pos)
 }
 
-pub fn (f &File) position(pos CompactPosition) Position {
+pub fn (f &File) position(pos Pos) Position {
 	offset := int(pos) - f.base
 	line, column := f.find_line_and_column(offset)
 	return Position{

@@ -7,14 +7,15 @@ import tinyv.ast
 import tinyv.parser
 
 fn (mut b Builder) parse_files(files []string) []ast.File {
-	mut parser_reused := parser.new_parser(b.pref)
+	mut parser_reused := parser.Parser.new(b.pref)
 	mut ast_files := []ast.File{}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.pref.get_vlib_module_path('builtin')))
+		ast_files << parser_reused.parse_files(get_v_files_from_dir(b.pref.get_vlib_module_path('builtin')), mut b.file_set)
+		// ast_files << parser_reused.parse_files(get_v_files_from_dir(b.pref.get_vlib_module_path('sync')), mut b.file_set)
 	}
 	// parse user files
-	ast_files << parser_reused.parse_files(files)
+	ast_files << parser_reused.parse_files(files, mut b.file_set)
 	if b.pref.skip_imports {
 		return ast_files
 	}
@@ -27,7 +28,7 @@ fn (mut b Builder) parse_files(files []string) []ast.File {
 				continue
 			}
 			mod_path := b.pref.get_module_path(mod.name, ast_file.name)
-			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path))
+			ast_files << parser_reused.parse_files(get_v_files_from_dir(mod_path), mut b.file_set)
 			parsed_imports << mod.name
 		}
 	}

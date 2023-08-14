@@ -44,7 +44,7 @@ pub enum Token {
 	key_fn
 	key_for
 	key_global
-	key_go // TODO: remove
+	key_go
 	key_goto
 	key_if
 	key_import
@@ -133,8 +133,8 @@ pub fn (t Token) left_binding_power() BindingPower {
 		.logical_or { .lowest }
 		// `&&`
 		.and { .one }
-		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge { .two }
+		// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | `!in` | `is` | `!is` 
+		.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is { .two }
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor { .three }
 		// `*` |  `/` | `%` | `<<` | `>>` | `>>>` | `&`
@@ -210,6 +210,15 @@ pub fn (t Token) is_overloadable() bool {
 	}
 }
 
+[inline]
+pub fn (t Token) is_comparison() bool {
+	return match t {
+		// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | '!in' | `is` | '!is'
+		.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is { true }
+		else { false }
+	}
+}
+
 // NOTE: probably switch back to map again later.
 // for dev this is easier to see if any tokens are missing.
 pub fn (t Token) str() string {
@@ -254,7 +263,7 @@ pub fn (t Token) str() string {
 		.key_fn { 'fn' }
 		.key_for { 'for' }
 		.key_global { '__global' }
-		.key_go { 'go' } // TODO: remove
+		.key_go { 'go' }
 		.key_goto { 'goto' }
 		.key_if { 'if' }
 		.key_import { 'import' }

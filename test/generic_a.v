@@ -1,0 +1,16 @@
+module main
+
+struct StructA {}
+
+fn f[T](x T) {
+   d := x + x
+   println(d)
+}
+
+fn main() {
+    f(123)
+    f('abc')
+    // f(main)
+    f(StructA{})
+}
+

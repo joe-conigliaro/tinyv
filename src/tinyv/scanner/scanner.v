@@ -8,6 +8,7 @@ import tinyv.pref
 
 [flag]
 pub enum Mode {
+	normal
 	scan_comments
 	skip_interpolation
 }
@@ -112,7 +113,8 @@ pub fn (mut s Scanner) scan() token.Token {
 			break
 		}
 		s.lit = s.src[s.pos..s.offset]
-		return token.token_from_ident(s.lit)
+		// return token.Token.from_string(s.lit)
+		return token.token_from_string(s.lit)
 	}
 	// string
 	else if c in [`'`, `"`] {
@@ -539,35 +541,4 @@ fn (mut s Scanner) number() {
 		}
 		break
 	}
-}
-
-// TODO: move to appropriate place
-pub fn (s &Scanner) error_details(pos token.Position, row_padding int) string {
-	line_start := if pos.line-row_padding-1 > 0 {
-		s.file.line_start(pos.line - row_padding)
-	} else {
-		0
-	}
-	mut line_end := pos.offset+1
-	for i := 0; line_end<s.src.len; {
-		if s.src[line_end] == `\n` {
-			i++
-			if i == row_padding+1 { break }
-		}
-		line_end++
-	}
-	lines_src := s.src[line_start..line_end].split('\n')
-	line_no_start, _ := s.file.find_line_and_column(line_start)
-	mut lines_formatted := []string{}
-	for i in 0..lines_src.len {
-		line_no := line_no_start+i
-		line_src := lines_src[i]
-		line_spaces := line_src.replace('\t', '    ')
-		lines_formatted << '${line_no:5d} | ' + line_spaces
-		if line_no == pos.line {
-			space_diff := line_spaces.len - line_src.len
-			lines_formatted << '        ' + ' '.repeat(space_diff+pos.column-1) + '^'
-		}
-	}
-	return lines_formatted.join('\n')
 }

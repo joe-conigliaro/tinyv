@@ -54,6 +54,10 @@ struct StructA {
 	field_g int = field_g_default() [attribute_a]
 }
 
+fn StructA.static_method_a() int {
+	return 1
+}
+
 struct StructB {
 mut: // TODO: modifiers
 	field_a int
@@ -88,7 +92,9 @@ fn fn_a(arg_a string, arg_b int) int {
 	return 1
 }
 
-fn fn_b(arg_a string, arg_b, arg_c, arg_d int) int {
+// TODO: error on missing name/type
+// fn fn_b(arg_a string, arg_b, arg_c, arg_d int) int {
+fn fn_b(arg_a string, arg_b int, arg_c int, arg_d int) int {
 	println('fn_b($arg_a, $arg_b, $arg_c, $arg_d)')
 	return 1
 }
@@ -137,7 +143,7 @@ fn (rec &StructA) method_a(arg_a string, arg_b int) int {
 	return 1
 }
 
-// TODO: operator overload
+// TODO: operator overload (last missing parser feature, I think :D)
 pub fn (a StructA) == (b StructA) bool {
 	return a.field_a == b.field_a
 }
@@ -209,6 +215,7 @@ fn main_a() {
 	call_comptime_a := $fn_a('string', 1)
 	// comptime call as expr stmt only
 	$fn_a('string', 1)
+	$compile_warn('compile warn')
 	cast_a := u8(1)
 	cast_b := &[]u8([1,2,3,4])
 	// the following casts should error later about not being
@@ -239,7 +246,14 @@ fn main_a() {
 	index_range_a := array_init_a[0..2]
 	index_range_b := array_init_a[2..]
 	index_range_c := array_init_a[..2]
-	index_range_d := [[1,2,3,4]][0][2..4]
+	index_range_d := array_init_a[1+2..1+2]
+	index_range_e := array_init_a[1+2..]
+	index_range_f := array_init_a[..1+2]
+	index_range_g := array_init_a[1+2...1+2]
+	index_range_h := array_init_a[1+2...]
+	index_range_i := array_init_a[...1+2]
+	index_range_j := [[1,2,3,4]][0][2..4]
+	index_range_k := [[1,2,3,4]][0][2...4]
 	index_or_a := array_init_a[0] or { 1 }
 	index_or_b := array_init_c[0] or { [5,6,7,8] }[0]
 	index_or_c := fn() []int { return [array_init_a[0] or { 1 }] }()[0] or { 1 }
@@ -309,7 +323,7 @@ fn main_a() {
 	$if option_a ? {
 		println('custom option: `v -d option_a`')
 	}
-	for val_a in list_a {
+	for val_a in array_init_a {
 		println(val_a)
 	}
 	// TODO: error (unless first 2 are allowed? 0..10 and 0..infinity)
@@ -320,13 +334,29 @@ fn main_a() {
 	for val_a in 0..10 {
 		println(val_a)
 	}
-	for key_a, val_a in list_a {
+	for key_a, val_a in array_init_a {
 		println(key_a)
 		println(val_a)
 	}
-	for key_a, mut val_a in list_a {
+	for key_a, mut val_a in array_init_a {
 		println(key_a)
 		println(val_a)
+	}
+	for idx_a in 0 .. a + 1 {
+		println(idx_a)
+	}
+	for key, value in {
+		'a': 'apple'
+		'b': 'bananna'
+	} {
+		println('${key}: ${value}')
+	}
+	for mut left_node is ast.InfixExpr {
+		if left_node.op == .and && mut left_node.right is ast.InfixExpr {
+			if left_node.right.op == .key_is {
+				println('xx')
+			}
+		}
 	}
 	for idx_a:=0; idx_a<=100; idx_a++ {
 		println(idx_a)
@@ -393,4 +423,35 @@ fn main_a() {
 	{
 		block_test_a := 1
 	}
+
+	// REMOVE BELOW - TEMP TESTING OR MOVE TO APPRIPRIATE PLACE ABOVE
+
+	x.member.free()
+	x.member.submember1.free()
+	x.member.submember1.submember2.free()
+	x.y = cmdline.option(current_args, arg, '10').int()
+	x.y = cmdline.option(current_args, arg, 
+	'10').int()
+
+	assert 'href="${url('/test')}"' == 'href="/test.html"'
+	assert '"${show_info('abc')}"' == '"abc"'
+
+	// TODO: confirm there are no cases where
+	// there is ambiguity with `|` infix expr
+	// lines_indents := lines
+	//     .filter(|line| !line.is_blank())``
+	//     .map(|line| line.indent_width())
+
+	// TODO: 
+	for mut x is MyType {
+		println(x)
+	}
+
+	ms := t.swatches[name].elapsed().microseconds()
+
+	if !v.pref.is_bare && v.pref.build_mode != .build_module
+		&& v.pref.os in [.linux, .freebsd, .openbsd, .netbsd, .dragonfly, .solaris, .haiku] {
+	}
+
+	rng.shuffle[T](mut res, config_)!
 }

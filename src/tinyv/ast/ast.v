@@ -13,20 +13,24 @@ pub const (
 type EmptyExpr = u8
 type EmptyStmt = u8
 
-// pub type Decl = ConstDecl | EnumDecl | StructDecl
 pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
 	| CallOrCastExpr | CastExpr | ChannelInitExpr | ComptimeExpr | EmptyExpr
-	| FnLiteral | GenericArgs | GenericArgsOrIndexExpr | Ident | IfExpr
+	| FnLiteral | GenericArgs | GenericArgOrIndexExpr | Ident | IfExpr
 	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
 	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
-	| PrefixExpr | RangeExpr | SelectorExpr | SpawnExpr | StringInterLiteral
-	| StringLiteral | StructInitExpr | Tuple | Type | UnsafeExpr
+	| PrefixExpr | RangeExpr | SelectorExpr | StringInterLiteral | StringLiteral
+	| StructInitExpr | Tuple | Type | UnsafeExpr
 	// TODO: decide if this going to be done like this
 	| FieldInit
-pub type Stmt = AssertStmt | AssignStmt | BlockStmt | ConstDecl | DeferStmt
-	| ComptimeStmt | Directive | EmptyStmt | EnumDecl | ExprStmt
-	| FlowControlStmt | FnDecl | ForStmt | ForInStmt | GlobalDecl | ImportStmt
-	| InterfaceDecl | LabelStmt | ModuleStmt | ReturnStmt | StructDecl | TypeDecl
+
+pub type Stmt = AssertStmt | AssignStmt | BlockStmt | DeferStmt
+	| ComptimeStmt | Directive | EmptyStmt | ExprStmt | FlowControlStmt
+	| ForStmt | ForInStmt | ImportStmt | LabelStmt | ModuleStmt | ReturnStmt
+	// Decls
+	| ConstDecl | EnumDecl | FnDecl | GlobalDecl | InterfaceDecl | StructDecl | TypeDecl
+// pub type Decl = ConstDecl | EnumDecl | FnDecl | GlobalDecl
+// 	| InterfaceDecl | StructDecl | TypeDecl
+
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
@@ -36,6 +40,7 @@ pub type Type = ArrayType | ArrayFixedType | ChannelType | FnType | MapType
 // File (AST container)
 pub struct File {
 pub:
+	mod		   string
 	name       string
 	// attributes []Attribute
 	stmts      []Stmt
@@ -64,6 +69,7 @@ pub:
 	init  Expr = empty_expr
 	cap   Expr = empty_expr
 	len   Expr = empty_expr
+	pos   token.Pos
 }
 
 pub struct AssocExpr {
@@ -83,18 +89,21 @@ pub struct CallExpr {
 pub:
 	lhs  Expr
 	args []Expr
+	pos  token.Pos
 }
 
 pub struct CallOrCastExpr {
 pub:
 	lhs  Expr
 	expr Expr
+	pos  token.Pos
 }
 
 pub struct CastExpr {
 pub:
 	typ  Expr
 	expr Expr
+	pos  token.Pos
 }
 
 pub struct ChannelInitExpr {
@@ -106,12 +115,13 @@ pub:
 pub struct ComptimeExpr {
 pub:
 	expr Expr
+	pos  token.Pos
 }
 
 pub struct FieldDecl {
 pub:
 	name  	   string
-	typ   	   Expr
+	typ   	   Expr = empty_expr // can be empty as used for const (unless we use something else)
 	value	   Expr = empty_expr
 	attributes []Attribute
 }
@@ -136,15 +146,16 @@ pub:
 	args []Expr // concrete types
 }
 
-pub struct GenericArgsOrIndexExpr {
+pub struct GenericArgOrIndexExpr {
 pub:
-	lhs   Expr
-	exprs []Expr
+	lhs  Expr
+	expr Expr
 }
 
 pub struct Ident {
 pub:
-	name   string
+	pos  token.Pos
+	name string
 }
 
 pub struct IfExpr {
@@ -164,6 +175,7 @@ pub:
 	op  token.Token
 	lhs Expr
 	rhs Expr
+	pos token.Pos
 }
 
 pub struct IndexExpr {
@@ -196,18 +208,21 @@ pub:
 	typ  Expr = empty_expr
 	keys []Expr
 	vals []Expr
+	pos	 token.Pos
 }
 
 pub struct MatchBranch {
 pub:
 	cond  []Expr
 	stmts []Stmt
+	pos   token.Pos
 }
 
 pub struct MatchExpr {
 pub:
 	expr     Expr
 	branches []MatchBranch
+	pos		 token.Pos
 }
 
 pub struct Modifier {
@@ -216,10 +231,15 @@ pub:
 	expr Expr
 }
 
+// pub fn (expr Modifier) unwrap() Expr {
+// 	return expr.expr
+// }
+
 pub struct OrExpr {
 pub:
 	expr  Expr
-	stmts []Stmt
+	stmts []Stmt 
+	pos	  token.Pos
 }
 
 pub struct Parameter {
@@ -227,6 +247,7 @@ pub:
 	name   string
 	typ    Expr
 	is_mut bool
+	pos    token.Pos
 }
 
 pub struct ParenExpr {
@@ -244,6 +265,7 @@ pub struct PrefixExpr {
 pub:
 	op   token.Token
 	expr Expr
+	pos  token.Pos
 }
 
 pub struct RangeExpr {
@@ -256,12 +278,31 @@ pub:
 pub struct SelectorExpr {
 pub:
 	lhs Expr
-	rhs Expr
+	rhs Ident
+	pos token.Pos
 }
 
-pub struct SpawnExpr {
-pub:
-	expr Expr
+// pub fn (expr Expr) str() string {
+// 	return 'Expr.str() - $expr.type_name()'
+// }
+
+pub fn (se SelectorExpr) name() string {
+	return se.lhs.name() + '.' + se.rhs.name
+}
+
+pub fn (expr Expr) name() string {
+	return match expr {
+		SelectorExpr {
+			expr.name()
+		}
+		Ident {
+			expr.name
+		}
+		else {
+			expr.str()
+		}
+	}
+
 }
 
 pub enum StringLiteralKind {
@@ -281,7 +322,7 @@ pub fn (s StringLiteralKind) str() string {
 }
 
 [direct_array_access]
-pub fn string_literal_kind_from_string(s string) !StringLiteralKind {
+pub fn StringLiteralKind.from_string(s string) !StringLiteralKind {
 	match s[0] {
 		`c` {
 			return .c
@@ -339,7 +380,7 @@ pub enum StringInterFormat {
 	string
 }
 
-pub fn string_inter_format_from_u8(c u8) !StringInterFormat {
+pub fn StringInterFormat.from_u8(c u8) !StringInterFormat {
 	return match c {
 		`b`		 { .binary }
 		`c`		 { .character }
@@ -391,6 +432,16 @@ pub:
 	op  token.Token
 	lhs []Expr
 	rhs []Expr
+	pos token.Pos
+}
+
+pub fn (attributes []Attribute) has(name string) bool {
+	for attribute in attributes {
+		if attribute.name == name {
+			return true
+		}
+	}
+	return false
 }
 
 pub struct Attribute {
@@ -447,16 +498,23 @@ pub:
 	label string
 }
 
+// enum FnArributes {
+// 	method
+// 	static
+// }
+
 pub struct FnDecl {
 pub:
 	attributes []Attribute
 	is_public  bool
 	is_method  bool
+	is_static  bool
 	receiver   Parameter
 	language   Language = .v
 	name       string
 	typ        FnType
 	stmts      []Stmt
+	pos		   token.Pos
 }
 
 pub struct ForStmt {
@@ -470,14 +528,14 @@ pub:
 // NOTE: used as the initializer for ForStmt
 pub struct ForInStmt {
 pub:
-	key   		 string
-	value 		 string
-	value_is_mut bool
-	expr	     Expr
+	// key   		 string
+	// value 		 string
+	// value_is_mut bool
+	// expr	     Expr
 	// TODO:
-	// key   		 Expr = empty_expr
-	// value 		 Expr
-	// expr  		 Expr
+	key   		 Expr = empty_expr
+	value 		 Expr
+	expr  		 Expr
 }
 
 pub struct GlobalDecl {
@@ -525,6 +583,7 @@ pub:
 	name       	   string
 	generic_params []Expr
 	fields         []FieldDecl
+	pos			   token.Pos
 }
 
 pub struct TypeDecl {
@@ -559,6 +618,34 @@ pub:
 	params         []Parameter
 	return_type    Expr = empty_expr
 }
+
+pub fn (ft &FnType) str() string {
+	mut s := 'fn('
+	for param in ft.params {
+		s += param.name + param.typ.str()
+	}
+	s += ') ' + ft.return_type.str()
+	return s
+}
+
+pub fn (ident &Ident) str() string {
+	return ident.name.clone()
+}
+
+// pub fn (expr Expr) str() string {
+// 	return match expr {
+// 		Ident {
+// 			expr.name
+// 		}
+// 		SelectorExpr {
+// 			expr.lhs.str() + '.' + expr.rhs.name
+// 		}
+// 		else {
+// 			'missing Expr.str() for ${expr.type_name()}'
+// 			// expr.str()
+// 		}
+// 	}
+// }
 
 pub struct MapType {
 pub:

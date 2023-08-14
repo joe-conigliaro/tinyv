@@ -6,8 +6,9 @@ module builder
 import tinyv.ast
 import tinyv.gen.v as gen_v
 import tinyv.pref
-// import tinyv.token
-import tinyv.types
+import tinyv.token
+// import tinyv.types
+// import tinyv.util
 // import tinyv.ir.ssa
 import time
 
@@ -15,6 +16,7 @@ struct Builder {
 	pref &pref.Preferences
 mut:
 	files []ast.File
+	file_set &token.FileSet = &token.FileSet{}
 }
 
 pub fn new_builder(prefs &pref.Preferences) &Builder {
@@ -33,14 +35,13 @@ pub fn (mut b Builder) build(files []string) {
 		b.parse_files_parallel(files)
 	}
 	parse_time := sw.elapsed()
-	// b.type_check_files()
-	// type_check_time := time.Duration(sw.elapsed() - parse_time)
+	b.type_check_files()
+	type_check_time := time.Duration(sw.elapsed() - parse_time)
 	b.gen_v_files()
-	// gen_v_time := time.Duration(sw.elapsed() - type_check_time)
-	gen_v_time := time.Duration(sw.elapsed() - parse_time)
+	gen_v_time := time.Duration(sw.elapsed() - parse_time - type_check_time)
 	total_time := sw.elapsed()
 	print_time('Scan & Parse', parse_time)
-	// print_time('Type Check', type_check_time)
+	print_time('Type Check', type_check_time)
 	print_time('Gen (v)', gen_v_time)
 	print_time('Total', total_time)
 
@@ -51,10 +52,6 @@ pub fn (mut b Builder) build(files []string) {
 	// }
 }
 
-fn (mut b Builder) type_check_files() {
-	mut checker := types.new_checker()
-	checker.check_files(b.files)
-}
 
 fn (mut b Builder) gen_v_files() {
 	mut gen := gen_v.new_gen(b.pref)

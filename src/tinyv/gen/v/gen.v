@@ -48,7 +48,7 @@ pub fn (mut g Gen) reset() {
 }
 
 pub fn (mut g Gen) gen(file ast.File) {
-	// clear incase we are reusing gen instance
+	// clear in case we are reusing gen instance
 	if g.out.len > 1 {
 		g.reset()
 	}
@@ -91,10 +91,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
-		ast.ComptimeStmt {
-			g.write('$')
-			g.stmt(stmt.stmt)
-		}
 		ast.ConstDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -109,6 +105,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.indent--
 			g.writeln(')')
+		}
+		ast.ComptimeStmt {
+			g.write('$')
+			g.stmt(stmt.stmt)
 		}
 		ast.DeferStmt {
 			g.write('defer {')
@@ -170,8 +170,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write('fn ')
 			if stmt.is_method {
 				g.write('(')
-				g.write(stmt.receiver.name)
-				g.write(' ')
+				if !stmt.is_static {
+					g.write(stmt.receiver.name)
+					g.write(' ')
+				}
 				g.expr(stmt.receiver.typ)
 				g.write(') ')
 			}
@@ -203,6 +205,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			mut has_init := stmt.init !is ast.EmptyStmt
 			if has_init && stmt.init is ast.ForInStmt {
 				is_plain = false
+				g.write('/* ForIn */')
 				g.stmt(stmt.init)
 			} else {
 				mut has_post := stmt.post !is ast.EmptyStmt
@@ -213,6 +216,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				}
 				if stmt.cond !is ast.EmptyExpr {
 					is_plain = false
+					g.write('/* cond: $stmt.cond.type_name() */')
 					g.expr(stmt.cond)
 				}
 				if has_init || has_post {
@@ -229,14 +233,19 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln('}')
 		}
 		ast.ForInStmt {
-			if stmt.key.len > 0 {
-				g.write(stmt.key)
+			// if stmt.key.len > 0 {
+			// 	g.write(stmt.key)
+			// 	g.write(', ')
+			// }
+			// if stmt.value_is_mut {
+			// 	g.write('mut ')
+			// }
+			// g.write(stmt.value)
+			if stmt.key !is ast.EmptyExpr {
+				g.expr(stmt.key)
 				g.write(', ')
 			}
-			if stmt.value_is_mut {
-				g.write('mut ')
-			}
-			g.write(stmt.value)
+			g.expr(stmt.value)
 			g.write(' in ')
 			g.expr(stmt.expr)
 		}
@@ -260,15 +269,6 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.indent--
 			g.writeln(')')
 		}
-		ast.ImportStmt {
-			g.write('import ')
-			g.write(stmt.name)
-			if stmt.is_aliased {
-				g.write(' as ')
-				g.write(stmt.alias)
-			}
-			g.writeln('')
-		}
 		ast.InterfaceDecl {
 			if stmt.is_public {
 				g.write('pub ')
@@ -279,23 +279,34 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.indent++
 			for field in stmt.fields {
 				g.write(field.name)
-				if field.typ is ast.Type {
-					if field.typ is ast.FnType {
-						g.fn_type(field.typ)
-					} else {
-						g.write(' ')
-						g.expr(field.typ)
-					}
-				}
-				// TODO/FIXME: because p.typ() is returning ident & selector currently
-				else {
-					g.write(' ')
-					g.expr(field.typ)
-				}
+				g.write(' ')
+				g.expr(field.typ)
+				// if field.typ is ast.Type {
+				// 	if field.typ is ast.FnType {
+				// 		g.fn_type(field.typ)
+				// 	} else {
+				// 		g.write(' ')
+				// 		g.expr(field.typ)
+				// 	}
+				// }
+				// // TODO/FIXME: because p.typ() is returning ident & selector currently
+				// else {
+				// 	g.write(' ')
+				// 	g.expr(field.typ)
+				// }
 				g.writeln('')
 			}
 			g.indent--
 			g.writeln('}')
+		}
+		ast.ImportStmt {
+			g.write('import ')
+			g.write(stmt.name)
+			if stmt.is_aliased {
+				g.write(' as ')
+				g.write(stmt.alias)
+			}
+			g.writeln('')
 		}
 		ast.LabelStmt {
 			g.write(stmt.name)
@@ -483,10 +494,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.generic_list(expr.args)
 		}
-		ast.GenericArgsOrIndexExpr {
-			g.write('/* ast.GenericArgsOrIndexExpr */')
+		ast.GenericArgOrIndexExpr {
+			g.write('/* ast.GenericArgOrIndexExpr */')
 			g.expr(expr.lhs)
-			g.generic_list(expr.exprs)
+			g.generic_list([expr.expr])
 		}
 		ast.Ident {
 			g.write(expr.name)
@@ -512,9 +523,13 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.KeywordOperator {
 			g.write(expr.op.str())
-			g.write('(')
-			g.expr(expr.expr)
-			g.write(')')
+			if expr.op in [.key_go, .key_spawn] {
+				g.expr(expr.expr)
+			} else {
+				g.write('(')
+				g.expr(expr.expr)
+				g.write(')')
+			}
 		}
 		ast.LockExpr {
 			g.write('$expr.kind ')
@@ -568,9 +583,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.expr(expr.desugar())
 		}
 		ast.Modifier {
+			g.write('Modifier[')
 			g.write(expr.kind.str())
 			g.write(' ')
 			g.expr(expr.expr)
+			g.write(']')
 		}
 		ast.OrExpr {
 			g.expr(expr.expr)
@@ -594,19 +611,18 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 		}
 		ast.RangeExpr {
+			g.write('RangeExpr[ ')
 			g.expr(expr.start)
-			// g.write('..')
+			// g.write(' ')
 			g.write(expr.op.str())
+			// g.write(' ')
 			g.expr(expr.end)
+			g.write(' ]')
 		}
 		ast.SelectorExpr {
 			g.expr(expr.lhs)
 			g.write('.')
 			g.expr(expr.rhs)
-		}
-		ast.SpawnExpr {
-			g.write('spawn ')
-			g.expr(expr.expr)
 		}
 		ast.StringInterLiteral {
 			if expr.kind != .v { g.write(expr.kind.str()) }

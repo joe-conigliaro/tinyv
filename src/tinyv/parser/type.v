@@ -134,6 +134,7 @@ fn (mut p Parser) fn_type() ast.FnType {
 
 [direct_array_access]
 fn (mut p Parser) ident_or_named_type() ast.Expr {
+	pos := p.pos
 	// `chan` | `chan type` 
 	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
 		line := p.line
@@ -143,7 +144,7 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 			return ast.Type(ast.ChannelType{elem_type: elem_type})
 		}
 		// struct called `chan` in builtin
-		return ast.Ident{name: 'chan'}
+		return ast.Ident{name: 'chan', pos: pos}
 	}
 	// `map[type]type`
 	else if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
@@ -155,12 +156,24 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 			return ast.Type(ast.MapType{key_type: key_type, value_type: p.expect_type()})
 		}
 		// struct called `map` in builtin
-		return ast.Ident{name: 'map'}
+		return ast.Ident{name: 'map', pos: pos}
 	}
-	ident := p.ident()
+	// ident := p.ident()
+	// return ident
+	return p.ident_or_selector_expr()
+}
+
+fn (mut p Parser) ident_or_selector_expr() ast.Expr {
+	lhs := p.ident()
+	// lhs := p.expr(.lowest)
 	if p.tok == .dot {
 		p.next()
-		return ast.SelectorExpr{lhs: ident, rhs: p.ident()}
+		return ast.SelectorExpr{
+			lhs: lhs
+			// rhs: p.ident_or_selector_expr()
+			rhs: p.ident()
+			pos: p.pos
+		}
 	}
-	return ident
+	return lhs
 }

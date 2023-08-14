@@ -8,6 +8,7 @@ module types
 const universe = init_universe()
 
 const(
+	// primitives
 	bool_ = Primitive{props: .boolean}
 	i8_   = Primitive{props: .integer, size: 8}
 	i16_  = Primitive{props: .integer, size: 16}
@@ -16,28 +17,65 @@ const(
 	i64_  = Primitive{props: .integer, size: 64}
 	u8_   = Primitive{props: .integer | .unsigned, size: 8}
 	// byte_ = Primitive{props: .integer | .unsigned, size: 8}
-	// byte_ = Alias{parent_type: u8_}
+	byte_ = Alias{name: 'byte', parent_type: u8_}
 	u16_  = Primitive{props: .integer | .unsigned, size: 16}
 	u32_  = Primitive{props: .integer | .unsigned, size: 32}
 	u64_  = Primitive{props: .integer | .unsigned, size: 64}
-	f16_  = Primitive{props: .float, size: 16}
 	f32_  = Primitive{props: .float, size: 32}
+	f64_  = Primitive{props: .float, size: 64}
+	// complex / non primitives
+	string_	 = String(0)
+	chan_    = Channel{}
+	char_	 = Char(0)
+	isize_   = ISize(0)
+	usize_   = USize(0)
+	rune_    = Rune(0)
+	void_	 = Void(0)
+	nil_	 = Nil(0)
+	none_	 = None(0)
+	byteptr_ = Alias{name: 'byteptr', parent_type: Pointer{base_type: byte_}}
+	charptr_ = Alias{name: 'charptr', parent_type: Pointer{base_type: char_}}
+	voidptr_ = Alias{name: 'voidptr', parent_type: Pointer{base_type: void_}}
+	int_literal_   = Primitive{props: .untyped | .integer}
+	float_literal_ = Primitive{props: .untyped | .float}
+	// int_literal_   = IntLiteral(0)
+	// float_literal_ = FloatLiteral(0)
+	// TODO: is this what thread should be?
+	thread_ = Thread{}
 )
 
 pub fn init_universe() &Scope {
 	// universe scope
 	mut universe_ := new_scope(unsafe{nil})
-	universe_.register('bool', bool_)
-	universe_.register('i8', i8_)
-	universe_.register('i16', i16_)
-	// universe_.register('i32', i32_)
-	universe_.register('int', int_)
-	universe_.register('i64', i64_)
-	universe_.register('u8', u8_)
-	// universe_.register('byte', byte_)
-	universe_.register('u16', u16_)
-	universe_.register('u64', u64_)
-	universe_.register('f16', f16_)
-	universe_.register('f32', f32_)
+	universe_.insert('bool', Type(bool_))
+	universe_.insert('i8', Type(i8_))
+	universe_.insert('i16', Type(i16_))
+	// universe_.insert('i32', Type(i32_))
+	universe_.insert('int', Type(int_))
+	universe_.insert('i64', Type(i64_))
+	universe_.insert('u8', Type(u8_))
+	universe_.insert('byte', Type(byte_))
+	universe_.insert('u16', Type(u16_))
+	universe_.insert('u32', Type(u32_))
+	universe_.insert('u64', Type(u64_))
+	universe_.insert('f32', Type(f32_))
+	universe_.insert('f64', Type(f64_))
+	// TODO:
+	universe_.insert('string', Type(string_))
+	universe_.insert('chan', Type(chan_))
+	universe_.insert('char', Type(char_))
+	universe_.insert('isize', Type(isize_))
+	universe_.insert('usize', Type(usize_))
+	universe_.insert('rune', Type(rune_))
+	universe_.insert('void', Type(void_))
+	universe_.insert('nil', Type(nil_))
+	universe_.insert('none', Type(nil_))
+	universe_.insert('byteptr', Type(byteptr_))
+	universe_.insert('charptr', Type(charptr_))
+	universe_.insert('voidptr', Type(voidptr_))
+	universe_.insert('int_literal', Type(int_literal_))
+	universe_.insert('float_literal', Type(float_literal_))
+	universe_.insert('float_literal', Type(float_literal_))
+	universe_.insert('thread', Type(thread_))
 	return universe_
 }
