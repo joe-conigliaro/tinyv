@@ -2,8 +2,7 @@ module token
 
 // NOTE: add keyword tokens here
 [direct_array_access]
-// pub fn Token.from_string(name string) Token {
-pub fn token_from_string(name string) Token {
+pub fn Token.from_string(name string) Token {
 	match name.len {
 		2 {
 			match name[0] {
