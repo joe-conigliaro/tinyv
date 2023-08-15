@@ -14,27 +14,27 @@ type Pos = int
 pub struct Position {
 pub:
 	filename string
-	offset	 int
+	offset   int
 	line     int
 	column   int
 }
 
 pub fn (p Position) str() string {
-	return '$p.filename:$p.line:$p.column'
+	return '${p.filename}:${p.line}:${p.column}'
 }
 
 pub struct File {
 pub:
-	name     	 string
-	base	     int
-	size		 int
+	name string
+	base int
+	size int
 mut:
 	line_offsets []int = [0] // start of each line
 }
 
 pub struct FileSet {
 mut:
-	base  int
+	base int
 	// files shared []&File
 	files []&File
 	mu    sync.Mutex
@@ -56,30 +56,32 @@ pub fn (f &File) error_details(pos Position, row_padding int) string {
 		// TODO: error util
 		panic('error reading ${f.name}')
 	}
-	line_start := if pos.line-row_padding-1 > 0 {
+	line_start := if pos.line - row_padding - 1 > 0 {
 		f.line_start(pos.line - row_padding)
 	} else {
 		0
 	}
-	mut line_end := pos.offset+1
-	for i := 0; line_end<src.len; {
+	mut line_end := pos.offset + 1
+	for i := 0; line_end < src.len; {
 		if src[line_end] == `\n` {
 			i++
-			if i == row_padding+1 { break }
+			if i == row_padding + 1 {
+				break
+			}
 		}
 		line_end++
 	}
 	lines_src := src[line_start..line_end].split('\n')
 	line_no_start, _ := f.find_line_and_column(line_start)
 	mut lines_src_formatted := []string{}
-	for i in 0..lines_src.len {
-		line_no := line_no_start+i
+	for i in 0 .. lines_src.len {
+		line_no := line_no_start + i
 		line_src := lines_src[i]
 		line_spaces := line_src.replace('\t', '    ')
 		lines_src_formatted << '${line_no:5d} | ' + line_spaces
 		if line_no == pos.line {
 			space_diff := line_spaces.len - line_src.len
-			lines_src_formatted << '        ' + ' '.repeat(space_diff+pos.column-1) + '^'
+			lines_src_formatted << '        ' + ' '.repeat(space_diff + pos.column - 1) + '^'
 		}
 	}
 	return lines_src_formatted.join('\n')
@@ -87,14 +89,23 @@ pub fn (f &File) error_details(pos Position, row_padding int) string {
 
 // TODO:
 pub fn (mut fs FileSet) add_file(filename string, base_ int, size int) &File {
+	//	eprintln('>>> add_file fs: ${voidptr(fs)} | filename: $filename | base_: $base_ | size: $size')
 	fs.mu.@lock()
+	defer {
+		fs.mu.unlock()
+	}
+
 	mut base := if base_ < 0 { fs.base } else { base_ }
 	if base < fs.base {
-		panic('invalid base $base (should be >= $fs.base')
+		panic('invalid base ${base} (should be >= ${fs.base}')
 	}
-	file := &File{name: filename, base: base, size: size}
+	file := &File{
+		name: filename
+		base: base
+		size: size
+	}
 	if size < 0 {
-		panic('invalid size $size (should be >= 0)')
+		panic('invalid size ${size} (should be >= 0)')
 	}
 	base += size + 1 // +1 because EOF also has a position
 	if base < 0 {
@@ -109,7 +120,6 @@ pub fn (mut fs FileSet) add_file(filename string, base_ int, size int) &File {
 	// fs.last = file
 	fs.base = base
 	fs.files << file
-	fs.mu.unlock()
 	return file
 }
 
@@ -117,7 +127,7 @@ fn search_files(files []&File, x int) int {
 	// binary search
 	mut min, mut max := 0, files.len
 	for min < max {
-		mid := (min+max)/2
+		mid := (min + max) / 2
 		// println('# min: $min, mid: $mid, max: $max')
 		if files[mid].base <= x {
 			min = mid + 1
@@ -125,8 +135,8 @@ fn search_files(files []&File, x int) int {
 			max = mid
 		}
 	}
-	return min-1
-	
+	return min - 1
+
 	// linear seach
 	// for i := files.len-1; i>=0; i-- {
 	// 	file := files[i]
@@ -140,30 +150,34 @@ fn search_files(files []&File, x int) int {
 }
 
 pub fn (mut fs FileSet) file(pos Pos) &File {
-	// lock fs.files 
+	//	eprintln('>>>>>>>>> file fs: ${voidptr(fs)} | pos: $pos')
+	fs.mu.@lock()
+	defer {
+		fs.mu.unlock()
+	}
+
+	// lock fs.files
 	// last file
 	// if last_file := fs.files.last() {
-	// 	// p_int 
+	// 	// p_int
 	// 	if last_file.base <= int(pos) && int(p) <- f.base+f.size {
 	// 		return last_file
 	// 	}
 	// }
 	// i := search_files(lock fs.files { fs.files }, pos)
-	fs.mu.@lock()
 	i := search_files(fs.files, pos)
-	fs.mu.unlock()
 	if i >= 0 {
 		file := fs.files[i]
-		if int(pos) <= file.base+file.size {
+		if int(pos) <= file.base + file.size {
 			// we could store last and retrieve and try above
 			return file
 		}
 	}
 
-	panic('cannot find file for pos: $pos')
+	dump(fs)
+	panic('cannot find file for pos: ${pos}')
 }
 
-	
 // pub fn new_file(filename string) File {
 // 	return File{
 // 		name: filename
@@ -181,8 +195,8 @@ pub fn (f &File) line_count() int {
 }
 
 pub fn (f &File) line_start(line int) int {
-	return f.line_offsets[line-1] or {
-		panic('invlid line `$line` (must be > 0 & < $f.line_count())')
+	return f.line_offsets[line - 1] or {
+		panic('invlid line `${line}` (must be > 0 & < ${f.line_count()})')
 	}
 }
 
@@ -204,7 +218,7 @@ pub fn (f &File) position(pos Pos) Position {
 // return (line, column) when passed pos
 pub fn (f &File) find_line_and_column(pos int) (int, int) {
 	line := f.find_line(pos)
-	return line, pos-f.line_offsets[line-1]+1
+	return line, pos - f.line_offsets[line - 1] + 1
 }
 
 // return line when passed pos (binary search)
@@ -213,7 +227,7 @@ pub fn (f &File) find_line_and_column(pos int) (int, int) {
 pub fn (f &File) find_line(pos int) int {
 	mut min, mut max := 0, f.line_offsets.len
 	for min < max {
-		mid := (min+max)/2
+		mid := (min + max) / 2
 		// println('# min: $min, mid: $mid, max: $max')
 		if f.line_offsets[mid] <= pos {
 			min = mid + 1
