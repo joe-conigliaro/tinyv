@@ -37,7 +37,7 @@ mut:
 	base int
 	// files shared []&File
 	files []&File
-	mu    sync.Mutex
+	mu    &sync.Mutex = sync.new_mutex()
 }
 
 pub fn (f &File) pos(offset int) Pos {
@@ -94,8 +94,10 @@ pub fn (mut fs FileSet) add_file(filename string, base_ int, size int) &File {
 	defer {
 		fs.mu.unlock()
 	}
-
 	mut base := if base_ < 0 { fs.base } else { base_ }
+
+	// eprintln('>>> add_file fs: ${voidptr(fs)} | base: ${base:10} | fs.base: $fs.base | base_: ${base_:10} | size: ${size:10} | filename: $filename')
+
 	if base < fs.base {
 		panic('invalid base ${base} (should be >= ${fs.base}')
 	}
