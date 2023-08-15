@@ -251,21 +251,24 @@ pub fn Token.from_string(name string) Token {
 					}
 				}
 				`i` {
-					if name[1] == `m` && name[2] == `p` && name[3] == `o` && name[4] == `r` && name[5] == `t` {
+					if name[1] == `m` && name[2] == `p` && name[3] == `o` && name[4] == `r`
+						&& name[5] == `t` {
 						return .key_import
 					} else {
 						return .name
 					}
 				}
 				`m` {
-					if name[1] == `o` && name[2] == `d` && name[3] == `u` && name[4] == `l` && name[5] == `e` {
+					if name[1] == `o` && name[2] == `d` && name[3] == `u` && name[4] == `l`
+						&& name[5] == `e` {
 						return .key_module
 					} else {
 						return .name
 					}
 				}
 				`r` {
-					if name[1] == `e` && name[2] == `t` && name[3] == `u` && name[4] == `r` && name[5] == `n` {
+					if name[1] == `e` && name[2] == `t` && name[3] == `u` && name[4] == `r`
+						&& name[5] == `n` {
 						return .key_return
 					} else {
 						return .name
@@ -321,14 +324,16 @@ pub fn Token.from_string(name string) Token {
 					}
 				}
 				`t` {
-					if name[1] == `y` && name[2] == `p` && name[3] == `e` && name[4] == `o` && name[5] == `f` {
+					if name[1] == `y` && name[2] == `p` && name[3] == `e` && name[4] == `o`
+						&& name[5] == `f` {
 						return .key_typeof
 					} else {
 						return .name
 					}
 				}
 				`u` {
-					if name[1] == `n` && name[2] == `s` && name[3] == `a` && name[4] == `f` && name[5] == `e` {
+					if name[1] == `n` && name[2] == `s` && name[3] == `a` && name[4] == `f`
+						&& name[5] == `e` {
 						return .key_unsafe
 					} else {
 						return .name
@@ -344,14 +349,16 @@ pub fn Token.from_string(name string) Token {
 				`_` {
 					match name[1] {
 						`_` {
-							if name[2] == `g` && name[3] == `l` && name[4] == `o` && name[5] == `b` && name[6] == `a` && name[7] == `l` {
+							if name[2] == `g` && name[3] == `l` && name[4] == `o` && name[5] == `b`
+								&& name[6] == `a` && name[7] == `l` {
 								return .key_global
 							} else {
 								return .name
 							}
 						}
 						`l` {
-							if name[2] == `i` && name[3] == `k` && name[4] == `e` && name[5] == `l` && name[6] == `y` && name[7] == `_` {
+							if name[2] == `i` && name[3] == `k` && name[4] == `e` && name[5] == `l`
+								&& name[6] == `y` && name[7] == `_` {
 								return .key_likely
 							} else {
 								return .name
@@ -363,14 +370,16 @@ pub fn Token.from_string(name string) Token {
 					}
 				}
 				`c` {
-					if name[1] == `o` && name[2] == `n` && name[3] == `t` && name[4] == `i` && name[5] == `n` && name[6] == `u` && name[7] == `e` {
+					if name[1] == `o` && name[2] == `n` && name[3] == `t` && name[4] == `i`
+						&& name[5] == `n` && name[6] == `u` && name[7] == `e` {
 						return .key_continue
 					} else {
 						return .name
 					}
 				}
 				`v` {
-					if name[1] == `o` && name[2] == `l` && name[3] == `a` && name[4] == `t` && name[5] == `i` && name[6] == `l` && name[7] == `e` {
+					if name[1] == `o` && name[2] == `l` && name[3] == `a` && name[4] == `t`
+						&& name[5] == `i` && name[6] == `l` && name[7] == `e` {
 						return .key_volatile
 					} else {
 						return .name
@@ -386,14 +395,16 @@ pub fn Token.from_string(name string) Token {
 				`i` {
 					match name[1] {
 						`n` {
-							if name[2] == `t` && name[3] == `e` && name[4] == `r` && name[5] == `f` && name[6] == `a` && name[7] == `c` && name[8] == `e` {
+							if name[2] == `t` && name[3] == `e` && name[4] == `r` && name[5] == `f`
+								&& name[6] == `a` && name[7] == `c` && name[8] == `e` {
 								return .key_interface
 							} else {
 								return .name
 							}
 						}
 						`s` {
-							if name[2] == `r` && name[3] == `e` && name[4] == `f` && name[5] == `t` && name[6] == `y` && name[7] == `p` && name[8] == `e` {
+							if name[2] == `r` && name[3] == `e` && name[4] == `f` && name[5] == `t`
+								&& name[6] == `y` && name[7] == `p` && name[8] == `e` {
 								return .key_isreftype
 							} else {
 								return .name
@@ -414,14 +425,18 @@ pub fn Token.from_string(name string) Token {
 				`_` {
 					match name[1] {
 						`_` {
-							if name[2] == `o` && name[3] == `f` && name[4] == `f` && name[5] == `s` && name[6] == `e` && name[7] == `t` && name[8] == `o` && name[9] == `f` {
+							if name[2] == `o` && name[3] == `f` && name[4] == `f` && name[5] == `s`
+								&& name[6] == `e` && name[7] == `t` && name[8] == `o`
+								&& name[9] == `f` {
 								return .key_offsetof
 							} else {
 								return .name
 							}
 						}
 						`u` {
-							if name[2] == `n` && name[3] == `l` && name[4] == `i` && name[5] == `k` && name[6] == `e` && name[7] == `l` && name[8] == `y` && name[9] == `_` {
+							if name[2] == `n` && name[3] == `l` && name[4] == `i` && name[5] == `k`
+								&& name[6] == `e` && name[7] == `l` && name[8] == `y`
+								&& name[9] == `_` {
 								return .key_unlikely
 							} else {
 								return .name

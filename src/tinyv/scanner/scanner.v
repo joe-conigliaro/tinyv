@@ -14,12 +14,12 @@ pub enum Mode {
 }
 
 pub struct Scanner {
-	pref   &pref.Preferences
-	mode   Mode
+	pref               &pref.Preferences
+	mode               Mode
 	skip_interpolation bool
 mut:
-	file   &token.File = &token.File{}
-	src    string
+	file &token.File = &token.File{}
+	src  string
 pub mut:
 	offset int // current char offset
 	pos    int // token offset (start of current token)
@@ -28,15 +28,17 @@ pub mut:
 	in_str_incomplete   bool
 	in_str_inter        bool
 	str_inter_cbr_depth int
-	str_quote u8
+	str_quote           u8
 }
 
 pub fn new_scanner(prefs &pref.Preferences, mode Mode) &Scanner {
-	unsafe { return &Scanner{
-		pref: prefs
-		mode: mode
-		skip_interpolation: mode.has(.skip_interpolation)
-	} }
+	unsafe {
+		return &Scanner{
+			pref: prefs
+			mode: mode
+			skip_interpolation: mode.has(.skip_interpolation)
+		}
+	}
 }
 
 pub fn (mut s Scanner) init(file &token.File, src string) {
@@ -75,19 +77,21 @@ pub fn (mut s Scanner) scan() token.Token {
 	s.pos = s.offset
 	// comment | `/=` | `/`
 	if c == `/` {
-		c2 := s.src[s.offset+1]
+		c2 := s.src[s.offset + 1]
 		// comment
 		if c2 in [`/`, `*`] {
 			s.comment()
 			if !s.mode.has(.scan_comments) {
-				unsafe { goto start }
+				unsafe {
+					goto start
+				}
 			}
 			s.lit = s.src[s.pos..s.offset]
 			return .comment
 		}
 		// `/=`
 		else if c2 == `=` {
-			s.offset+=2
+			s.offset += 2
 			return .div_assign
 		}
 		s.offset++
@@ -106,7 +110,8 @@ pub fn (mut s Scanner) scan() token.Token {
 		// keyword | name
 		for s.offset < s.src.len {
 			c3 := s.src[s.offset]
-			if  (c3 >= `a` && c3 <= `z`) || (c3 >= `A` && c3 <= `Z`) || (c3 >= `0` && c3 <= `9`) || c3 == `_` {
+			if (c3 >= `a` && c3 <= `z`) || (c3 >= `A` && c3 <= `Z`)
+				|| (c3 >= `0` && c3 <= `9`) || c3 == `_` {
 				s.offset++
 				continue
 			}
@@ -122,7 +127,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			s.str_quote = c
 		}
 		// TODO: I would prefer a better way to handle raw
-		s.string_literal(s.in_str_inter || s.src[s.offset-2] == `r`, c)
+		s.string_literal(s.in_str_inter || s.src[s.offset - 2] == `r`, c)
 		s.lit = s.src[s.pos..s.offset]
 		return .string
 	}
@@ -133,15 +138,16 @@ pub fn (mut s Scanner) scan() token.Token {
 		// we can error at a later stage. should we error now?
 		for {
 			c2 := s.src[s.offset]
-			if c2 == c { break }
-			else if c2 == `\\` {
-				s.offset+=2
+			if c2 == c {
+				break
+			} else if c2 == `\\` {
+				s.offset += 2
 				continue
 			}
 			s.offset++
 		}
 		s.offset++
-		s.lit = s.src[s.pos+1..s.offset-1]
+		s.lit = s.src[s.pos + 1..s.offset - 1]
 		return .char
 	}
 	// s.lit not set, as tokens below get converted directly to string
@@ -155,8 +161,7 @@ pub fn (mut s Scanner) scan() token.Token {
 				s.number()
 				s.lit = s.src[s.pos..s.offset]
 				return .number
-			}
-			else if c2 == `.` {
+			} else if c2 == `.` {
 				s.offset++
 				if s.src[s.offset] == `.` {
 					s.offset++
@@ -178,16 +183,14 @@ pub fn (mut s Scanner) scan() token.Token {
 			if c2 == `=` {
 				s.offset++
 				return .ne
-			}
-			else if c2 == `i` {
-				c3 := s.src[s.offset+1]
-				c4_is_space := s.src[s.offset+2] in [` `, `\t`]
+			} else if c2 == `i` {
+				c3 := s.src[s.offset + 1]
+				c4_is_space := s.src[s.offset + 2] in [` `, `\t`]
 				if c3 == `n` && c4_is_space {
-					s.offset+=2
+					s.offset += 2
 					return .not_in
-				}
-				else if c3 == `s` && c4_is_space {
-					s.offset+=2
+				} else if c3 == `s` && c4_is_space {
+					s.offset += 2
 					return .not_is
 				}
 			}
@@ -206,8 +209,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			if c2 == `+` {
 				s.offset++
 				return .inc
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .plus_assign
 			}
@@ -218,8 +220,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			if c2 == `-` {
 				s.offset++
 				return .dec
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .minus_assign
 			}
@@ -252,12 +253,11 @@ pub fn (mut s Scanner) scan() token.Token {
 				// so that we parse &&Type as two .amp instead of .and
 				// but this requires there is a space. we could check
 				// for capital or some other way, this is simplest for now.
-				if s.offset+1 <= s.src.len && s.src[s.offset+1] in [` `, `\t`] {
+				if s.offset + 1 <= s.src.len && s.src[s.offset + 1] in [` `, `\t`] {
 					s.offset++
 					return .and
 				}
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .and_assign
 			}
@@ -268,8 +268,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			if c2 == `|` {
 				s.offset++
 				return .logical_or
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .or_assign
 			}
@@ -284,12 +283,10 @@ pub fn (mut s Scanner) scan() token.Token {
 					return .left_shift_assign
 				}
 				return .left_shift
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .le
-			}
-			else if c2 == `-` {
+			} else if c2 == `-` {
 				s.offset++
 				return .arrow
 			}
@@ -307,14 +304,12 @@ pub fn (mut s Scanner) scan() token.Token {
 						return .right_shift_unsigned_assign
 					}
 					return .right_shift_unsigned
-				}
-				else if c3 == `=` {
+				} else if c3 == `=` {
 					s.offset++
 					return .right_shift_assign
 				}
 				return .right_shift
-			}
-			else if c2 == `=` {
+			} else if c2 == `=` {
 				s.offset++
 				return .ge
 			}
@@ -326,8 +321,12 @@ pub fn (mut s Scanner) scan() token.Token {
 			return .hash
 		}
 		// `@` { return .at }
-		`~` { return .bit_not }
-		`,` { return .comma }
+		`~` {
+			return .bit_not
+		}
+		`,` {
+			return .comma
+		}
 		`$` {
 			if s.in_str_inter {
 				return .str_dollar
@@ -350,13 +349,27 @@ pub fn (mut s Scanner) scan() token.Token {
 			}
 			return .rcbr
 		}
-		`(` { return .lpar }
-		`)` { return .rpar }
-		`[` { return .lsbr }
-		`]` { return .rsbr }
-		`;` { return .semicolon }
-		`?` { return .question }
-		else { return .unknown }
+		`(` {
+			return .lpar
+		}
+		`)` {
+			return .rpar
+		}
+		`[` {
+			return .lsbr
+		}
+		`]` {
+			return .rsbr
+		}
+		`;` {
+			return .semicolon
+		}
+		`?` {
+			return .question
+		}
+		else {
+			return .unknown
+		}
 	}
 }
 
@@ -402,23 +415,20 @@ fn (mut s Scanner) comment() {
 		mut ml_comment_depth := 1
 		for s.offset < s.src.len {
 			c2 := s.src[s.offset]
-			c3 := s.src[s.offset+1]
+			c3 := s.src[s.offset + 1]
 			if c2 == `\n` {
 				s.offset++
 				s.file.add_line(s.offset)
-			}
-			else if c2 == `/` && c3 == `*` {
-				s.offset+=2
+			} else if c2 == `/` && c3 == `*` {
+				s.offset += 2
 				ml_comment_depth++
-			}
-			else if c2 == `*` && c3 == `/` {
-				s.offset+=2
+			} else if c2 == `*` && c3 == `/` {
+				s.offset += 2
 				ml_comment_depth--
 				if ml_comment_depth == 0 {
 					break
 				}
-			}
-			else {
+			} else {
 				s.offset++
 			}
 		}
@@ -440,25 +450,22 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 		c := s.src[s.offset]
 		// escape `\\n` | `\'`
 		if c == `\\` {
-			s.offset+=2
+			s.offset += 2
 			continue
-		}
-		else if c == `\n` {
+		} else if c == `\n` {
 			s.offset++
 			s.file.add_line(s.offset)
 			continue
-		}
-		else if c == `$` && s.src[s.offset+1] == `{` {
+		} else if c == `$` && s.src[s.offset + 1] == `{` {
 			s.in_str_inter = true
 			if s.skip_interpolation {
 				s.str_inter_cbr_depth++
-				s.offset+=2
+				s.offset += 2
 				continue
 			} else {
 				return
 			}
-		}
-		else if s.skip_interpolation && s.in_str_inter {
+		} else if s.skip_interpolation && s.in_str_inter {
 			if c == `{` {
 				s.str_inter_cbr_depth++
 			} else if c == `}` {
@@ -467,8 +474,7 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 					s.in_str_inter = false
 				}
 			}
-		}
-		else if c == c_quote && !s.in_str_inter {
+		} else if c == c_quote && !s.in_str_inter {
 			s.offset++
 			break
 		}
@@ -527,7 +533,7 @@ fn (mut s Scanner) number() {
 			continue
 		}
 		// fraction
-		else if !has_decimal && c == `.` && s.src[s.offset+1] != `.` /* range */ {
+		else if !has_decimal && c == `.` && s.src[s.offset + 1] != `.` /* range */  {
 			has_decimal = true
 			s.offset++
 			continue

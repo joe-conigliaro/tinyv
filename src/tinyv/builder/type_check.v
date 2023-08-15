@@ -8,8 +8,6 @@ import tinyv.types
 fn type_check_worker(ch_in chan []ast.File, ch_out chan string) {
 	for {
 		// ast_files := <- ch_in or { break }
-		
-		
 	}
 }
 
@@ -25,5 +23,4 @@ fn (mut b Builder) type_check_files() {
 	// for _ in 0..runtime.nr_jobs() {
 	// 	worker_pool.workers << spawn type_check_worker(ch_in, ch_out)
 	// }
-	
 }

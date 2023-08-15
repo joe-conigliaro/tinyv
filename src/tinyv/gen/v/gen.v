@@ -8,16 +8,16 @@ import tinyv.pref
 import strings
 import time
 
-const(
+const (
 	// tabs = build_tabs(16)
 	tabs = build_tabs(24)
 )
 
 struct Gen {
-	pref       &pref.Preferences
+	pref &pref.Preferences
 mut:
 	file       ast.File
-	out        strings.Builder 
+	out        strings.Builder
 	indent     int
 	on_newline bool
 	in_init    bool
@@ -26,7 +26,7 @@ mut:
 fn build_tabs(tabs_len int) []string {
 	mut tabs_arr := []string{len: tabs_len, cap: tabs_len}
 	mut indent := ''
-	for i in 1..tabs_len {
+	for i in 1 .. tabs_len {
 		indent += '\t'
 		tabs_arr[i] = indent
 	}
@@ -34,11 +34,13 @@ fn build_tabs(tabs_len int) []string {
 }
 
 pub fn new_gen(prefs &pref.Preferences) &Gen {
-	unsafe { return &Gen{
-		pref: prefs
-		out: strings.new_builder(1000)
-		indent: -1
-	} }
+	unsafe {
+		return &Gen{
+			pref: prefs
+			out: strings.new_builder(1000)
+			indent: -1
+		}
+	}
 }
 
 pub fn (mut g Gen) reset() {
@@ -53,7 +55,9 @@ pub fn (mut g Gen) gen(file ast.File) {
 		g.reset()
 	}
 	if !g.pref.verbose {
-		unsafe { goto start_no_time }
+		unsafe {
+			goto start_no_time
+		}
 	}
 	mut sw := time.new_stopwatch()
 	start_no_time:
@@ -61,7 +65,7 @@ pub fn (mut g Gen) gen(file ast.File) {
 	g.stmts(g.file.stmts)
 	if g.pref.verbose {
 		gen_time := sw.elapsed()
-		println('gen (v) $file.name: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
+		println('gen (v) ${file.name}: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
 	}
 }
 
@@ -82,9 +86,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.AssignStmt {
 			g.expr_list(stmt.lhs, ', ')
-			g.write(' $stmt.op ')
+			g.write(' ${stmt.op} ')
 			g.expr_list(stmt.rhs, ', ')
-			if !g.in_init { g.writeln('') }
+			if !g.in_init {
+				g.writeln('')
+			}
 		}
 		ast.BlockStmt {
 			g.writeln('{')
@@ -135,7 +141,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {
-				g.write('$field.name')
+				g.write('${field.name}')
 				g.expr(field.typ)
 				if field.value !is ast.EmptyExpr {
 					g.write(' = ')
@@ -148,7 +154,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.ExprStmt {
 			g.expr(stmt.expr)
-			if !g.in_init { g.writeln('') }
+			if !g.in_init {
+				g.writeln('')
+			}
 		}
 		ast.FlowControlStmt {
 			if stmt.label.len > 0 {
@@ -187,7 +195,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			// v fns with compiler implementations eg. `pub fn (a array) filter(predicate fn (voidptr) bool) array`
 			// NOTE: can we use generics for these fns, also make sure we parser error for normal fns without a body
 			// TODO: is it the correct way to handle those cases (the fn definitions, not this code)?
-			if /*stmt.language == .c &&*/ stmt.stmts.len == 0 {
+			if /* stmt.language == .c && */ stmt.stmts.len == 0 {
 				g.writeln('')
 			}
 			// normal v function
@@ -216,7 +224,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				}
 				if stmt.cond !is ast.EmptyExpr {
 					is_plain = false
-					g.write('/* cond: $stmt.cond.type_name() */')
+					g.write('/* cond: ${stmt.cond.type_name()} */')
 					g.expr(stmt.cond)
 				}
 				if has_init || has_post {
@@ -228,7 +236,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				}
 			}
 			g.in_init = in_init
-			g.writeln(if is_plain { '{' } else { ' {'} )
+			g.writeln(if is_plain { '{' } else { ' {' })
 			g.stmts(stmt.stmts)
 			g.writeln('}')
 		}
@@ -259,8 +267,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				if field.value !is ast.EmptyExpr {
 					g.write(' = ')
 					g.expr(field.value)
-				}
-				else {
+				} else {
 					g.write(' ')
 					g.expr(field.typ)
 				}
@@ -341,7 +348,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			if stmt.generic_params.len > 0 {
 				g.generic_list(stmt.generic_params)
 			}
-			if stmt.fields.len > 0 { g.writeln(' {') } else { g.write(' {') }
+			if stmt.fields.len > 0 {
+				g.writeln(' {')
+			} else {
+				g.write(' {')
+			}
 			g.indent++
 			for field in stmt.fields {
 				g.write(field.name)
@@ -367,8 +378,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			if stmt.variants.len > 0 {
 				g.write(' = ')
 				g.expr_list(stmt.variants, ' | ')
-			}
-			else {
+			} else {
 				g.write(' ')
 				g.expr(stmt.parent_type)
 			}
@@ -389,8 +399,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				if expr.len !is ast.EmptyExpr {
 					g.write('!')
 				}
-			}
-			else {
+			} else {
 				g.expr(expr.typ)
 				g.write('{')
 				// if expr.init != none {
@@ -434,8 +443,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('`')
 				g.write(expr.value)
 				g.write('`')
-			}
-			else {
+			} else {
 				g.write(expr.value)
 			}
 		}
@@ -532,7 +540,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.LockExpr {
-			g.write('$expr.kind ')
+			g.write('${expr.kind} ')
 			g.expr_list(expr.exprs, ', ')
 			g.writeln(' {')
 			g.stmts(expr.stmts)
@@ -552,7 +560,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.expr(key)
 					g.write(': ')
 					g.expr(val)
-					if i < expr.keys.len-1 { g.write(', ') }
+					if i < expr.keys.len - 1 {
+						g.write(', ')
+					}
 				}
 				g.write('}')
 			}
@@ -569,8 +579,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			for branch in expr.branches {
 				if branch.cond.len > 0 {
 					g.expr_list(branch.cond, ', ')
-				}
-				else {
+				} else {
 					g.write('else')
 				}
 				g.writeln(' {')
@@ -625,7 +634,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.rhs)
 		}
 		ast.StringInterLiteral {
-			if expr.kind != .v { g.write(expr.kind.str()) }
+			if expr.kind != .v {
+				g.write(expr.kind.str())
+			}
 			// TODO: smart quote
 			// quote_str := "'"
 			// g.write(quote_str)
@@ -645,7 +656,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.write(quote_str)
 		}
 		ast.StringLiteral {
-			if expr.kind != .v { g.write(expr.kind.str()) }
+			if expr.kind != .v {
+				g.write(expr.kind.str())
+			}
 			// TODO: smart quote
 			// quote_str := "'"
 			// g.write(quote_str)
@@ -664,7 +677,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.write(field.name)
 					g.write(': ')
 					g.expr(field.value)
-					if i < expr.fields.len-1 { g.writeln(',') } else { g.writeln('') }
+					if i < expr.fields.len - 1 {
+						g.writeln(',')
+					} else {
+						g.writeln('')
+					}
 				}
 				g.indent--
 				g.in_init = in_init
@@ -674,7 +691,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('{')
 				for i, field in expr.fields {
 					g.expr(field.value)
-					if i < expr.fields.len-1 { g.write(', ') }
+					if i < expr.fields.len - 1 {
+						g.write(', ')
+					}
 				}
 			}
 			g.write('}')
@@ -754,7 +773,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				}
 				// TODO: v bug since all variants are accounted for
 				// this should not be required?
-				//ast.Type {}
+				// ast.Type {}
 			}
 		}
 	}
@@ -793,7 +812,7 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 				g.write(attribute.value)
 				g.write("'")
 			}
-			if i < attributes.len-1 {
+			if i < attributes.len - 1 {
 				g.write('; ')
 			}
 		}
@@ -812,7 +831,9 @@ fn (mut g Gen) fn_type(typ ast.FnType) {
 			g.write(' ')
 		}
 		g.expr(param.typ)
-		if i < typ.params.len-1 { g.write(', ') }
+		if i < typ.params.len - 1 {
+			g.write(', ')
+		}
 	}
 	g.write(')')
 	if typ.return_type !is ast.EmptyExpr {
@@ -825,7 +846,9 @@ fn (mut g Gen) fn_type(typ ast.FnType) {
 fn (mut g Gen) expr_list(exprs []ast.Expr, separator string) {
 	for i, expr in exprs {
 		g.expr(expr)
-		if i < exprs.len-1 { g.write(separator) }
+		if i < exprs.len - 1 {
+			g.write(separator)
+		}
 	}
 }
 
@@ -839,7 +862,7 @@ fn (mut g Gen) generic_list(exprs []ast.Expr) {
 [inline]
 fn (mut g Gen) write(str string) {
 	if g.on_newline {
-		g.out.write_string(tabs[g.indent])
+		g.out.write_string(v.tabs[g.indent])
 	}
 	g.out.write_string(str)
 	g.on_newline = false
@@ -848,7 +871,7 @@ fn (mut g Gen) write(str string) {
 [inline]
 fn (mut g Gen) writeln(str string) {
 	if g.on_newline {
-		g.out.write_string(tabs[g.indent])
+		g.out.write_string(v.tabs[g.indent])
 	}
 	g.out.writeln(str)
 	g.on_newline = true

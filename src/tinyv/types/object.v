@@ -6,12 +6,12 @@ module types
 import tinyv.token
 
 struct ObjectCommon {
-	parent    &Scope = unsafe { nil }
-	pos       token.Pos
-	mod       &Module
-	name      string
+	parent &Scope = unsafe { nil }
+	pos    token.Pos
+	mod    &Module
+	name   string
 mut:
-	typ       Type
+	typ Type
 	// order_    u32
 	// color_    color
 }
@@ -22,11 +22,11 @@ struct Const {
 
 struct Global {
 	name string
-	typ Type
+	typ  Type
 }
 
 struct Fn {
 	name string
 	// typ  FnType // signature
-	typ  Type // signature
+	typ Type // signature
 }

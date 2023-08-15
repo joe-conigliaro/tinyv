@@ -9,10 +9,30 @@ import tinyv.ast
 // pub type Type = Primitive | Alias | Array | Channel | Char | Enum | FloatLiteral | FnType
 // 	| Interface | IntLiteral | ISize | Map | OptionType | Pointer | ResultType  | Rune
 // 	| String | Struct | SumType | Thread | Tuple | USize | Void
-pub type Type = Primitive | Alias | Array | Channel | Char | Enum | FnType
-	| Interface | ISize | Map | OptionType | Pointer | ResultType  | Rune
-	| String | Struct | SumType | Thread | Tuple | USize | Void | Nil | None
+pub type Type = Alias
+	| Array
+	| Channel
+	| Char
+	| Enum
+	| FnType
+	| ISize
+	| Interface
+	| Map
 	| NamedType
+	| Nil
+	| None
+	| OptionType
+	| Pointer
+	| Primitive
+	| ResultType
+	| Rune
+	| String
+	| Struct
+	| SumType
+	| Thread
+	| Tuple
+	| USize
+	| Void
 
 [flag]
 enum Properties {
@@ -47,7 +67,7 @@ struct Primitive {
 }
 
 struct Alias {
-	name   		string
+	name string
 mut:
 	parent_type Type
 }
@@ -63,7 +83,7 @@ struct Channel {
 struct Enum {
 	// TODO: store attributes enum or bool?
 	is_flag bool
-	name 	string
+	name    string
 	fields  []Field
 }
 
@@ -73,14 +93,13 @@ struct OptionType {
 
 struct Parameter {
 	name   string
-	typ	   Type
+	typ    Type
 	is_mut bool
 }
 
 struct ResultType {
 	base_type Type
 }
-
 
 [flag]
 enum FnTypeAttribute {
@@ -105,20 +124,20 @@ struct FnType {
 	// TODO: save in checker.env? or gere?
 	// I think I prefer checker env
 	// generic_types  []Types  // int,int
-	params         []Parameter
-	return_type    ?Type
-	is_variadic    bool
-	attributes     FnTypeAttribute
+	params      []Parameter
+	return_type ?Type
+	is_variadic bool
+	attributes  FnTypeAttribute
 mut:
-	generic_types  []map[string]Type
-// scope was originally used for deferred type checking
-// but its better if we dont need it here, although it may
-// be meeded for soething later im not thinking of??
-// 	scope          &Scope
+	generic_types []map[string]Type
+	// scope was originally used for deferred type checking
+	// but its better if we dont need it here, although it may
+	// be meeded for soething later im not thinking of??
+	// 	scope          &Scope
 }
 
 struct Interface {
-	name   string
+	name string
 mut:
 	fields []Field
 	// TODO:
@@ -138,6 +157,7 @@ struct Pointer {
 
 // Generic `T`, `Y` etc
 type NamedType = string
+
 // struct NamedType {
 // 	name string
 // }
@@ -153,28 +173,30 @@ struct Field {
 // }
 
 struct Struct {
-	name 		   string
+	name           string
 	generic_params []string
 mut:
-	embedded       []Struct
+	embedded []Struct
 	// embedded       []Type
-	fields		   []Field
+	fields []Field
 	// methods 	   []Method
 }
 
 // TODO:
 fn (t Struct) str() string {
-	return 'Struct.str ($t.name())'
+	return 'Struct.str (${t.name()})'
 }
 
 // TODO: module not included in check
 fn (a Struct) == (b Struct) bool {
-	if a.name == b.name { return true }
+	if a.name == b.name {
+		return true
+	}
 	return false
 }
 
 struct SumType {
-	name	 string
+	name string
 mut:
 	variants []Type
 }
@@ -193,6 +215,7 @@ type ISize = u8
 type USize = u8
 type Rune = u8
 type String = u8
+
 // type IntLiteral = u8
 // type FloatLiteral = u8
 type Void = u8
@@ -205,7 +228,9 @@ fn (t Type) unwrap() Type {
 		OptionType, ResultType {
 			return t.base_type
 		}
-		else { return t }
+		else {
+			return t
+		}
 	}
 }
 
@@ -226,10 +251,8 @@ fn (t Type) base_type() Type {
 		// 	Struct, SumType, Thread, Tuple, USize, Void {
 		// 	return t
 		// }
-		Primitive, Array, Channel, Char, Enum,
-			FnType, Interface, ISize, Map, Rune, String,
-			Struct, SumType, Thread, Tuple, USize, Void, Nil, None,
-			NamedType {
+		Primitive, Array, Channel, Char, Enum, FnType, Interface, ISize, Map, Rune, String, Struct,
+		SumType, Thread, Tuple, USize, Void, Nil, None, NamedType {
 			return t
 		}
 	}
@@ -241,7 +264,7 @@ fn (t Type) key_type() Type {
 		// TOOD: struct here is 'struct string', need to fix this.
 		// we could use an alias? remove once fixed.
 		Array, String, Struct { return int_ }
-		else { panic('TODO: should never be called on $t.type_name()') }
+		else { panic('TODO: should never be called on ${t.type_name()}') }
 	}
 }
 
@@ -258,7 +281,6 @@ fn (t Type) value_type() Type {
 	}
 }
 
-
 fn (t Type) is_float() bool {
 	if t is Primitive {
 		return t.is_float()
@@ -271,7 +293,7 @@ fn (t Type) is_integer() bool {
 		return t.is_integer()
 	}
 	return false
-} 
+}
 
 fn (t Type) is_number() bool {
 	if t is ISize {
@@ -281,7 +303,7 @@ fn (t Type) is_number() bool {
 		return t.is_number()
 	}
 	return false
-} 
+}
 
 // int_literal || float_literal
 fn (t Type) is_number_literal() bool {
@@ -320,13 +342,16 @@ fn (t Primitive) is_number() bool {
 
 fn (t Primitive) is_number_literal() bool {
 	return t.props.has(.untyped) && t.props.has(.integer | .float)
-} 
+}
+
 fn (t Primitive) is_float_literal() bool {
 	return t.props.has(.untyped) && t.props.has(.float)
-} 
+}
+
 fn (t Primitive) is_int_literal() bool {
 	return t.props.has(.untyped) && t.props.has(.integer)
-} 
+}
+
 fn (t Type) name() string {
 	match t {
 		// Primitive, Alias, Array, Channel, Char, Enum, FloatLiteral, FnType,
@@ -334,10 +359,9 @@ fn (t Type) name() string {
 		// 	Rune, String, Struct, SumType, Thread, Tuple, USize, Void {
 		// 	return t.name()
 		// }
-		Primitive, Alias, Array, Channel, Char, Enum, FnType,
-			Interface, ISize, Map, OptionType, Pointer, ResultType,
-			Rune, String, Struct, SumType, Thread, Tuple, USize, Void,
-			Nil, None, NamedType {
+		Primitive, Alias, Array, Channel, Char, Enum, FnType, Interface, ISize, Map, OptionType,
+		Pointer, ResultType, Rune, String, Struct, SumType, Thread, Tuple, USize, Void, Nil, None,
+		NamedType {
 			return t.name()
 		}
 	}
@@ -349,21 +373,21 @@ fn (t Primitive) name() string {
 		return 'bool'
 	} else if t.props.has(.untyped) {
 		if t.props.has(.integer) {
-			return 'int_literal'	
+			return 'int_literal'
 		} else if t.props.has(.float) {
-			return 'float_literal'			
+			return 'float_literal'
 		}
 	} else if t.props.has(.integer) {
-		if t.props.has(.unsigned) { 
-			return 'u$t.size'
+		if t.props.has(.unsigned) {
+			return 'u${t.size}'
 		} else {
 			if t.size == 32 {
 				return 'int'
 			}
-			return 'i$t.size'
+			return 'i${t.size}'
 		}
 	} else if t.props.has(.float) {
-		return 'f$t.size'
+		return 'f${t.size}'
 	}
 	println(t)
 	panic(t.props.str())
@@ -376,7 +400,7 @@ fn (t Primitive) name() string {
 	// 		return 'bool'
 	// 	}
 	// 	.integer {
-	// 		if t.props.has(.unsigned) { 
+	// 		if t.props.has(.unsigned) {
 	// 			return 'u$t.size'
 	// 		} else {
 	// 			if t.size == 32 {
@@ -426,13 +450,15 @@ fn (t FnType) name() string {
 			name += '${param.name} '
 		}
 		name += param.typ.name()
-		if i < t.params.len-1 {
+		if i < t.params.len - 1 {
 			name += ', '
 		}
 	}
 	mut return_type_name := ''
-	if rt := t.return_type { return_type_name = rt.name() }
-	name += ') $return_type_name'
+	if rt := t.return_type {
+		return_type_name = rt.name()
+	}
+	name += ') ${return_type_name}'
 	return name
 }
 
@@ -487,6 +513,7 @@ fn (t Tuple) name() string {
 fn (t ISize) name() string {
 	return 'isize'
 }
+
 fn (t USize) name() string {
 	return 'usize'
 }

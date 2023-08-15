@@ -1,45 +1,46 @@
 module util
 
 // TODO: remove workaround once fixed in compiler
-struct SharedIntWorkaround { pub mut: value int }
-
-pub struct WorkerPool[T,Y] {
+struct SharedIntWorkaround {
 pub mut:
-	workers    []thread
-	queue_len  shared SharedIntWorkaround
-	ch_in      chan T
-	ch_out     chan Y
+	value int
 }
 
-pub fn WorkerPool.new[T,Y](mut ch_in chan T, mut ch_out chan Y) &WorkerPool[T,Y] {
-	return &WorkerPool[T,Y]{
+pub struct WorkerPool[T, Y] {
+pub mut:
+	workers   []thread
+	queue_len shared SharedIntWorkaround
+	ch_in     chan T
+	ch_out    chan Y
+}
+
+pub fn WorkerPool.new[T, Y](mut ch_in chan T, mut ch_out chan Y) &WorkerPool[T, Y] {
+	return &WorkerPool[T, Y]{
 		ch_in: ch_in
 		ch_out: ch_out
 	}
 }
 
-
-pub fn (mut wp WorkerPool[T,Y]) job_done() {
+pub fn (mut wp WorkerPool[T, Y]) job_done() {
 	lock wp.queue_len {
 		wp.queue_len.value--
 	}
 }
 
-pub fn (mut wp WorkerPool[T,Y]) queue_job(job T) {
+pub fn (mut wp WorkerPool[T, Y]) queue_job(job T) {
 	wp.ch_in <- job
 	lock wp.queue_len {
 		wp.queue_len.value++
 	}
 }
 
-pub fn (mut wp WorkerPool[T,Y]) queue_jobs(jobs []T) {
+pub fn (mut wp WorkerPool[T, Y]) queue_jobs(jobs []T) {
 	for job in jobs {
 		wp.queue_job(job)
 	}
 }
 
-
-pub fn (mut wp WorkerPool[T,Y]) wait_for_results() []Y {
+pub fn (mut wp WorkerPool[T, Y]) wait_for_results() []Y {
 	mut results := []Y{}
 	for {
 		rlock wp.queue_len {
@@ -47,7 +48,7 @@ pub fn (mut wp WorkerPool[T,Y]) wait_for_results() []Y {
 				break
 			}
 		}
-		result := <- wp.ch_out
+		result := <-wp.ch_out
 		results << result
 	}
 
@@ -68,5 +69,5 @@ pub fn (mut wp WorkerPool[T,Y]) wait_for_results() []Y {
 // }
 
 // pub fn (mut wp WorkerPool) wait() {
-// 	wp.workers.wait()       
+// 	wp.workers.wait()
 // }

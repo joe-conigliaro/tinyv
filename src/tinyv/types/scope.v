@@ -5,10 +5,10 @@ module types
 
 import tinyv.token
 
-pub type Object = Const | Fn | Global | Module | Type | SmartCastSelector
+pub type Object = Const | Fn | Global | Module | SmartCastSelector | Type
+
 // pub type Object = Const | Fn | Global | Module |
 // 	Alias | Array | Enum | Map | Pointer | Primitive | String | Struct | SumType
-
 
 struct SmartCastSelector {
 	origin    Type
@@ -16,22 +16,24 @@ struct SmartCastSelector {
 	cast_type Type
 }
 
-pub struct Scope{
-	parent  &Scope = unsafe { nil }
+pub struct Scope {
+	parent &Scope = unsafe { nil }
 mut:
 	objects map[string]Object
 	// smartcasts map[string]Type
 	// TODO: it may be more efficient looking up local vars using an ID
 	// even if we had to store them in two different places. investigate.
 	// variables []Object
-	start   int
-	end     int
+	start int
+	end   int
 }
 
 pub fn new_scope(parent &Scope) &Scope {
-	unsafe { return &Scope{
-		parent: parent
-	} }
+	unsafe {
+		return &Scope{
+			parent: parent
+		}
+	}
 }
 
 pub fn (mut s Scope) lookup(name string) ?Object {

@@ -13,38 +13,92 @@ pub const (
 type EmptyExpr = u8
 type EmptyStmt = u8
 
-pub type Expr = ArrayInitExpr | AssocExpr | BasicLiteral | CallExpr
-	| CallOrCastExpr | CastExpr | ChannelInitExpr | ComptimeExpr | EmptyExpr
-	| FnLiteral | GenericArgs | GenericArgOrIndexExpr | Ident | IfExpr
-	| IfGuardExpr | IndexExpr | InfixExpr | KeywordOperator | LockExpr 
-	| MapInitExpr | MatchExpr | Modifier | OrExpr | ParenExpr | PostfixExpr
-	| PrefixExpr | RangeExpr | SelectorExpr | StringInterLiteral | StringLiteral
-	| StructInitExpr | Tuple | Type | UnsafeExpr
-	// TODO: decide if this going to be done like this
+pub type Expr = ArrayInitExpr
+	| AssocExpr
+	| BasicLiteral
+	| CallExpr
+	| CallOrCastExpr
+	| CastExpr
+	| ChannelInitExpr
+	| ComptimeExpr
+	| EmptyExpr
 	| FieldInit
+	| FnLiteral
+	| GenericArgOrIndexExpr
+	| GenericArgs
+	| Ident
+	| IfExpr
+	| IfGuardExpr
+	| IndexExpr
+	| InfixExpr
+	| KeywordOperator
+	| LockExpr
+	| MapInitExpr
+	| MatchExpr
+	| Modifier
+	| OrExpr
+	| ParenExpr
+	| PostfixExpr
+	| PrefixExpr
+	| RangeExpr
+	| SelectorExpr
+	| StringInterLiteral
+	| StringLiteral
+	| StructInitExpr
+	| Tuple
+	| Type
+	| UnsafeExpr
 
-pub type Stmt = AssertStmt | AssignStmt | BlockStmt | DeferStmt
-	| ComptimeStmt | Directive | EmptyStmt | ExprStmt | FlowControlStmt
-	| ForStmt | ForInStmt | ImportStmt | LabelStmt | ModuleStmt | ReturnStmt
-	// Decls
-	| ConstDecl | EnumDecl | FnDecl | GlobalDecl | InterfaceDecl | StructDecl | TypeDecl
+// TODO: decide if this going to be done like this (FieldInit)
+
+pub type Stmt = AssertStmt
+	| AssignStmt
+	| BlockStmt
+	| ComptimeStmt
+	| ConstDecl
+	| DeferStmt
+	| Directive
+	| EmptyStmt
+	| EnumDecl
+	| ExprStmt
+	| FlowControlStmt
+	| FnDecl
+	| ForInStmt
+	| ForStmt
+	| GlobalDecl
+	| ImportStmt
+	| InterfaceDecl
+	| LabelStmt
+	| ModuleStmt
+	| ReturnStmt
+	| StructDecl
+	| TypeDecl
+
 // pub type Decl = ConstDecl | EnumDecl | FnDecl | GlobalDecl
 // 	| InterfaceDecl | StructDecl | TypeDecl
 
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
-pub type Type = ArrayType | ArrayFixedType | ChannelType | FnType | MapType
-	| NilType | NoneType | OptionType | ResultType | TupleType
+pub type Type = ArrayFixedType
+	| ArrayType
+	| ChannelType
+	| FnType
+	| MapType
+	| NilType
+	| NoneType
+	| OptionType
+	| ResultType
+	| TupleType
 
 // File (AST container)
 pub struct File {
 pub:
-	mod		   string
-	name       string
+	mod  string
+	name string
 	// attributes []Attribute
-	stmts      []Stmt
-	imports    []ImportStmt
+	stmts   []Stmt
+	imports []ImportStmt
 }
 
 pub enum Language {
@@ -53,7 +107,7 @@ pub enum Language {
 	js
 }
 
-pub fn(lang Language) str() string {
+pub fn (lang Language) str() string {
 	return match lang {
 		.v { 'V' }
 		.c { 'C' }
@@ -64,11 +118,11 @@ pub fn(lang Language) str() string {
 // Expressions
 pub struct ArrayInitExpr {
 pub:
-	typ   Expr = empty_expr
+	typ   Expr = ast.empty_expr
 	exprs []Expr
-	init  Expr = empty_expr
-	cap   Expr = empty_expr
-	len   Expr = empty_expr
+	init  Expr = ast.empty_expr
+	cap   Expr = ast.empty_expr
+	len   Expr = ast.empty_expr
 	pos   token.Pos
 }
 
@@ -109,7 +163,7 @@ pub:
 pub struct ChannelInitExpr {
 pub:
 	typ Expr
-	cap Expr = empty_expr
+	cap Expr = ast.empty_expr
 }
 
 pub struct ComptimeExpr {
@@ -120,9 +174,9 @@ pub:
 
 pub struct FieldDecl {
 pub:
-	name  	   string
-	typ   	   Expr = empty_expr // can be empty as used for const (unless we use something else)
-	value	   Expr = empty_expr
+	name       string
+	typ        Expr = ast.empty_expr // can be empty as used for const (unless we use something else)
+	value      Expr = ast.empty_expr
 	attributes []Attribute
 }
 
@@ -160,9 +214,9 @@ pub:
 
 pub struct IfExpr {
 pub:
-	cond	  Expr = empty_expr
-	else_expr Expr = empty_expr
-	stmts	  []Stmt
+	cond      Expr = ast.empty_expr
+	else_expr Expr = ast.empty_expr
+	stmts     []Stmt
 }
 
 pub struct IfGuardExpr {
@@ -180,8 +234,8 @@ pub:
 
 pub struct IndexExpr {
 pub:
-	lhs  	 Expr
-	expr 	 Expr
+	lhs      Expr
+	expr     Expr
 	is_gated bool
 }
 
@@ -205,10 +259,10 @@ pub:
 
 pub struct MapInitExpr {
 pub:
-	typ  Expr = empty_expr
+	typ  Expr = ast.empty_expr
 	keys []Expr
 	vals []Expr
-	pos	 token.Pos
+	pos  token.Pos
 }
 
 pub struct MatchBranch {
@@ -222,7 +276,7 @@ pub struct MatchExpr {
 pub:
 	expr     Expr
 	branches []MatchBranch
-	pos		 token.Pos
+	pos      token.Pos
 }
 
 pub struct Modifier {
@@ -238,8 +292,8 @@ pub:
 pub struct OrExpr {
 pub:
 	expr  Expr
-	stmts []Stmt 
-	pos	  token.Pos
+	stmts []Stmt
+	pos   token.Pos
 }
 
 pub struct Parameter {
@@ -302,7 +356,6 @@ pub fn (expr Expr) name() string {
 			expr.str()
 		}
 	}
-
 }
 
 pub enum StringLiteralKind {
@@ -314,10 +367,10 @@ pub enum StringLiteralKind {
 
 pub fn (s StringLiteralKind) str() string {
 	return match s {
-		.c   { 'c' }
-		.js  { 'js' }
+		.c { 'c' }
+		.js { 'js' }
 		.raw { 'r' }
-		.v   { 'v' }
+		.v { 'v' }
 	}
 }
 
@@ -332,7 +385,7 @@ pub fn StringLiteralKind.from_string(s string) !StringLiteralKind {
 				return .js
 			}
 		}
-		`r`  {
+		`r` {
 			return .raw
 		}
 		else {}
@@ -340,9 +393,8 @@ pub fn StringLiteralKind.from_string(s string) !StringLiteralKind {
 	return error('invalid string prefix `${s}`')
 }
 
-
 // NOTE: I'm using two nodes StringLiteral & StringInterLiteral
-// to avoid the extra array allocations when not needed. 
+// to avoid the extra array allocations when not needed.
 pub struct StringLiteral {
 pub:
 	kind  StringLiteralKind
@@ -358,13 +410,13 @@ pub:
 
 pub struct StringInter {
 pub:
-	format      StringInterFormat
-	width       int
-	precision   int
-	expr        Expr
+	format    StringInterFormat
+	width     int
+	precision int
+	expr      Expr
 	// TEMP: prob removed once individual
 	// fields are set, precision etc
-	format_expr Expr = empty_expr
+	format_expr Expr = ast.empty_expr
 }
 
 pub enum StringInterFormat {
@@ -382,31 +434,31 @@ pub enum StringInterFormat {
 
 pub fn StringInterFormat.from_u8(c u8) !StringInterFormat {
 	return match c {
-		`b`		 { .binary }
-		`c`		 { .character }
-		`d`		 { .decimal }
+		`b` { .binary }
+		`c` { .character }
+		`d` { .decimal }
 		`e`, `E` { .exponent }
 		`g`, `G` { .exponent_short }
 		`f`, `F` { .float }
 		`x`, `X` { .hex }
-		`o`		 { .octal }
-		`s`		 { .string }
-		else	 { error('unknown formatter `${c.ascii_str()}`') }
+		`o` { .octal }
+		`s` { .string }
+		else { error('unknown formatter `${c.ascii_str()}`') }
 	}
 }
 
 pub fn (sif StringInterFormat) str() string {
 	return match sif {
-		.unformatted	{ '' }
-		.binary			{ 'b' }
-		.character		{ 'c' }
-		.decimal		{ 'd' }
-		.exponent		{ 'e' }
-		.exponent_short	{ 'g' }
-		.float			{ 'f' }
-		.hex			{ 'x' }
-		.octal			{ 'o' }
-		.string			{ 's' }
+		.unformatted { '' }
+		.binary { 'b' }
+		.character { 'c' }
+		.decimal { 'd' }
+		.exponent { 'e' }
+		.exponent_short { 'g' }
+		.float { 'f' }
+		.hex { 'x' }
+		.octal { 'o' }
+		.string { 's' }
 	}
 }
 
@@ -514,14 +566,14 @@ pub:
 	name       string
 	typ        FnType
 	stmts      []Stmt
-	pos		   token.Pos
+	pos        token.Pos
 }
 
 pub struct ForStmt {
 pub:
-	init  Stmt = empty_stmt // initialization
-	cond  Expr = empty_expr // condition
-	post  Stmt = empty_stmt // post iteration (afterthought)
+	init  Stmt = ast.empty_stmt // initialization
+	cond  Expr = ast.empty_expr // condition
+	post  Stmt = ast.empty_stmt // post iteration (afterthought)
 	stmts []Stmt
 }
 
@@ -533,9 +585,9 @@ pub:
 	// value_is_mut bool
 	// expr	     Expr
 	// TODO:
-	key   		 Expr = empty_expr
-	value 		 Expr
-	expr  		 Expr
+	key   Expr = ast.empty_expr
+	value Expr
+	expr  Expr
 }
 
 pub struct GlobalDecl {
@@ -561,7 +613,7 @@ pub:
 pub struct LabelStmt {
 pub:
 	name string
-	stmt Stmt = empty_stmt
+	stmt Stmt = ast.empty_stmt
 }
 
 pub struct ModuleStmt {
@@ -576,21 +628,21 @@ pub:
 
 pub struct StructDecl {
 pub:
-	attributes 	   []Attribute
-	is_public  	   bool
-	embedded   	   []Expr
-	language  	   Language = .v
-	name       	   string
+	attributes     []Attribute
+	is_public      bool
+	embedded       []Expr
+	language       Language = .v
+	name           string
 	generic_params []Expr
 	fields         []FieldDecl
-	pos			   token.Pos
+	pos            token.Pos
 }
 
 pub struct TypeDecl {
 pub:
 	is_public   bool
 	name        string
-	parent_type Expr = empty_expr
+	parent_type Expr = ast.empty_expr
 	variants    []Expr
 }
 
@@ -616,7 +668,7 @@ pub struct FnType {
 pub:
 	generic_params []Expr
 	params         []Parameter
-	return_type    Expr = empty_expr
+	return_type    Expr = ast.empty_expr
 }
 
 pub fn (ft &FnType) str() string {
@@ -659,12 +711,12 @@ pub struct NoneType {}
 
 pub struct OptionType {
 pub:
-	base_type Expr = empty_expr
+	base_type Expr = ast.empty_expr
 }
 
 pub struct ResultType {
 pub:
-	base_type Expr = empty_expr
+	base_type Expr = ast.empty_expr
 }
 
 pub struct TupleType {

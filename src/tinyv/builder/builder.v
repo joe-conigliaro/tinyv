@@ -15,14 +15,16 @@ import time
 struct Builder {
 	pref &pref.Preferences
 mut:
-	files []ast.File
+	files    []ast.File
 	file_set &token.FileSet = &token.FileSet{}
 }
 
 pub fn new_builder(prefs &pref.Preferences) &Builder {
-	unsafe { return &Builder{
-		pref: prefs
-	} }
+	unsafe {
+		return &Builder{
+			pref: prefs
+		}
+	}
 }
 
 pub fn (mut b Builder) build(files []string) {
@@ -52,7 +54,6 @@ pub fn (mut b Builder) build(files []string) {
 	// }
 }
 
-
 fn (mut b Builder) gen_v_files() {
 	mut gen := gen_v.new_gen(b.pref)
 	for file in b.files {
@@ -64,5 +65,5 @@ fn (mut b Builder) gen_v_files() {
 }
 
 fn print_time(title string, time_d time.Duration) {
-	println(' * $title: ${time_d.milliseconds()}ms (${time_d.microseconds()}us)')
+	println(' * ${title}: ${time_d.milliseconds()}ms (${time_d.microseconds()}us)')
 }

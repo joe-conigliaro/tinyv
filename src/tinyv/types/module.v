@@ -7,7 +7,7 @@ pub struct Module {
 	name    string
 	path    string
 	imports []Module
-	scope   &Scope = new_scope(unsafe{nil})
+	scope   &Scope = new_scope(unsafe { nil })
 }
 
 pub fn new_module(name string, path string) &Module {

@@ -7,14 +7,14 @@ import os
 
 pub struct Preferences {
 pub mut:
-	debug            bool
-	verbose          bool
-	skip_builtin     bool
-	skip_imports     bool
-	no_parallel      bool
+	debug        bool
+	verbose      bool
+	skip_builtin bool
+	skip_imports bool
+	no_parallel  bool
 pub:
-	vroot            string = os.dir(@VEXE)
-	vmodules_path    string = os.vmodules_dir()
+	vroot         string = os.dir(@VEXE)
+	vmodules_path string = os.vmodules_dir()
 }
 
 pub fn new_preferences() Preferences {

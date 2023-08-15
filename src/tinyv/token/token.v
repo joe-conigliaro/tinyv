@@ -133,7 +133,7 @@ pub fn (t Token) left_binding_power() BindingPower {
 		.logical_or { .lowest }
 		// `&&`
 		.and { .one }
-		// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | `!in` | `is` | `!is` 
+		// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | `!in` | `is` | `!is`
 		.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is { .two }
 		// `+` |  `-` |  `|` | `^`
 		.plus, .minus, .pipe, .xor { .three }
@@ -146,7 +146,7 @@ pub fn (t Token) left_binding_power() BindingPower {
 // TODO: double check / fix this. just use what is needed instead of this
 [inline]
 pub fn (t Token) right_binding_power() BindingPower {
-	return unsafe{ BindingPower((int(t.left_binding_power()) + 1)) }
+	return unsafe { BindingPower((int(t.left_binding_power()) + 1)) }
 }
 
 [inline]
@@ -160,11 +160,14 @@ pub fn (t Token) is_prefix() bool {
 [inline]
 pub fn (t Token) is_infix() bool {
 	return match t {
-		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt,
-		.key_in, .key_as, .ge, .le, .logical_or, .xor, .not_in,
-		.key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
-		.right_shift, .right_shift_unsigned, .arrow { true }
-		else { false }
+		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in, .key_as, .ge, .le,
+		.logical_or, .xor, .not_in, .key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
+		.right_shift, .right_shift_unsigned, .arrow {
+			true
+		}
+		else {
+			false
+		}
 	}
 }
 
@@ -181,32 +184,33 @@ pub fn (t Token) is_postfix() bool {
 
 [inline]
 pub fn (t Token) is_assignment() bool {
+	// .assign -> =
+	// .decl_assign -> :=
+	// .plus_assign -> +=
+	// .minus_assign -> -=
 	return match t {
-		.assign, // =
-		.decl_assign, // :=
-		.plus_assign, // +=
-		.minus_assign, // -=
-		.div_assign,
-		.mul_assign,
-		.xor_assign,
-		.mod_assign,
-		.or_assign,
-		.and_assign,
-		.right_shift_assign,
-		.left_shift_assign,
-		.right_shift_unsigned_assign { true }
-		else { false }
+		.assign, .decl_assign, .plus_assign, .minus_assign, .div_assign, .mul_assign, .xor_assign,
+		.mod_assign, .or_assign, .and_assign, .right_shift_assign, .left_shift_assign,
+		.right_shift_unsigned_assign {
+			true
+		}
+		else {
+			false
+		}
 	}
 }
 
 [inline]
 pub fn (t Token) is_overloadable() bool {
 	return match t {
-		// `+` |  `-` |  `|` | `^`
-		.plus, .minus, .pipe, .xor,
-		// `==` | `!=` | `<` | `<=` | `>` | `>=`
-		.eq, .ne, .lt, .le, .gt, .ge { true }
-		else { false }
+		.plus, .minus, .pipe, .xor, .eq, .ne, .lt, .le, .gt, .ge {
+			// `+` |  `-` |  `|` | `^`
+			// `==` | `!=` | `<` | `<=` | `>` | `>=`
+			true
+		}
+		else {
+			false
+		}
 	}
 }
 

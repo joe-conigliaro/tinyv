@@ -7,14 +7,14 @@ module ssa
 
 pub struct BasicBlock {
 mut:
-	predecessors 	[]&BasicBlock
+	predecessors    []&BasicBlock
 	definitions     map[string]Value
 	incomplete_phis map[string]Phi
-	sealed 			bool
+	sealed          bool
 }
 
 type None = u8
-type Value = None | Variable | Phi
+type Value = None | Phi | Variable
 
 struct Variable {}
 
@@ -33,8 +33,8 @@ fn (mut block BasicBlock) write_variable(name string, value Value) {
 
 fn (mut block BasicBlock) read_variable(variable string) Value {
 	// if currentDef[variable] contains block {
-		// local value numbering
-		// return currentDef[variable][block]
+	// local value numbering
+	// return currentDef[variable][block]
 	// }
 	// global value numbering
 	// return read_variable_recursive(variable, block)
@@ -53,7 +53,9 @@ fn (mut block BasicBlock) read_variable_recursive(variable string) Value {
 		// Incomplete CFG
 		// val = new Phi(block)
 		// incomplete_phis[block][variable] = val
-		val0 := Phi{block: unsafe { &block }}
+		val0 := Phi{
+			block: unsafe { &block }
+		}
 		block.incomplete_phis[variable] = val0
 		Value(val0)
 	} else if block.predecessors.len == 1 {
@@ -63,13 +65,16 @@ fn (mut block BasicBlock) read_variable_recursive(variable string) Value {
 	} else {
 		// Break potential cycles with operandless phi
 		// val = new Phi(block)
-		mut val0 := Phi{block: unsafe { &block }}
+		mut val0 := Phi{
+			block: unsafe { &block }
+		}
 		block.write_variable(variable, val0)
 		val0.add_operands(variable)
 	}
 	block.write_variable(variable, val)
 	return val
 }
+
 fn (mut phi Phi) add_operands(variable string) Value {
 	// Determine operands from predecessors
 	for mut pred in phi.block.predecessors {

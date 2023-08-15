@@ -19,29 +19,29 @@ type Instruction = Call | Prefix | Terminator
 type Variable = u32
 
 // type Value = A | B // TODO
-struct Value{
+struct Value {
 	// kind   ValueKind
 	parent &Function
 	// name   string
-	users  []&Instruction
-	typ    types.Type
+	users []&Instruction
+	typ   types.Type
 }
 
 struct Phi {
 	bb &BasicBlock
 }
 
-struct Function{
+struct Function {
 	bb []&BasicBlock
 }
 
 // Terminators
-struct BranchTerminator{
+struct BranchTerminator {
 	bb &BasicBlock
 }
 
 struct IfTerminator {
-	val       Value
+	val      Value
 	bb_true  &BasicBlock
 	bb_false &BasicBlock
 }
@@ -52,25 +52,24 @@ struct ReturnTerminator {}
 
 // Instructions
 
-struct Call{}
-struct Prefix{}
+struct Call {}
 
+struct Prefix {}
 
 pub struct BasicBlock {
 mut:
-	parent_fn		    &Function
-	index		 		int
-	name			    string
-	variables			[]Value
-   	predecessors 		[]&BasicBlock
-    // immediate_dominator &BasicBlock
+	parent_fn    &Function
+	index        int
+	name         string
+	variables    []Value
+	predecessors []&BasicBlock
+	// immediate_dominator &BasicBlock
 	// successors   		[]&BasicBlock
-    // phi_nodes
-    instructions        []Instruction
-    terminator			Terminator
-	is_sealed			bool
+	// phi_nodes
+	instructions []Instruction
+	terminator   Terminator
+	is_sealed    bool
 }
-
 
 fn add_edge(from &BasicBlock, to &BasicBlock) {
 	// from.successors << to
@@ -78,10 +77,10 @@ fn add_edge(from &BasicBlock, to &BasicBlock) {
 	to.predecessors << from
 }
 
-fn (f &Function) add_basic_block(name string/* dominator &BasicBlock*/) &BasicBlock {
+fn (f &Function) add_basic_block(name string) &BasicBlock {
 	b := &BasicBlock{
-		parent_fn: f,
-		index: f.basic_blocks.len,
+		parent_fn: f
+		index: f.basic_blocks.len
 		name: name
 	}
 	f.basic_blocks << b
@@ -102,9 +101,7 @@ fn (bb &BasicBlock) write_variable_new(val Value) Variable {
 }
 
 fn (bb &BasicBlock) read_variable(var Variable) Value {
-	return bb.variables[var] or {
-		bb.read_variable_recursive(var)
-	}
+	return bb.variables[var] or { bb.read_variable_recursive(var) }
 }
 
 // readVariableRecursive(variable, block):
@@ -125,12 +122,13 @@ fn (bb &BasicBlock) read_variable(var Variable) Value {
 
 fn (bb &BasicBlock) read_variable_recursive(var Variable) Value {
 	val := if !bb.is_sealed {
-		val := Phi{basic_block: bb}
-		// 
+		val := Phi{
+			basic_block: bb
+		}
+		//
 	} else if bb.predecessors.len == 1 {
 		bb.predecessors[0].read_variable(var)
 	} else {
-
 	}
 }
 
@@ -144,4 +142,3 @@ fn (bb &BasicBlock) set_terminator(inst Terminator) Value {
 	bb.terminator = inst
 	return bb.add_instruction(inst)
 }
-

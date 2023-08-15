@@ -3,7 +3,7 @@ module util
 import tinyv.token
 import term
 
-pub enum ErrorKind{
+pub enum ErrorKind {
 	warning
 	notice
 	error
@@ -12,16 +12,16 @@ pub enum ErrorKind{
 pub fn (e ErrorKind) str() string {
 	return match e {
 		.warning { 'warning' }
-		.notice  { 'notice' }
-		.error   { 'error' }
+		.notice { 'notice' }
+		.error { 'error' }
 	}
 }
 
 pub fn (e ErrorKind) color(s string) string {
 	return match e {
 		.warning { term.yellow(s) }
-		.notice  { term.blue(s) }
-		.error   { term.red(s) }
+		.notice { term.blue(s) }
+		.error { term.red(s) }
 	}
 }
 

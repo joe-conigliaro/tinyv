@@ -6,9 +6,7 @@ module builder
 import os
 
 fn get_v_files_from_dir(dir string) []string {
-	mod_files := os.ls(dir)  or {
-		panic('error getting ls from $dir')
-	}
+	mod_files := os.ls(dir) or { panic('error getting ls from ${dir}') }
 	mut v_files := []string{}
 	for file in mod_files {
 		if !file.ends_with('.v') || file.ends_with('.js.v') || file.ends_with('_test.v') {
