@@ -7,19 +7,13 @@ import tinyv.ast
 import tinyv.pref
 import tinyv.parser
 import tinyv.token
+import tinyv.util
 import runtime
-
-// TODO: remove workaround once fixed in compiler
-struct SharedIntWorkaround {
-mut:
-	value int
-}
 
 struct ParsingSharedState {
 mut:
 	file_set            &token.FileSet
 	parsed_modules      shared []string
-	queued_files_length shared SharedIntWorkaround
 }
 
 fn (mut pstate ParsingSharedState) mark_module_as_parsed(name string) {
@@ -37,25 +31,11 @@ fn (mut pstate ParsingSharedState) already_parsed_module(name string) bool {
 	return false
 }
 
-fn (mut pstate ParsingSharedState) queue_files(ch_in chan string, files []string) {
-	for file in files {
-		// eprintln('>>>> ${@METHOD} file: $file')
-		ch_in <- file
-		lock pstate.queued_files_length {
-			pstate.queued_files_length.value++
-		}
-	}
-}
-
-fn worker(mut pstate ParsingSharedState, prefs &pref.Preferences, ch_in chan string, ch_out chan ast.File) {
+fn worker(mut pstate ParsingSharedState, prefs &pref.Preferences, ch_in chan string, ch_out chan ast.File, queue_jobs fn([]string)) {
 	// eprintln('>> ${@METHOD}')
 	mut p := parser.Parser.new(prefs)
 	for {
 		filename := <-ch_in or { break }
-		// need lock for selectorexpr, perhaps better way
-		// ast_file := lock pstate.file_set {
-		// 	p.parse_file(filename, mut pstate.file_set)
-		// }
 		ast_file := p.parse_file(filename, mut pstate.file_set)
 		if !prefs.skip_imports {
 			for mod in ast_file.imports {
@@ -64,13 +44,10 @@ fn worker(mut pstate ParsingSharedState, prefs &pref.Preferences, ch_in chan str
 				}
 				pstate.mark_module_as_parsed(mod.name)
 				mod_path := prefs.get_module_path(mod.name, ast_file.name)
-				pstate.queue_files(ch_in, get_v_files_from_dir(mod_path))
+				queue_jobs(get_v_files_from_dir(mod_path))
 			}
 		}
 		// eprintln('>> ${@METHOD} fully parsed file: $filename')
-		lock pstate.queued_files_length {
-			pstate.queued_files_length.value--
-		}
 		ch_out <- ast_file
 	}
 }
@@ -81,35 +58,18 @@ fn (mut b Builder) parse_files_parallel(files []string) []ast.File {
 	mut pstate := &ParsingSharedState{
 		file_set: b.file_set
 	}
-	mut ast_files := []ast.File{}
-	mut threads := []thread{}
-
+	
+	mut worker_pool := util.WorkerPool.new[string, ast.File](mut ch_in, mut ch_out)
 	// spawn workers
 	for _ in 0 .. runtime.nr_jobs() {
-		// dump(thread_idx)
-		threads << spawn worker(mut pstate, b.pref, ch_in, ch_out)
+		worker_pool.add_worker(spawn worker(mut pstate, b.pref, ch_in, ch_out,  unsafe { worker_pool.queue_jobs }))
 	}
 	// parse builtin
 	if !b.pref.skip_builtin {
-		pstate.queue_files(ch_in, get_v_files_from_dir(b.pref.get_vlib_module_path('builtin')))
+		worker_pool.queue_jobs(get_v_files_from_dir(b.pref.get_vlib_module_path('builtin')))
 	}
 	// parse user files
-	pstate.queue_files(ch_in, files)
+	worker_pool.queue_jobs(files)
 
-	for {
-		rlock pstate.queued_files_length {
-			if pstate.queued_files_length.value == 0 {
-				// dump(pstate)
-				break
-			}
-		}
-		ast_file := <-ch_out
-		ast_files << ast_file
-	}
-
-	ch_in.close()
-	ch_out.close()
-	threads.wait()
-
-	return ast_files
+	return worker_pool.wait_for_results()	
 }
