@@ -14,14 +14,14 @@ mut:
 	ch_out    chan Y
 }
 
-pub fn WorkerPool.new[T, Y](mut ch_in chan T, mut ch_out chan Y) &WorkerPool[T, Y] {
+pub fn WorkerPool.new[T, Y]() &WorkerPool[T, Y] {
 	return &WorkerPool[T, Y]{
-		ch_in: ch_in
-		ch_out: ch_out
+		ch_in: chan T{cap: 1000}
+		ch_out: chan Y{cap: 1000}
 	}
 }
 
-pub fn (mut wp WorkerPool[T,Y]) add_worker(t thread) {
+pub fn (mut wp WorkerPool[T, Y]) add_worker(t thread) {
 	wp.workers << t
 }
 
@@ -29,6 +29,14 @@ pub fn (mut wp WorkerPool[T, Y]) active_jobs() int {
 	return lock wp.queue_len {
 		wp.queue_len.value
 	}
+}
+
+pub fn (mut wp WorkerPool[T, Y]) get_job() !T {
+	return <-wp.ch_in or { none }
+}
+
+pub fn (mut wp WorkerPool[T, Y]) push_result(result Y) {
+	wp.ch_out <- result
 }
 
 pub fn (mut wp WorkerPool[T, Y]) job_done() {

@@ -12,8 +12,8 @@ import runtime
 
 struct ParsingSharedState {
 mut:
-	file_set            &token.FileSet
-	parsed_modules      shared []string
+	file_set       &token.FileSet
+	parsed_modules shared []string
 }
 
 fn (mut pstate ParsingSharedState) mark_module_as_parsed(name string) {
@@ -31,11 +31,11 @@ fn (mut pstate ParsingSharedState) already_parsed_module(name string) bool {
 	return false
 }
 
-fn worker(mut pstate ParsingSharedState, prefs &pref.Preferences, ch_in chan string, ch_out chan ast.File, queue_jobs fn([]string)) {
+fn worker(mut wp util.WorkerPool[string, ast.File], mut pstate ParsingSharedState, prefs &pref.Preferences) {
 	// eprintln('>> ${@METHOD}')
 	mut p := parser.Parser.new(prefs)
 	for {
-		filename := <-ch_in or { break }
+		filename := wp.get_job() or { break }
 		ast_file := p.parse_file(filename, mut pstate.file_set)
 		if !prefs.skip_imports {
 			for mod in ast_file.imports {
@@ -44,25 +44,24 @@ fn worker(mut pstate ParsingSharedState, prefs &pref.Preferences, ch_in chan str
 				}
 				pstate.mark_module_as_parsed(mod.name)
 				mod_path := prefs.get_module_path(mod.name, ast_file.name)
-				queue_jobs(get_v_files_from_dir(mod_path))
+				wp.queue_jobs(get_v_files_from_dir(mod_path))
 			}
 		}
 		// eprintln('>> ${@METHOD} fully parsed file: $filename')
-		ch_out <- ast_file
+		wp.push_result(ast_file)
 	}
 }
 
 fn (mut b Builder) parse_files_parallel(files []string) []ast.File {
-	mut ch_in := chan string{cap: 1000}
-	mut ch_out := chan ast.File{cap: 1000}
 	mut pstate := &ParsingSharedState{
 		file_set: b.file_set
 	}
-	
-	mut worker_pool := util.WorkerPool.new[string, ast.File](mut ch_in, mut ch_out)
+
+	// mut worker_pool := util.WorkerPool.new[string, ast.File](mut ch_in, mut ch_out)
+	mut worker_pool := util.WorkerPool.new[string, ast.File]()
 	// spawn workers
 	for _ in 0 .. runtime.nr_jobs() {
-		worker_pool.add_worker(spawn worker(mut pstate, b.pref, ch_in, ch_out,  unsafe { worker_pool.queue_jobs }))
+		worker_pool.add_worker(spawn worker(mut worker_pool, mut pstate, b.pref))
 	}
 	// parse builtin
 	if !b.pref.skip_builtin {
@@ -71,5 +70,5 @@ fn (mut b Builder) parse_files_parallel(files []string) []ast.File {
 	// parse user files
 	worker_pool.queue_jobs(files)
 
-	return worker_pool.wait_for_results()	
+	return worker_pool.wait_for_results()
 }
