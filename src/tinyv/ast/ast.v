@@ -14,6 +14,7 @@ type EmptyExpr = u8
 type EmptyStmt = u8
 
 pub type Expr = ArrayInitExpr
+	| AsCastExpr
 	| AssocExpr
 	| BasicLiteral
 	| CallExpr
@@ -125,6 +126,13 @@ pub:
 	cap   Expr = ast.empty_expr
 	len   Expr = ast.empty_expr
 	pos   token.Pos
+}
+
+pub struct AsCastExpr {
+pub:
+	expr Expr
+	typ  Expr
+	pos  token.Pos
 }
 
 pub struct AssocExpr {

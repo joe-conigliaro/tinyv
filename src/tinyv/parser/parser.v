@@ -843,8 +843,16 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// the pratt loop is currently just being used for basic infix & postfix operators
 	// I might decide to change this later.
 	for {
+		// as cast
+		if p.tok == .key_as {
+			p.next()
+			return ast.AsCastExpr{
+				expr: lhs
+				typ: p.expect_type()
+			}
+		}
 		// call | cast
-		if p.tok == .lpar {
+		else if p.tok == .lpar {
 			pos := p.pos
 			// NOTE: deref assign in parenthesis
 			// (*ptr_a) = *ptr_a - 1

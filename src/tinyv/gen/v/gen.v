@@ -433,6 +433,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write('}')
 			}
 		}
+		ast.AsCastExpr {
+			g.expr(expr.expr)
+			g.write(' as ')
+			g.expr(expr.typ)
+		}
 		ast.AssocExpr {
 			g.expr(expr.typ)
 			g.writeln('{')

@@ -410,6 +410,7 @@ fn main_a() {
 		}
 	}
 	sumtype_a := SumTypeA(111)
+	as_cast_a := sumtype_a as int
 	match sumtype_a {
 		StructA { println('StructA') }
 		int { println('int') }

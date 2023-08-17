@@ -160,7 +160,7 @@ pub fn (t Token) is_prefix() bool {
 [inline]
 pub fn (t Token) is_infix() bool {
 	return match t {
-		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in, .key_as, .ge, .le,
+		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in /* , .key_as */, .ge, .le,
 		.logical_or, .xor, .not_in, .key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
 		.right_shift, .right_shift_unsigned, .arrow {
 			true
