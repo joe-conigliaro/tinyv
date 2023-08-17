@@ -383,8 +383,10 @@ pub fn (s StringLiteralKind) str() string {
 	}
 }
 
+// TODO: allow overriding this method in main v compiler
+// that is why this method was renamed from `from_string`
 [direct_array_access]
-pub fn StringLiteralKind.from_string(s string) !StringLiteralKind {
+pub fn StringLiteralKind.from_string_tinyv(s string) !StringLiteralKind {
 	match s[0] {
 		`c` {
 			return .c

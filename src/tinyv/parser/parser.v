@@ -756,7 +756,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lhs = ident_or_type
 			// raw/c/js string: `r'hello'`
 			if p.line == line && p.tok == .string {
-				lhs = p.string_literal(ast.StringLiteralKind.from_string(lit) or {
+				lhs = p.string_literal(ast.StringLiteralKind.from_string_tinyv(lit) or {
 					p.error(err.msg())
 				})
 			}

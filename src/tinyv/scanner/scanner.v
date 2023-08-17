@@ -118,7 +118,7 @@ pub fn (mut s Scanner) scan() token.Token {
 			break
 		}
 		s.lit = s.src[s.pos..s.offset]
-		return token.Token.from_string(s.lit)
+		return token.Token.from_string_tinyv(s.lit)
 	}
 	// string
 	else if c in [`'`, `"`] {
