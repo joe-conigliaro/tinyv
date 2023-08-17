@@ -19,6 +19,8 @@ const (
 type AliasA = int
 type SumTypeA = StructA | int | string
 
+pub type DatabasePool[T] = fn (tid int) T
+
 // we don't want this to be parsed as:
 // `type FnA = fn() fn...`
 type FnA = fn()
@@ -42,6 +44,7 @@ enum EnumA {
 [attribute_a: 'attribute_a_val'; attribute_b]
 [attribute_c: 'attribute_c_val']
 [attribute_d]
+['/product/edit'; post]
 struct StructA {
 	field_a int
 	field_b string
@@ -161,6 +164,11 @@ fn spawn_test() {
 		}
 	}()
 	thread.wait()
+}
+
+fn fn_result_a() !int {
+	array_a := [1,2,3,4]
+	return  array_a[0]!
 }
 
 fn main_a() {

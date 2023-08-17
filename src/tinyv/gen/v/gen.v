@@ -375,6 +375,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		ast.TypeDecl {
 			g.write('type ')
 			g.write(stmt.name)
+			if stmt.generic_params.len > 0 {
+				g.generic_list(stmt.generic_params)
+			}
 			if stmt.variants.len > 0 {
 				g.write(' = ')
 				g.expr_list(stmt.variants, ' | ')
@@ -806,12 +809,11 @@ fn (mut g Gen) attributes(attributes []ast.Attribute) {
 			g.write('if ')
 			g.expr(attribute.comptime_cond)
 		} else {
-			g.write(attribute.name)
-			if attribute.value.len > 0 {
-				g.write(": '")
-				g.write(attribute.value)
-				g.write("'")
+			if attribute.name.len > 0 {
+				g.write(attribute.name)
+				g.write(': ')
 			}
+			g.expr(attribute.value)
 			if i < attributes.len - 1 {
 				g.write('; ')
 			}

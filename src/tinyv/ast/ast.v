@@ -499,7 +499,7 @@ pub fn (attributes []Attribute) has(name string) bool {
 pub struct Attribute {
 pub:
 	name          string
-	value         string
+	value         Expr
 	comptime_cond Expr
 }
 
@@ -640,10 +640,11 @@ pub:
 
 pub struct TypeDecl {
 pub:
-	is_public   bool
-	name        string
-	parent_type Expr = ast.empty_expr
-	variants    []Expr
+	is_public      bool
+	name           string
+	generic_params []Expr
+	parent_type    Expr = ast.empty_expr
+	variants       []Expr
 }
 
 // Type Nodes

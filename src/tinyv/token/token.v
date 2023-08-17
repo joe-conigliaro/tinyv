@@ -176,8 +176,11 @@ pub fn (t Token) is_postfix() bool {
 	// If we want pratt loop to handle `fn()!` | `fn()?`
 	// I will most likely continue doing this manually.
 	// return t in [.inc, .dec, .not, .question]
+	// NOTE: changed to pratt handling, code was left
+	// commented in parser in case we change back
 	return match t {
-		.inc, .dec { true }
+		// .inc, .dec { true }
+		.inc, .dec, .not, .question { true }
 		else { false }
 	}
 }

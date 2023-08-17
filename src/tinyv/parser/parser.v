@@ -79,8 +79,12 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	if top_stmt0 is ast.ModuleStmt {
 		mod = top_stmt0.name
 	} else {
-		// TODO: only error if not test?
-		p.error('expectng module')
+		// TODO: only error if not testi
+		// TODO: set is_test somewhre, probably work it out in builder
+		// and pass it to parser, or in prefs. (check current v)
+		if !p.file.name.contains('_test.v') {
+			p.error('expectng module')
+		}
 	}
 	for p.tok == .key_import {
 		top_stmt := p.top_stmt()
@@ -198,17 +202,19 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_global {
 					return p.global_decl(attributes)
 				}
-				.key_struct {
+				.key_struct, .key_union {
 					return p.struct_decl(is_pub, attributes)
 				}
 				else {
 					// file level attributes
 					// or we are missing a stmt which supports attributes in this match
 					for attribute in attributes {
-						match attribute.name {
-							'has_globals' {}
-							else {
-								p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
+						if attribute.value is ast.Ident {
+							match attribute.value.name {
+								'has_globals' {}
+								else {
+									p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
+								}
 							}
 						}
 					}
@@ -839,20 +845,19 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.exp_lcbr = exp_lcbr
 			// definitely a call since we have `!` | `?`
 			// fncall()! (Propagate Result) | fncall()? (Propagate Option)
-			// TODO: use expect_type?
 			if p.tok in [.not, .question] {
 				lhs = ast.CallExpr{
 					lhs: lhs
 					args: args
 					pos: pos
 				}
-				lhs = ast.PostfixExpr{
-					expr: lhs
-					op: p.tok()
-				}
+				// lhs = ast.PostfixExpr{
+				// 	expr: lhs
+				// 	op: p.tok()
+				// }
 			}
 			// could be a call or a cast (1 arg)
-			else if args.len == 1 {
+			if args.len == 1 {
 				// definitely a cast
 				if lhs is ast.Type {
 					lhs = ast.CastExpr{
@@ -1159,7 +1164,7 @@ fn (mut p Parser) attributes() []ast.Attribute {
 	mut attributes := []ast.Attribute{}
 	for {
 		mut name := ''
-		mut value := ''
+		mut value := ast.empty_expr
 		mut comptime_cond := ast.empty_expr
 		// since unsafe is a keyword
 		if p.tok == .key_unsafe {
@@ -1171,25 +1176,32 @@ fn (mut p Parser) attributes() []ast.Attribute {
 		else if p.tok == .key_if {
 			p.next()
 			comptime_cond = p.expr(.lowest)
-			if p.tok == .question {
-				p.next()
-				comptime_cond = ast.PostfixExpr{
-					op: .question
-					expr: comptime_cond
-				}
-			}
+			// if p.tok == .question {
+			// 	p.next()
+			// 	comptime_cond = ast.PostfixExpr{
+			// 		op: .question
+			// 		expr: comptime_cond
+			// 	}
+			// }
 		} else {
-			name = p.expect_name()
+			// name = p.expect_name()
+			value = p.expr(.lowest)
 			if p.tok == .colon {
-				p.next()
+				if mut value is ast.Ident {
+					name = value.name
+				} else {
+					p.error('expecting identifier')
+				}
+				p.next() // ;
 				// NOTE: use tok instead of defining AttributeKind
 				// kind := p.tok
 				// TODO: do we need the match below or should we use:
 				// if p.tok in [.semicolon, .rsbr] { p.error('...') }
-				value = match p.tok {
-					.name, .number, .string { p.lit() }
-					else { p.error('unexpected ${p.tok}, an argument is expected after `:`') }
-				}
+				value = p.expr(.lowest)
+				// value = match p.tok {
+				// 	.name, .number, .string { p.lit() }
+				// 	else { p.error('unexpected ${p.tok}, an argument is expected after `:`') }
+				// }
 			}
 		}
 		attributes << ast.Attribute{
@@ -1337,18 +1349,18 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	// NOTE: the line above works, but avoid calling p.expr()
 	mut cond := if p.tok == .lcbr { ast.empty_expr } else { p.expr(.lowest) }
 	mut else_expr := ast.empty_expr
-	if p.tok == .question {
-		// TODO: handle individual cases like this or globally
-		// use postfix for this and add to token.is_postfix()?
-		cond = ast.PostfixExpr{
-			expr: cond
-			op: p.tok
-		}
-		p.next()
-	}
+	// if p.tok == .question {
+	// 	// TODO: handle individual cases like this or globally
+	// 	// use postfix for this and add to token.is_postfix()?
+	// 	cond = ast.PostfixExpr{
+	// 		expr: cond
+	// 		op: p.tok
+	// 	}
+	// 	p.next()
+	// }
 	// if guard
 	// TODO: is `if a, b := multi_return_opt() {` allowed?
-	else if p.tok == .decl_assign {
+	if p.tok == .decl_assign {
 		cond = ast.IfGuardExpr{
 			stmt: p.assign_stmt([cond])
 		}
@@ -1932,14 +1944,27 @@ fn (mut p Parser) string_inter() ast.StringInter {
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.expect_name()
+	mut generic_params := []ast.Expr{}
+	if p.tok == .lsbr {
+		p.next()
+		generic_params << p.expect_type()
+		for p.tok == .comma {
+			p.next()
+			generic_params << p.expect_type()
+		}
+		p.expect(.rsbr)
+	}
+
 	// p.log('ast.TypeDecl: $name')
 	p.expect(.assign)
 	typ := p.expect_type()
+
 	// alias `type MyType = int`
 	if p.tok != .pipe {
 		return ast.TypeDecl{
 			is_public: is_public
 			name: name
+			generic_params: generic_params
 			parent_type: typ
 		}
 	}
@@ -1954,6 +1979,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	return ast.TypeDecl{
 		is_public: is_public
 		name: name
+		generic_params: generic_params
 		variants: variants
 	}
 }
