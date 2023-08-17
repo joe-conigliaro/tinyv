@@ -17,7 +17,7 @@ const (
 )
 
 type AliasA = int
-type SumTypeA = StructA | int | string
+type SumTypeA = StructA | int | string | []string
 
 pub type DatabasePool[T] = fn (tid int) T
 
@@ -419,6 +419,7 @@ fn main_a() {
 		StructA { println('StructA') }
 		int { println('int') }
 		string { println('string') }
+		[]string { println('[]string') }
 	}
 	mut ptr_a := &voidptr(0)
 	unsafe {

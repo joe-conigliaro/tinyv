@@ -400,7 +400,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.error('generic closure')
 			}
 			typ := p.fn_type()
-			if p.exp_pt && p.tok != .lcbr {
+			if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 				return ast.Type(typ)
 			}
 			lhs = ast.FnLiteral{
@@ -590,7 +590,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
 					else {
-						if p.exp_pt && p.tok != .lcbr {
+						if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 							return typ
 						}
 						p.expect(.lcbr)
@@ -642,7 +642,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
 				else {
-					if p.exp_pt && p.tok != .lcbr {
+					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 						return typ
 					}
 					p.expect(.lcbr)
@@ -704,13 +704,12 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			mut branches := []ast.MatchBranch{}
 			for p.tok != .rcbr {
 				exp_lcbr = p.exp_lcbr
-				p.exp_lcbr = true
 				branch_pos := p.pos
-				// cond := p.expr_list()
-				mut cond := [p.expr_with_range(p.expr(.lowest))]
+				p.exp_lcbr = true
+				mut cond := [p.expr_with_range(p.expr_or_type(.lowest))]
 				for p.tok == .comma {
 					p.next()
-					cond << p.expr_with_range(p.expr(.lowest))
+					cond << p.expr_with_range(p.expr_or_type(.lowest))
 				}
 				p.exp_lcbr = exp_lcbr
 				branches << ast.MatchBranch{
@@ -765,7 +764,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// reutrns type without init when `p.exp_pt` is true
 			else if ident_or_type is ast.Type {
 				if ident_or_type is ast.MapType {
-					if p.exp_pt && p.tok != .lcbr {
+					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 						return lhs
 					}
 					p.expect(.lcbr)
@@ -775,7 +774,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						pos: pos
 					}
 				} else if ident_or_type is ast.ChannelType {
-					if p.exp_pt && p.tok != .lcbr {
+					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 						return lhs
 					}
 					mut cap := ast.empty_expr
