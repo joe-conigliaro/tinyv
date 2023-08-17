@@ -16,7 +16,7 @@ struct Builder {
 	pref &pref.Preferences
 mut:
 	files    []ast.File
-	file_set &token.FileSet = &token.FileSet{}
+	file_set &token.FileSet = token.FileSet.new()
 }
 
 pub fn new_builder(prefs &pref.Preferences) &Builder {
@@ -37,7 +37,7 @@ pub fn (mut b Builder) build(files []string) {
 		b.parse_files_parallel(files)
 	}
 	parse_time := sw.elapsed()
-	b.type_check_files()
+	// b.type_check_files()
 	type_check_time := time.Duration(sw.elapsed() - parse_time)
 	b.gen_v_files()
 	gen_v_time := time.Duration(sw.elapsed() - parse_time - type_check_time)

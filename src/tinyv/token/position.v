@@ -34,10 +34,14 @@ mut:
 
 pub struct FileSet {
 mut:
-	base int
+	base int = 1 // reserve 0 for no position
 	// files shared []&File
 	files []&File
 	mu    &sync.Mutex = sync.new_mutex()
+}
+
+pub fn FileSet.new() &FileSet {
+	return &FileSet{}
 }
 
 pub fn (f &File) pos(offset int) Pos {

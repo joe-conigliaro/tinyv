@@ -37,6 +37,7 @@ pub fn (mut wp WorkerPool[T, Y]) get_job() !T {
 
 pub fn (mut wp WorkerPool[T, Y]) push_result(result Y) {
 	wp.ch_out <- result
+	wp.job_done()
 }
 
 pub fn (mut wp WorkerPool[T, Y]) job_done() {
@@ -62,7 +63,6 @@ pub fn (mut wp WorkerPool[T, Y]) wait_for_results() []Y {
 	mut results := []Y{}
 	for wp.active_jobs() > 0 {
 		result := <-wp.ch_out
-		wp.job_done()
 		results << result
 	}
 
