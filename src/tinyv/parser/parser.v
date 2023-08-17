@@ -1729,6 +1729,7 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 		p.next()
 		name += p.expect_name()
 	}
+	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
 	mut embedded := []ast.Expr{}
@@ -1764,6 +1765,7 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 		is_public: is_public
 		attributes: attributes
 		name: name
+		generic_params: generic_params
 		embedded: embedded
 		fields: fields
 	}

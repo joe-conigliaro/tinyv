@@ -614,11 +614,12 @@ pub:
 
 pub struct InterfaceDecl {
 pub:
-	is_public  bool
-	attributes []Attribute
-	name       string
-	embedded   []Expr
-	fields     []FieldDecl
+	is_public      bool
+	attributes     []Attribute
+	name           string
+	generic_params []Expr
+	embedded       []Expr
+	fields         []FieldDecl
 }
 
 pub struct LabelStmt {

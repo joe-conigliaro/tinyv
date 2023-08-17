@@ -89,6 +89,10 @@ mut:
 	method_a(string) string
 }
 
+interface InterfaceGenericA[T] {
+	field_a T
+}
+
 fn C.external_fn_a(arg_a int) int
 
 [attribute_a: 'attribute_a_val'; attribute_b]

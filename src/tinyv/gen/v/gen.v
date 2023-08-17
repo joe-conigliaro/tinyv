@@ -282,6 +282,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write('interface ')
 			g.write(stmt.name)
+			if stmt.generic_params.len > 0 {
+				g.generic_list(stmt.generic_params)
+			}
 			g.writeln(' {')
 			g.indent++
 			for embed in stmt.embedded {
