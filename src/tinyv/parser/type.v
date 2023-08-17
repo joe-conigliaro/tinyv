@@ -100,7 +100,21 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// name | chan | map
 		.name {
-			return p.ident_or_named_type()
+			pos := p.pos
+			type_name := p.ident_or_named_type()
+			// TODO: is there a better solution than this. it should be the
+			// concern of p.fn_parameters() rather than this. find solution.
+			// TODO: using ast.GenericArgs here may not be correct,
+			// perhaps we should rename it to ast.GenericTypes
+			next_pos := if type_name is ast.Ident { pos + type_name.name.len } else { -1 }
+			if p.pos == next_pos && p.tok == .lsbr {
+				generic_types := p.generic_list()
+				return ast.GenericArgs{
+					lhs: type_name
+					args: generic_types
+				}
+			}
+			return type_name
 		}
 		// result: `!` | `!type`
 		.not {
@@ -184,6 +198,15 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 			name: 'map'
 			pos: pos
 		}
+	}
+	// `thread` | `thread type`
+	else if p.lit.len == 6 && p.lit[0] == `t` && p.lit[1] == `h` && p.lit[2] == `r`
+		&& p.lit[3] == `e` && p.lit[4] == `a` && p.lit[5] == `d` {
+		line := p.line
+		p.next()
+		return ast.Type(ast.ThreadType{
+			elem_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+		})
 	}
 	// ident := p.ident()
 	// return ident

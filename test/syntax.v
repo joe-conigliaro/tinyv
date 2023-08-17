@@ -111,6 +111,12 @@ fn fn_c(arg_a [][]StructA, arg_b [4]StructA) [][]StructA {
 	return arg_a
 }
 
+fn fn_d(arg_a GenericStructA[int]) {
+	println('fn_d($arg_a)')
+}
+
+fn C.fn_d(GenericStructA[int])
+
 fn fn_optional_a() ?int {
 	return 1
 }
@@ -162,12 +168,12 @@ fn channel_test(arg_a chan string) {
 }
 
 fn spawn_test() {
-	thread := spawn fn() {
+	t := spawn fn() {
 		for i in 0..100 {
 			println('$i...')
 		}
 	}()
-	thread.wait()
+	t.wait()
 }
 
 fn fn_result_a() !int {
@@ -192,6 +198,7 @@ fn main_a() {
 	array_init_j := []&StructA{}
 	array_init_k := [fn(arg_a int) int { return 1 }]
 	array_init_i := [fn() int { return 1 }()]
+	array_init_thread_a := []thread int{cap: 16}
 	expr_a expr_b // TODO: error
 	map_init_long_string_string := map[string]string{}
 	map_init_long_string_array_string := map[string][]string{}

@@ -880,6 +880,15 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 						base_type: c.expr(expr.base_type)
 					}
 				}
+				ast.ThreadType {
+					return Thread{
+						elem_type: if expr.elem_type !is ast.EmptyExpr {
+							c.expr(expr.elem_type)
+						} else {
+							none
+						}
+					}
+				}
 				ast.TupleType {
 					mut types := []Type{}
 					for tx in expr.types {

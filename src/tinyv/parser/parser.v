@@ -79,12 +79,13 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	if top_stmt0 is ast.ModuleStmt {
 		mod = top_stmt0.name
 	} else {
-		// TODO: only error if not testi
 		// TODO: set is_test somewhre, probably work it out in builder
 		// and pass it to parser, or in prefs. (check current v)
-		if !p.file.name.contains('_test.v') {
-			p.error('expectng module')
-		}
+		// if !p.file.name.contains('_test.') {
+		// 	p.error('expectng module')
+		// }
+		// NOTE: allowing no moule for now
+		// need to verify rules
 	}
 	for p.tok == .key_import {
 		top_stmt := p.top_stmt()
@@ -147,6 +148,17 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 			if is_aliased {
 				p.next()
 				alias = p.expect_name()
+			}
+			mut symbols := []ast.Expr{}
+			// `import mod { sym1, sym2 }`
+			if p.tok == .lcbr {
+				p.next()
+				symbols << p.expr_or_type(.lowest)
+				for p.tok == .comma {
+					p.next()
+					symbols << p.expr_or_type(.lowest)
+				}
+				p.expect(.rcbr)
 			}
 			// p.log('ast.ImportStmt: $name as $alias')
 			return ast.ImportStmt{
@@ -1577,6 +1589,8 @@ fn (mut p Parser) fn_parameters() []ast.Parameter {
 		if is_mut {
 			p.next()
 		}
+		// TODO: case mentioned in .name in p.try_type
+		// should really be handled here
 		mut typ := p.expect_type()
 		mut name := ''
 		if p.tok !in [.comma, .rpar] {
@@ -1753,16 +1767,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	pos := p.pos
 	p.next()
 	language, name := p.decl_lang_and_name()
-	mut generic_params := []ast.Expr{}
-	if p.tok == .lsbr {
-		p.next()
-		generic_params << p.expect_type()
-		for p.tok == .comma {
-			p.next()
-			generic_params << p.expect_type()
-		}
-		p.expect(.rsbr)
-	}
+	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
 	if p.tok != .lcbr {
@@ -1961,19 +1966,22 @@ fn (mut p Parser) string_inter() ast.StringInter {
 	}
 }
 
+[inline]
+fn (mut p Parser) generic_list() []ast.Expr {
+	p.next()
+	mut generic_list := [p.expect_type()]
+	for p.tok == .comma {
+		p.next()
+		generic_list << p.expect_type()
+	}
+	p.expect(.rsbr)
+	return generic_list
+}
+
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.expect_name()
-	mut generic_params := []ast.Expr{}
-	if p.tok == .lsbr {
-		p.next()
-		generic_params << p.expect_type()
-		for p.tok == .comma {
-			p.next()
-			generic_params << p.expect_type()
-		}
-		p.expect(.rsbr)
-	}
+	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 
 	// p.log('ast.TypeDecl: $name')
 	p.expect(.assign)

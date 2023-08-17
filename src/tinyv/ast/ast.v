@@ -89,6 +89,7 @@ pub type Type = ArrayFixedType
 	| NoneType
 	| OptionType
 	| ResultType
+	| ThreadType
 	| TupleType
 
 // File (AST container)
@@ -663,8 +664,14 @@ pub:
 
 pub struct ChannelType {
 pub:
-	cap       Expr
+	// cap       Expr
 	elem_type Expr
+}
+
+pub struct ThreadType {
+pub:
+	// cap       Expr
+	elem_type Expr = ast.empty_expr
 }
 
 pub struct FnType {

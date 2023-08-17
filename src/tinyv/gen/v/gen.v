@@ -775,6 +775,13 @@ fn (mut g Gen) expr(expr ast.Expr) {
 						g.expr(expr.base_type)
 					}
 				}
+				ast.ThreadType {
+					g.write('thread')
+					if expr.elem_type !is ast.EmptyExpr {
+						g.write(' ')
+						g.expr(expr.elem_type)
+					}
+				}
 				ast.TupleType {
 					g.write('(')
 					g.expr_list(expr.types, ', ')
