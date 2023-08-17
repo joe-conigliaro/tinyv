@@ -724,7 +724,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				pos: match_pos
 			}
 		}
-		.key_mut, .key_shared, .key_static {
+		.key_mut, .key_shared, .key_static, .key_volatile {
 			// also /* .key_atomic. */
 			lhs = ast.Modifier{
 				kind: p.tok()

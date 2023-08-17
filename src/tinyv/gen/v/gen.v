@@ -603,11 +603,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.expr(expr.desugar())
 		}
 		ast.Modifier {
-			g.write('Modifier[')
 			g.write(expr.kind.str())
 			g.write(' ')
 			g.expr(expr.expr)
-			g.write(']')
 		}
 		ast.OrExpr {
 			g.expr(expr.expr)
