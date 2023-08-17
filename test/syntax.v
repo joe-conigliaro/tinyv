@@ -61,8 +61,10 @@ fn StructA.static_method_a() int {
 	return 1
 }
 
+ // TODO: modifiers
 struct StructB {
-mut: // TODO: modifiers
+	StructA // embedded
+mut:
 	field_a int
 	field_b string
 }
@@ -80,8 +82,10 @@ interface InterfaceA {
 	method_b(string) string
 }
 
+// TODO: modifiers
 interface InterfaceB {
-mut: // TODO: modifiers
+	InterfaceA // embedded
+mut:
 	method_a(string) string
 }
 

@@ -284,6 +284,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.write(stmt.name)
 			g.writeln(' {')
 			g.indent++
+			for embed in stmt.embedded {
+				g.expr(embed)
+				g.writeln('')
+			}
 			for field in stmt.fields {
 				g.write(field.name)
 				g.write(' ')
@@ -354,6 +358,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(' {')
 			}
 			g.indent++
+			for embed in stmt.embedded {
+				g.expr(embed)
+				g.writeln('')
+			}
 			for field in stmt.fields {
 				g.write(field.name)
 				g.write(' ')

@@ -156,7 +156,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 			}
 		}
 		.key_interface {
-			return p.interface_decl(false)
+			return p.interface_decl(false, [])
 		}
 		.key_module {
 			p.next()
@@ -172,7 +172,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 				.key_const { return p.const_decl(true) }
 				.key_enum { return p.enum_decl(true, []) }
 				.key_fn { return p.fn_decl(true, []) }
-				.key_interface { return p.interface_decl(true) }
+				.key_interface { return p.interface_decl(true, []) }
 				.key_struct, .key_union { return p.struct_decl(true, []) }
 				.key_type { return p.type_decl(true) }
 				else { p.error('not implemented: pub ${p.tok}') }
@@ -201,6 +201,9 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 				}
 				.key_global {
 					return p.global_decl(attributes)
+				}
+				.key_interface {
+					return p.interface_decl(is_pub, attributes)
 				}
 				.key_struct, .key_union {
 					return p.struct_decl(is_pub, attributes)
@@ -1697,7 +1700,7 @@ fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 	}
 }
 
-fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
+fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast.InterfaceDecl {
 	p.next()
 	mut name := p.expect_name()
 	for p.tok == .dot {
@@ -1706,23 +1709,40 @@ fn (mut p Parser) interface_decl(is_public bool) ast.InterfaceDecl {
 	}
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
+	mut embedded := []ast.Expr{}
 	for p.tok != .rcbr {
 		is_mut := p.tok == .key_mut
 		if is_mut {
 			p.next()
 			p.expect(.colon)
 		}
-		field_name := p.expect_name()
-		fields << ast.FieldDecl{
-			name: field_name
-			typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
+		line := p.line
+		mut field_name := ''
+		mut field_type := p.expect_type()
+		// `field type`
+		if p.line == line {
+			if mut field_type is ast.Ident {
+				field_name = field_type.name
+			} else {
+				p.error('expecting field name')
+			}
+			fields << ast.FieldDecl{
+				name: field_name
+				typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
+			}
+		}
+		// embedded interface
+		else {
+			embedded << field_type
 		}
 	}
 	// rcbr
 	p.next()
 	return ast.InterfaceDecl{
 		is_public: is_public
+		attributes: attributes
 		name: name
+		embedded: embedded
 		fields: fields
 	}
 }

@@ -605,9 +605,11 @@ pub:
 
 pub struct InterfaceDecl {
 pub:
-	is_public bool
-	name      string
-	fields    []FieldDecl
+	is_public  bool
+	attributes []Attribute
+	name       string
+	embedded   []Expr
+	fields     []FieldDecl
 }
 
 pub struct LabelStmt {
