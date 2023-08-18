@@ -145,16 +145,7 @@ fn (mut p Parser) try_type() ast.Expr {
 
 // function type / signature
 fn (mut p Parser) fn_type() ast.FnType {
-	mut generic_params := []ast.Expr{}
-	if p.tok == .lsbr {
-		p.next()
-		generic_params << p.expect_type()
-		for p.tok == .comma {
-			p.next()
-			generic_params << p.expect_type()
-		}
-		p.expect(.rsbr)
-	}
+	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	line := p.line
 	params := p.fn_parameters()
 	return ast.FnType{
