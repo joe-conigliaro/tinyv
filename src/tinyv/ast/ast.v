@@ -675,13 +675,12 @@ pub:
 
 pub struct ChannelType {
 pub:
-	// cap       Expr
+	cap       Expr
 	elem_type Expr
 }
 
 pub struct ThreadType {
 pub:
-	// cap       Expr
 	elem_type Expr = ast.empty_expr
 }
 
