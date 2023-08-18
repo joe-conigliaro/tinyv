@@ -879,7 +879,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// }
 			}
 			// could be a call or a cast (1 arg)
-			if args.len == 1 {
+			else if args.len == 1 {
 				// definitely a cast
 				if lhs is ast.Type {
 					lhs = ast.CastExpr{
