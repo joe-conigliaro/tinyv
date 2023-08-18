@@ -39,7 +39,9 @@ pub fn (mut b Builder) build(files []string) {
 	parse_time := sw.elapsed()
 	// b.type_check_files()
 	type_check_time := time.Duration(sw.elapsed() - parse_time)
-	b.gen_v_files()
+	if !b.pref.skip_genv {
+		b.gen_v_files()
+	}
 	gen_v_time := time.Duration(sw.elapsed() - parse_time - type_check_time)
 	total_time := sw.elapsed()
 	print_time('Scan & Parse', parse_time)

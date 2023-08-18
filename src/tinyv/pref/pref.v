@@ -9,6 +9,7 @@ pub struct Preferences {
 pub mut:
 	debug        bool
 	verbose      bool
+	skip_genv    bool
 	skip_builtin bool
 	skip_imports bool
 	no_parallel  bool
@@ -26,6 +27,7 @@ pub fn new_preferences_using_options(options []string) Preferences {
 		// config flags
 		debug: '--debug' in options || '-d' in options
 		verbose: '--verbose' in options || '-v' in options
+		skip_genv: '--skip-genv' in options
 		skip_builtin: '--skip-builtin' in options
 		skip_imports: '--skip-imports' in options
 		no_parallel: '--no-parallel' in options
