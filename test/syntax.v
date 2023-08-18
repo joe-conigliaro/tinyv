@@ -63,7 +63,7 @@ fn StructA.static_method_a() int {
 	return 1
 }
 
- // TODO: modifiers
+// TODO: modifiers
 struct StructB {
 	StructA // embedded
 mut:
@@ -168,7 +168,7 @@ pub fn (a StructA) == (b StructA) bool {
 }
 
 fn channel_test(arg_a chan string) {
-	ch := chan int{cap: 1}
+	ch := chan int{cap: 20}
 	ch <- 111
 	rec := <-ch
 }
@@ -229,6 +229,7 @@ fn main_a() {
 	string_literal_v_b := "string literal b"
 	string_literal_c_a := c'c string literal a'
 	string_literal_raw_a := r'string $literal raw a'
+	thred_init_a := thread int{cap: 20}
 	call_a := fn_a('string', 1)
 	call_b := fn_b('string', 1, a, b)
 	call_c := array_init_g[0](1)

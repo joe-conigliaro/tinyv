@@ -517,12 +517,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('}')
 		}
 		ast.GenericArgs {
-			g.write('/* ast.GenericArgs */')
+			// g.write('/* ast.GenericArgs */')
 			g.expr(expr.lhs)
 			g.generic_list(expr.args)
 		}
 		ast.GenericArgOrIndexExpr {
-			g.write('/* ast.GenericArgOrIndexExpr */')
+			// g.write('/* ast.GenericArgOrIndexExpr */')
 			g.expr(expr.lhs)
 			g.generic_list([expr.expr])
 		}

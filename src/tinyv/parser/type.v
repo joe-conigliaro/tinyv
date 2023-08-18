@@ -102,16 +102,18 @@ fn (mut p Parser) try_type() ast.Expr {
 		.name {
 			pos := p.pos
 			type_name := p.ident_or_named_type()
-			// TODO: is there a better solution than this. it should be the
-			// concern of p.fn_parameters() rather than this. find solution.
-			// TODO: using ast.GenericArgs here may not be correct,
-			// perhaps we should rename it to ast.GenericTypes
-			next_pos := if type_name is ast.Ident { pos + type_name.name.len } else { -1 }
-			if p.pos == next_pos && p.tok == .lsbr {
-				generic_types := p.generic_list()
-				return ast.GenericArgs{
-					lhs: type_name
-					args: generic_types
+			if p.tok == .lsbr {
+				// TODO: is there a better solution than this. it should be the
+				// concern of p.fn_parameters() rather than this. find solution.
+				// TODO: using ast.GenericArgs here may not be correct,
+				// perhaps we should rename it to ast.GenericTypes
+				next_pos := if type_name is ast.Ident { pos + type_name.name.len } else { -1 }
+				if p.pos == next_pos {
+					generic_types := p.generic_list()
+					return ast.GenericArgs{
+						lhs: type_name
+						args: generic_types
+					}
 				}
 			}
 			return type_name
