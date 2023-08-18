@@ -101,22 +101,24 @@ fn (mut p Parser) try_type() ast.Expr {
 		// name | chan | map
 		.name {
 			pos := p.pos
-			type_name := p.ident_or_named_type()
-			if p.tok == .lsbr {
-				// TODO: is there a better solution than this. it should be the
-				// concern of p.fn_parameters() rather than this. find solution.
+			name := p.ident_or_named_type()
+			if p.tok == .lsbr && name !is ast.Type {
+				// TODO: is there a better solution than this. maybe it should be the
+				// concern of p.fn_parameters() & p.struct_decl() rather than this?
+				// `fn(param_a []type)` | `struct { field_a []type }`
+				if name is ast.Ident && name.name.len + pos < p.pos {
+					return name
+				}
 				// TODO: using ast.GenericArgs here may not be correct,
 				// perhaps we should rename it to ast.GenericTypes
-				next_pos := if type_name is ast.Ident { pos + type_name.name.len } else { -1 }
-				if p.pos == next_pos {
-					generic_types := p.generic_list()
-					return ast.GenericArgs{
-						lhs: type_name
-						args: generic_types
-					}
+				// if name is ast.Ident && p.pos == pos + name.name.len { return name }
+				generic_types := p.generic_list()
+				return ast.GenericArgs{
+					lhs: name
+					args: generic_types
 				}
 			}
-			return type_name
+			return name
 		}
 		// result: `!` | `!type`
 		.not {
@@ -201,8 +203,7 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 			elem_type: if p.line == line { p.try_type() } else { ast.empty_expr }
 		})
 	}
-	// ident := p.ident()
-	// return ident
+	// `ident` | `selector` - ident or type name
 	return p.ident_or_selector_expr()
 }
 

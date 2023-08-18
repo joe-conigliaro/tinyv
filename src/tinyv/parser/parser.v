@@ -1526,44 +1526,17 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 			}
 		}
 	}
-	// language, name := p.decl_lang_and_name()
-	// TODO: clean up & consolidate into a method
-	// it would be nice to store name as Expr, but the most useful part
-	// in later stages is simply the identifier name, so it may not be
-	// worth the extra memory to use Expr everywhere. consider...
-	// TODO/FIXME: I ADD ANOTHER TODO LOL - MAKE SURE TO CLEAN THIS :D
 	name_expr := p.ident_or_selector_expr()
+	language, name := name_expr.to_language_and_name()
 	mut is_static := false
-	mut name := ''
-	mut language := ast.Language.v
-	if name_expr is ast.Ident {
-		name = name_expr.name
-	} else if name_expr is ast.SelectorExpr {
-		if name_expr.lhs is ast.Ident {
-			lhs_name := name_expr.lhs.name
-			if lhs_name.len == 1 && lhs_name[0] == `C` {
-				language = ast.Language.c
-				name = name_expr.rhs.name
-			} else if lhs_name.len == 2 && lhs_name[0] == `J` && lhs_name[1] == `S` {
-				language = ast.Language.js
-				name = name_expr.rhs.name
-			} else {
-				// TODO: static methods `Type.method_name()`
-				// return ast.Language.v, p.expect_name()
-				// p.error('invalid language prefix `$name`')
-				// lhs_ident := name_expr.lhs as ast.Ident
-				is_method = true
-				is_static = true
-				receiver = ast.Parameter{
-					typ: name_expr.lhs
-				}
-			}
-			name.len
-		} else {
-			p.error('bad name')
+	// selector but unknown lang must be static method
+	if name_expr is ast.SelectorExpr && language == .v {
+		is_method = true
+		is_static = true
+		receiver = ast.Parameter{
+			typ: name_expr.lhs
 		}
 	}
-
 	typ := p.fn_type()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
@@ -1596,12 +1569,11 @@ fn (mut p Parser) fn_parameters() []ast.Parameter {
 		if is_mut {
 			p.next()
 		}
-		// TODO: case mentioned in .name in p.try_type
-		// should really be handled here
+		// NOTE: case documented in `p.try_type()` todo
 		mut typ := p.expect_type()
 		mut name := ''
-		if p.tok !in [.comma, .rpar] {
-			name = (typ as ast.Ident).name
+		if mut typ is ast.Ident && p.tok !in [.comma, .rpar] {
+			name = typ.name
 			typ = p.expect_type()
 		}
 		params << ast.Parameter{
@@ -1775,7 +1747,8 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	// is_union := p.tok == .key_union
 	pos := p.pos
 	p.next()
-	language, name := p.decl_lang_and_name()
+	name_expr := p.ident_or_selector_expr()
+	language, name := name_expr.to_language_and_name()
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
@@ -1803,6 +1776,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 			p.expect(.colon)
 		}
 		line := p.line
+		// NOTE: case documented in `p.try_type()` todo
 		embed_or_name := p.expect_type()
 		// embedded struct
 		if p.line != line {

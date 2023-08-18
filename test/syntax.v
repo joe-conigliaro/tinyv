@@ -117,11 +117,11 @@ fn fn_c(arg_a [][]StructA, arg_b [4]StructA) [][]StructA {
 	return arg_a
 }
 
-fn fn_d(arg_a GenericStructA[int]) {
-	println('fn_d($arg_a)')
+fn fn_d(arg_a GenericStructA[int], arg_b moda.GenericStructA[int]) {
+	println('fn_d($arg_a, $arg_b)')
 }
 
-fn C.fn_d(GenericStructA[int])
+fn C.fn_d(GenericStructA[int], moda.GenericStructA[int])
 
 fn fn_optional_a() ?int {
 	return 1

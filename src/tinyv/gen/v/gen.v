@@ -177,13 +177,16 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write('fn ')
 			if stmt.is_method {
-				g.write('(')
 				if !stmt.is_static {
+					g.write('(')
 					g.write(stmt.receiver.name)
 					g.write(' ')
+					g.expr(stmt.receiver.typ)
+					g.write(') ')
+				} else {
+					g.expr(stmt.receiver.typ)
+					g.write('.')
 				}
-				g.expr(stmt.receiver.typ)
-				g.write(') ')
 			}
 			if stmt.language != .v {
 				g.write(stmt.language.str())

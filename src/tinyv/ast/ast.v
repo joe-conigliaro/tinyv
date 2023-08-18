@@ -367,6 +367,24 @@ pub fn (expr Expr) name() string {
 	}
 }
 
+[direct_array_access]
+pub fn (expr Expr) to_language_and_name() (Language, string) {
+	if expr is Ident {
+		return Language.v, expr.name
+	} else if expr is SelectorExpr {
+		if expr.lhs is Ident {
+			lhs_name := expr.lhs.name
+			if lhs_name.len == 1 && lhs_name[0] == `C` {
+				return Language.c, expr.rhs.name
+			} else if lhs_name.len == 2 && lhs_name[0] == `J` && lhs_name[1] == `S` {
+				return Language.js, expr.rhs.name
+			}
+		}
+		return Language.v, expr.rhs.name
+	}
+	panic('Expr.language_and_name: unexpected Expr `${expr.type_name()}`')
+}
+
 pub enum StringLiteralKind {
 	c
 	js
