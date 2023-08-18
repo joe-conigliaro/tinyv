@@ -50,11 +50,13 @@ struct StructA {
 	field_b string
 	field_c fn(int) int
 	field_d string = 'foo'
-	// field_e string = 'bar' [attribute_a; attribute_b]
-	field_f int = 111 [attribute_a; attribute_b]
-	// NOTE: currently parsed as index. no point fixing each case 
-	// since once the syntax is changed everything will just work
-	field_g int = field_g_default() [attribute_a]
+	field_e int = 1 + 2 + (4*4)
+	// NOTE: no point doing any trickery to try and fix these cases
+	// when the attribute syntax is updated everything will just work
+	// TODO: uncomment when attribute syntax is updated
+	// field_f string = 'bar' [attribute_a; attribute_b]
+	// field_g int = 111 [attribute_a; attribute_b]
+	// field_h int = field_h_default() [attribute_a]
 }
 
 fn StructA.static_method_a() int {

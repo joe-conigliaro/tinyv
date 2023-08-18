@@ -1821,7 +1821,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		// field - default value
 		field_value := if p.tok == .assign {
 			p.next()
-			p.expr(.highest)
+			p.expr(.lowest)
 		} else {
 			ast.empty_expr
 		}
