@@ -93,6 +93,38 @@ pub type Type = ArrayFixedType
 	| ThreadType
 	| TupleType
 
+pub fn (expr Expr) name() string {
+	return match expr {
+		SelectorExpr {
+			expr.name()
+		}
+		Ident {
+			expr.name
+		}
+		else {
+			panic('Expr.name(): unsupported expr `${expr.type_name()}`, currently only supports `ast.Ident` & `ast.SelectorExpr`')
+			// expr.str()
+		}
+	}
+}
+
+pub fn (expr Expr) pos() token.Pos {
+	return match expr {
+		Ident {
+			expr.pos
+		}
+		SelectorExpr {
+			expr.pos
+			// NOTE: should we remove `pos` from `SelectorExpr` and use `expr.lhs.pos()` instead?
+			// which would always get the position of the left most part of the `SelectorExpr`
+			// expr.lhs.pos()
+		}
+		else {
+			panic('Expr.pos(): TODO: add ${expr.type_name()}')
+		}
+	}
+}
+
 // File (AST container)
 pub struct File {
 pub:
@@ -351,20 +383,6 @@ pub:
 
 pub fn (se SelectorExpr) name() string {
 	return se.lhs.name() + '.' + se.rhs.name
-}
-
-pub fn (expr Expr) name() string {
-	return match expr {
-		SelectorExpr {
-			expr.name()
-		}
-		Ident {
-			expr.name
-		}
-		else {
-			expr.str()
-		}
-	}
 }
 
 [direct_array_access]

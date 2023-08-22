@@ -1995,28 +1995,6 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	}
 }
 
-// TODO: static methods. Foo.method_name()
-// use the same method for parsing language as static methods?
-// we could use Expr(Ident|Selector), or language & Expr
-// need to work out the best way to do this
-[direct_array_access; inline]
-fn (mut p Parser) decl_lang_and_name() (ast.Language, string) {
-	name := p.expect_name()
-	if p.tok == .dot {
-		p.next()
-		if name.len == 1 && name[0] == `C` {
-			return ast.Language.c, p.expect_name()
-		} else if name.len == 2 && name[0] == `J` && name[1] == `S` {
-			return ast.Language.js, p.expect_name()
-		} else {
-			// TODO: static methods `Type.method_name()`
-			// return ast.Language.v, p.expect_name()
-			p.error('invalid language prefix `${name}`')
-		}
-	}
-	return ast.Language.v, name
-}
-
 [inline]
 fn (mut p Parser) ident() ast.Ident {
 	return ast.Ident{

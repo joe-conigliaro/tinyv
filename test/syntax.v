@@ -248,6 +248,7 @@ fn main_a() {
 	// able to cast array types, unless it gets implemented.
 	cast_c := []u8([1,2,3,4])
 	cast_d := [][][]u8([[[1,2,3,4]]])
+	cast_d := ?&?int(a)
 	fn_literal_a := fn(param_a int, param_b int) int {
 		return param_a+param_b
 	}
