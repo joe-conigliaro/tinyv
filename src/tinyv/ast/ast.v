@@ -128,11 +128,11 @@ pub fn (expr Expr) pos() token.Pos {
 // File (AST container)
 pub struct File {
 pub:
-	mod  string
-	name string
-	// attributes []Attribute
-	stmts   []Stmt
-	imports []ImportStmt
+	attributes []Attribute
+	mod        string
+	name       string
+	stmts      []Stmt
+	imports    []ImportStmt
 }
 
 pub enum Language {
@@ -262,7 +262,7 @@ pub:
 
 pub struct IfGuardExpr {
 pub:
-	stmt Stmt
+	stmt AssignStmt
 }
 
 pub struct InfixExpr {
@@ -377,30 +377,19 @@ pub:
 	pos token.Pos
 }
 
+pub fn (se SelectorExpr) leftmost() Expr {
+	if se.lhs is SelectorExpr {
+		return se.lhs.leftmost()
+	}
+	return se.lhs
+}
+
 // pub fn (expr Expr) str() string {
 // 	return 'Expr.str() - $expr.type_name()'
 // }
 
 pub fn (se SelectorExpr) name() string {
 	return se.lhs.name() + '.' + se.rhs.name
-}
-
-[direct_array_access]
-pub fn (expr Expr) to_language_and_name() (Language, string) {
-	if expr is Ident {
-		return Language.v, expr.name
-	} else if expr is SelectorExpr {
-		if expr.lhs is Ident {
-			lhs_name := expr.lhs.name
-			if lhs_name.len == 1 && lhs_name[0] == `C` {
-				return Language.c, expr.rhs.name
-			} else if lhs_name.len == 2 && lhs_name[0] == `J` && lhs_name[1] == `S` {
-				return Language.js, expr.rhs.name
-			}
-		}
-		return Language.v, expr.rhs.name
-	}
-	panic('Expr.language_and_name: unexpected Expr `${expr.type_name()}`')
 }
 
 pub enum StringLiteralKind {
@@ -648,6 +637,7 @@ pub:
 	name       string
 	alias      string
 	is_aliased bool
+	symbols    []Expr
 }
 
 pub struct InterfaceDecl {

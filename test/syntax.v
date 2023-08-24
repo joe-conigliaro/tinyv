@@ -3,6 +3,10 @@
 [has_globals]
 module main
 
+import mod_a
+import mod_b.submod_a
+import mod_c { sym_a, TypeA, TypeB[T] }
+
 #include <header_a.h>
 #flag -L lib_a
 

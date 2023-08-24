@@ -101,6 +101,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		// name | chan | map
 		.name {
 			pos := p.pos
+			// TODO: cleam this up
 			name := p.ident_or_named_type()
 			if p.tok == .lsbr && name !is ast.Type {
 				// TODO: is there a better solution than this. maybe it should be the
@@ -112,10 +113,9 @@ fn (mut p Parser) try_type() ast.Expr {
 				// TODO: using ast.GenericArgs here may not be correct,
 				// perhaps we should rename it to ast.GenericTypes
 				// if name is ast.Ident && p.pos == pos + name.name.len { return name }
-				generic_types := p.generic_list()
 				return ast.GenericArgs{
 					lhs: name
-					args: generic_types
+					args: p.generic_list()
 				}
 			}
 			return name
@@ -157,27 +157,12 @@ fn (mut p Parser) fn_type() ast.FnType {
 	}
 }
 
+// `ident` | `map[type]type | `(`chan`|`chan type`) | (`thread`|`thread type`)
 [direct_array_access]
 fn (mut p Parser) ident_or_named_type() ast.Expr {
 	pos := p.pos
-	// `chan` | `chan type`
-	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
-		line := p.line
-		p.next()
-		elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
-		if elem_type !is ast.EmptyExpr {
-			return ast.Type(ast.ChannelType{
-				elem_type: elem_type
-			})
-		}
-		// struct called `chan` in builtin
-		return ast.Ident{
-			name: 'chan'
-			pos: pos
-		}
-	}
 	// `map[type]type`
-	else if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
+	if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
 		p.next()
 		if p.tok == .lsbr {
 			p.next()
@@ -194,6 +179,22 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 			pos: pos
 		}
 	}
+	// `chan` | `chan type`
+	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
+		line := p.line
+		p.next()
+		elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
+		if elem_type !is ast.EmptyExpr {
+			return ast.Type(ast.ChannelType{
+				elem_type: elem_type
+			})
+		}
+		// struct called `chan` in builtin
+		return ast.Ident{
+			name: 'chan'
+			pos: pos
+		}
+	}
 	// `thread` | `thread type`
 	else if p.lit.len == 6 && p.lit[0] == `t` && p.lit[1] == `h` && p.lit[2] == `r`
 		&& p.lit[3] == `e` && p.lit[4] == `a` && p.lit[5] == `d` {
@@ -207,17 +208,14 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 	return p.ident_or_selector_expr()
 }
 
-fn (mut p Parser) ident_or_selector_expr() ast.Expr {
-	lhs := p.ident()
-	// lhs := p.expr(.lowest)
-	if p.tok == .dot {
-		p.next()
-		return ast.SelectorExpr{
-			lhs: lhs
-			// rhs: p.ident_or_selector_expr()
-			rhs: p.ident()
-			pos: p.pos
+// `ident` | (`Type`|`Type[T]`) | (`mod.Type`|`mod.Type[T]`)
+fn (mut p Parser) ident_or_type() ast.Expr {
+	ident_or_selector := p.ident_or_selector_expr()
+	if p.tok == .lsbr {
+		return ast.GenericArgs{
+			lhs: ident_or_selector
+			args: p.generic_list()
 		}
 	}
-	return lhs
+	return ident_or_selector
 }

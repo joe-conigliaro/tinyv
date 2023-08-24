@@ -73,11 +73,31 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	// mut decls := []ast.Decl{}
 	mut imports := []ast.ImportStmt{}
 	mut mod := 'main'
+	// file level attributes
+	// or we are missing a stmt which supports attributes in this match
+	mut attributes := []ast.Attribute{}
+	if p.tok == .lsbr {
+		attributes = p.attributes()
+		for attribute in attributes {
+			if attribute.value is ast.Ident {
+				match attribute.value.name {
+					'has_globals' {}
+					else {
+						p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
+					}
+				}
+			}
+		}
+	}
 	// TODO: script mode support?
 	// I really hope it gets dropped.
-	top_stmt0 := p.top_stmt()
-	if top_stmt0 is ast.ModuleStmt {
-		mod = top_stmt0.name
+	if p.tok == .key_module {
+		p.next()
+		module_stmt := ast.ModuleStmt{
+			name: p.expect_name()
+		}
+		top_stmts << module_stmt
+		mod = module_stmt.name
 	} else {
 		// TODO: set is_test somewhre, probably work it out in builder
 		// and pass it to parser, or in prefs. (check current v)
@@ -88,10 +108,9 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 		// need to verify rules
 	}
 	for p.tok == .key_import {
-		top_stmt := p.top_stmt()
-		if top_stmt is ast.ImportStmt {
-			imports << top_stmt
-		}
+		import_stmt := p.import_stmt()
+		imports << import_stmt
+		top_stmts << import_stmt
 	}
 	for p.tok != .eof {
 		top_stmt := p.top_stmt()
@@ -105,6 +124,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 		println('scan & parse ${filename} (${p.file.line_count()} LOC): ${parse_time.milliseconds()}ms (${parse_time.microseconds()}us)')
 	}
 	return ast.File{
+		attributes: attributes
 		mod: mod
 		name: filename
 		imports: imports
@@ -133,51 +153,20 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_global {
 			return p.global_decl([])
 		}
-		.key_import {
-			p.next()
-			// NOTE: we can also use SelectorExpr if we like
-			// mod := p.expr(.lowest)
-			mut name := p.expect_name()
-			mut alias := name
-			for p.tok == .dot {
-				p.next()
-				alias = p.expect_name()
-				name += '.' + alias
-			}
-			is_aliased := p.tok == .key_as
-			if is_aliased {
-				p.next()
-				alias = p.expect_name()
-			}
-			mut symbols := []ast.Expr{}
-			// `import mod { sym1, sym2 }`
-			if p.tok == .lcbr {
-				p.next()
-				symbols << p.expr_or_type(.lowest)
-				for p.tok == .comma {
-					p.next()
-					symbols << p.expr_or_type(.lowest)
-				}
-				p.expect(.rcbr)
-			}
-			// p.log('ast.ImportStmt: $name as $alias')
-			return ast.ImportStmt{
-				name: name
-				alias: alias
-				is_aliased: is_aliased
-			}
-		}
+		// NOTE: handling moved to parse_file
+		// .key_import {
+		// 	return p.import_stmt()
+		// }
 		.key_interface {
 			return p.interface_decl(false, [])
 		}
-		.key_module {
-			p.next()
-			name := p.expect_name()
-			// p.log('ast.ModuleStmt: $name')
-			return ast.ModuleStmt{
-				name: name
-			}
-		}
+		// NOTE: handling moved to parse_file
+		// .key_module {
+		// 	p.next()
+		// 	return ast.ModuleStmt{
+		// 		name: p.expect_name()
+		// 	}
+		// }
 		.key_pub {
 			p.next()
 			match p.tok {
@@ -221,32 +210,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 					return p.struct_decl(is_pub, attributes)
 				}
 				else {
-					// file level attributes
-					// or we are missing a stmt which supports attributes in this match
-					for attribute in attributes {
-						if attribute.value is ast.Ident {
-							match attribute.value.name {
-								'has_globals' {}
-								else {
-									p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
-								}
-							}
-						}
-					}
-					// TODO: work out best way to handle this
-					// add attributes here, or chage all to AttributeStmt{atts,stmt} (slower)?
-					if p.tok == .key_module {
-						p.next()
-						return ast.ModuleStmt{
-							name: p.expect_name()
-							// attributes: attributes
-						}
-					}
-					// TODO: store file level attributes somewhere then add them to ast.File
-					// if p.attributes.len > 0 {
-					// 	p.error('file level attributes must be declared only once at the start of the file')
-					// }
-					return ast.empty_stmt
+					p.error('${p.tok} does not currently support attributes')
 				}
 			}
 		}
@@ -799,9 +763,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			else if p.tok == .lcbr && !p.exp_lcbr {
 				// TODO: move inits to expr loop? currently just handled where needed
 				// since this is not very many places. consider if it should be moved
-				// NOTE: since we are not relying on capital for types
-				// and therefore struct init, it's not so simple to parse
-				// the following cases without trickery (TODO: consider).
+				// TODO: consider the following (tricky to parse)
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
 				return p.assoc_or_struct_init_expr(lhs)
@@ -949,6 +911,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next() // .lsbr
 				// NOTE: `ast.GenericArgsOrIndexExpr` is only used for cases
 				// which absolutely cannot be determined until a later stage
+				// so try and determine every case we possibly can below
 				expr := p.expr_with_range(p.expr_or_type(.lowest))
 				mut exprs := [expr]
 				for p.tok == .comma {
@@ -1408,6 +1371,44 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	}
 }
 
+fn (mut p Parser) import_stmt() ast.ImportStmt {
+	p.next()
+	// NOTE: we can also use SelectorExpr if we like
+	// mod := p.expr(.lowest)
+	mut name := p.expect_name()
+	mut alias := name
+	for p.tok == .dot {
+		p.next()
+		alias = p.expect_name()
+		name += '.' + alias
+	}
+	is_aliased := p.tok == .key_as
+	if is_aliased {
+		p.next()
+		alias = p.expect_name()
+	}
+	mut symbols := []ast.Expr{}
+	// `import mod { sym1, sym2 }`
+	if p.tok == .lcbr {
+		p.next()
+		// symbols << p.expr_or_type(.lowest)
+		symbols << p.ident_or_type()
+		for p.tok == .comma {
+			p.next()
+			// symbols << p.expr_or_type(.lowest)
+			symbols << p.ident_or_type()
+		}
+		p.expect(.rcbr)
+	}
+	// p.log('ast.ImportStmt: $name as $alias')
+	return ast.ImportStmt{
+		name: name
+		alias: alias
+		is_aliased: is_aliased
+		symbols: symbols
+	}
+}
+
 fn (mut p Parser) directive() ast.Directive {
 	// value := p.lit() // if we scan whole line see scanner
 	p.next()
@@ -1526,15 +1527,28 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 			}
 		}
 	}
-	name_expr := p.ident_or_selector_expr()
-	language, name := name_expr.to_language_and_name()
+	language := p.decl_language()
+	name_ident := p.ident()
+	mut name := name_ident.name
 	mut is_static := false
-	// selector but unknown lang must be static method
-	if name_expr is ast.SelectorExpr && language == .v {
-		is_method = true
-		is_static = true
-		receiver = ast.Parameter{
-			typ: name_expr.lhs
+	if p.tok == .dot {
+		p.next()
+		// static method `Type.name`
+		if language == .v {
+			name = p.lit()
+			is_method = true
+			is_static = true
+			receiver = ast.Parameter{
+				typ: name_ident
+			}
+		}
+		// eg. `Promise.resolve` in `JS.Promise.resolve`
+		else {
+			name += '.' + p.lit()
+			for p.tok == .dot {
+				p.next()
+				name += '.' + p.lit()
+			}
 		}
 	}
 	typ := p.fn_type()
@@ -1747,8 +1761,8 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	// is_union := p.tok == .key_union
 	pos := p.pos
 	p.next()
-	name_expr := p.ident_or_selector_expr()
-	language, name := name_expr.to_language_and_name()
+	language := p.decl_language()
+	name := p.expect_name()
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
@@ -1961,6 +1975,21 @@ fn (mut p Parser) generic_list() []ast.Expr {
 	return generic_list
 }
 
+[direct_array_access]
+fn (mut p Parser) decl_language() ast.Language {
+	mut language := ast.Language.v
+	if p.lit.len == 1 && p.lit[0] == `C` {
+		language = .c
+	} else if p.lit.len == 2 && p.lit[0] == `J` && p.lit[1] == `S` {
+		language = .js
+	} else {
+		return language
+	}
+	p.next()
+	p.expect(.dot)
+	return language
+}
+
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
 	name := p.expect_name()
@@ -2001,6 +2030,20 @@ fn (mut p Parser) ident() ast.Ident {
 		pos: p.pos
 		name: p.expect_name()
 	}
+}
+
+[inline]
+fn (mut p Parser) ident_or_selector_expr() ast.Expr {
+	ident := p.ident()
+	if p.tok == .dot {
+		p.next()
+		return ast.SelectorExpr{
+			lhs: ident
+			rhs: p.ident()
+			pos: p.pos
+		}
+	}
+	return ident
 }
 
 fn (mut p Parser) log(msg string) {

@@ -323,6 +323,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(' as ')
 				g.write(stmt.alias)
 			}
+			if stmt.symbols.len > 0 {
+				g.write(' { ')
+				g.expr_list(stmt.symbols, ', ')
+				g.write(' }')
+			}
 			g.writeln('')
 		}
 		ast.LabelStmt {
