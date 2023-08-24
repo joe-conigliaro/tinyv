@@ -3,7 +3,6 @@
 // that can be found in the LICENSE file.
 module token
 
-import os
 import sync
 
 // TODO: finish fileset / file / base pos etc
@@ -42,53 +41,6 @@ mut:
 
 pub fn FileSet.new() &FileSet {
 	return &FileSet{}
-}
-
-pub fn (f &File) pos(offset int) Pos {
-	if offset > f.size {
-		panic('invalid offset')
-	}
-	return Pos(f.base + offset)
-}
-
-// loads the source file and generates the error message including the source
-// line and column. offending token is highlighted in the snipped of source code.
-// since this is used on errors, loading the source file isnt an issue.
-// TODO: probably needs a better name
-pub fn (f &File) error_details(pos Position, row_padding int) string {
-	src := os.read_file(f.name) or {
-		// TODO: error util
-		panic('error reading ${f.name}')
-	}
-	line_start := if pos.line - row_padding - 1 > 0 {
-		f.line_start(pos.line - row_padding)
-	} else {
-		0
-	}
-	mut line_end := pos.offset + 1
-	for i := 0; line_end < src.len; {
-		if src[line_end] == `\n` {
-			i++
-			if i == row_padding + 1 {
-				break
-			}
-		}
-		line_end++
-	}
-	lines_src := src[line_start..line_end].split('\n')
-	line_no_start, _ := f.find_line_and_column(line_start)
-	mut lines_src_formatted := []string{}
-	for i in 0 .. lines_src.len {
-		line_no := line_no_start + i
-		line_src := lines_src[i]
-		line_spaces := line_src.replace('\t', '    ')
-		lines_src_formatted << '${line_no:5d} | ' + line_spaces
-		if line_no == pos.line {
-			space_diff := line_spaces.len - line_src.len
-			lines_src_formatted << '        ' + ' '.repeat(space_diff + pos.column - 1) + '^'
-		}
-	}
-	return lines_src_formatted.join('\n')
 }
 
 // TODO:
@@ -208,6 +160,13 @@ pub fn (f &File) line_start(line int) int {
 
 pub fn (f &File) line(pos Pos) int {
 	return f.find_line(pos)
+}
+
+pub fn (f &File) pos(offset int) Pos {
+	if offset > f.size {
+		panic('invalid offset')
+	}
+	return Pos(f.base + offset)
 }
 
 pub fn (f &File) position(pos Pos) Position {

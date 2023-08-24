@@ -6,10 +6,10 @@ module parser
 import os
 import time
 import tinyv.ast
+import tinyv.errors
+import tinyv.pref
 import tinyv.scanner
 import tinyv.token
-import tinyv.pref
-import tinyv.util
 
 pub struct Parser {
 	pref &pref.Preferences
@@ -2027,8 +2027,8 @@ fn (mut p Parser) error_expected(exp token.Token, got token.Token) {
 }
 
 // so we can customize the error message used by warn & error
-fn (mut p Parser) error_message(msg string, kind util.ErrorKind, pos token.Position) {
-	util.error(msg, p.file.error_details(pos, 2), kind, pos)
+fn (mut p Parser) error_message(msg string, kind errors.Kind, pos token.Position) {
+	errors.error(msg, errors.details(p.file, pos, 2), kind, pos)
 }
 
 fn (mut p Parser) warn(msg string) {

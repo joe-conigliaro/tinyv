@@ -5,9 +5,9 @@ module types
 
 import time
 import tinyv.ast
-import tinyv.token
+import tinyv.errors
 import tinyv.pref
-import tinyv.util
+import tinyv.token
 
 struct Environment {
 mut:
@@ -2110,8 +2110,8 @@ fn (mut c Checker) close_scope() {
 }
 
 // so we can customize the error message used by warn & error
-fn (mut c Checker) error_message(msg string, kind util.ErrorKind, pos token.Position, file &token.File) {
-	util.error(msg, file.error_details(pos, 2), kind, pos)
+fn (mut c Checker) error_message(msg string, kind errors.Kind, pos token.Position, file &token.File) {
+	errors.error(msg, errors.details(file, pos, 2), kind, pos)
 }
 
 // fn (mut c Checker) warn(msg string) {
@@ -2125,7 +2125,6 @@ fn (mut c Checker) error_message(msg string, kind util.ErrorKind, pos token.Posi
 
 [noreturn]
 fn (mut c Checker) error_with_pos(msg string, pos token.Pos) {
-	// c.error_with_position(msg, c.file.position(pos))i
 	file := c.file_set.file(pos)
 	c.error_with_position(msg, file.position(pos), file)
 }
