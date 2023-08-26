@@ -684,6 +684,30 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			}
 			return lhs_type
 		}
+		ast.InitExpr {
+			// TODO: try handle this from expr
+			// mut typ_expr := expr.typ
+			// if expr.typ is ast.GenericArgs {
+			// 	typ_expr = expr.typ.lhs
+			// }
+			typ := c.expr(expr.typ)
+			// TODO:
+			// if typ is ast.ChannelType {
+			// 	for field in expr.fields {
+			// 		match field.name {
+			// 			'cap' {}
+			// 			else { c.error_with_pos('unknown channel attribute `${key}`') }
+			// 		}
+			// 	}
+			// }
+			// TODO:
+			// for field in expr.fields {
+			// 	if field.value !is ast.EmptyExpr {
+			// 		field_expr_type := c.expr(field.value)
+			// 	}
+			// }
+			return typ
+		}
 		ast.KeywordOperator {
 			typ := c.expr(expr.expr)
 			match expr.op {
@@ -817,21 +841,6 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.StringLiteral {
 			return string_
-		}
-		ast.StructInitExpr {
-			// TODO: try handle this from expr
-			// mut typ_expr := expr.typ
-			// if expr.typ is ast.GenericArgs {
-			// 	typ_expr = expr.typ.lhs
-			// }
-			typ := c.expr(expr.typ)
-			// TODO:
-			// for field in expr.fields {
-			// 	if field.value !is ast.EmptyExpr {
-			// 		field_expr_type := c.expr(field.value)
-			// 	}
-			// }
-			return typ
 		}
 		ast.Type {
 			match expr {

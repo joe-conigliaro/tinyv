@@ -32,6 +32,7 @@ pub type Expr = ArrayInitExpr
 	| IfGuardExpr
 	| IndexExpr
 	| InfixExpr
+	| InitExpr
 	| KeywordOperator
 	| LockExpr
 	| MapInitExpr
@@ -45,7 +46,6 @@ pub type Expr = ArrayInitExpr
 	| SelectorExpr
 	| StringInterLiteral
 	| StringLiteral
-	| StructInitExpr
 	| Tuple
 	| Type
 	| UnsafeExpr
@@ -280,6 +280,12 @@ pub:
 	is_gated bool
 }
 
+pub struct InitExpr {
+pub:
+	typ    Expr
+	fields []FieldInit
+}
+
 pub struct KeywordOperator {
 pub:
 	op   token.Token
@@ -496,12 +502,6 @@ pub fn (sif StringInterFormat) str() string {
 		.octal { 'o' }
 		.string { 's' }
 	}
-}
-
-pub struct StructInitExpr {
-pub:
-	typ    Expr
-	fields []FieldInit
 }
 
 pub struct UnsafeExpr {

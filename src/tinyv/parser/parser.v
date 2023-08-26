@@ -725,12 +725,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				})
 			}
 			// `map[type]type{}` | (`chan{}` | `chan type{}`)
-			// reutrns type without init when `p.exp_pt` is true
+			// returns type without init when `p.exp_pt` is true
+			// NOTE: this branch can be completely removed and these can be
+			// handled with InitExpr, since they need type checking anwyay.
 			else if ident_or_type is ast.Type {
+				if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
+					return lhs
+				}
 				if ident_or_type is ast.MapType {
-					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
-						return lhs
-					}
 					p.expect(.lcbr)
 					p.expect(.rcbr)
 					return ast.MapInitExpr{
@@ -738,9 +740,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						pos: pos
 					}
 				} else if ident_or_type is ast.ChannelType {
-					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
-						return lhs
-					}
 					mut cap := ast.empty_expr
 					p.expect(.lcbr)
 					for p.tok != .rcbr {
@@ -766,7 +765,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// TODO: consider the following (tricky to parse)
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
-				return p.assoc_or_struct_init_expr(lhs)
+				return p.assoc_or_init_expr(lhs)
 			}
 		}
 		// native optionals `x := ?mod_a.StructA{}`
@@ -776,9 +775,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// only handle where actually needed instead of expr loop
 			// I may change my mind, however for now this seems best
 			if p.tok == .lcbr && !p.exp_lcbr {
-				return p.assoc_or_struct_init_expr(lhs)
-			}
-			if p.tok != .lpar && !p.exp_pt {
+				return p.assoc_or_init_expr(lhs)
+			} else if p.tok != .lpar && !p.exp_pt {
 				p.error('expecting `(` or `{`')
 			}
 		}
@@ -920,8 +918,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
-				if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
-					lhs = p.assoc_or_struct_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
+				if p.line == line && p.tok == .lcbr && !p.exp_lcbr {
+					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
 				}
 				// `array[0]()` | `fn[int]()`
 				else if p.tok == .lpar {
@@ -1535,7 +1533,7 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 		p.next()
 		// static method `Type.name`
 		if language == .v {
-			name = p.lit()
+			name = p.expect_name()
 			is_method = true
 			is_static = true
 			receiver = ast.Parameter{
@@ -1544,10 +1542,10 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 		}
 		// eg. `Promise.resolve` in `JS.Promise.resolve`
 		else {
-			name += '.' + p.lit()
+			name += '.' + p.expect_name()
 			for p.tok == .dot {
 				p.next()
-				name += '.' + p.lit()
+				name += '.' + p.expect_name()
 			}
 		}
 	}
@@ -1834,7 +1832,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	}
 }
 
-fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
+fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 	p.next() // .lcbr
 	// assoc
 	if p.tok == .ellipsis {
@@ -1869,8 +1867,8 @@ fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 		// name / value
 		if p.tok == .colon {
 			match mut value {
-				ast.BasicLiteral { field_name = value.value }
-				ast.StringLiteral { field_name = value.value }
+				// ast.BasicLiteral { field_name = value.value }
+				// ast.StringLiteral { field_name = value.value }
 				ast.Ident { field_name = value.name }
 				else { p.error('expected field name, got ${value.type_name()}') }
 			}
@@ -1891,7 +1889,7 @@ fn (mut p Parser) assoc_or_struct_init_expr(typ ast.Expr) ast.Expr {
 		}
 	}
 	p.next()
-	return ast.StructInitExpr{
+	return ast.InitExpr{
 		typ: typ
 		fields: fields
 	}

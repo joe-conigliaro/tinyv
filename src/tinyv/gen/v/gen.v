@@ -556,6 +556,39 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write(' ')
 			g.expr(expr.rhs)
 		}
+		ast.InitExpr {
+			g.expr(expr.typ)
+			// with field names
+			if expr.fields.len > 0 && expr.fields[0].name.len > 0 {
+				g.writeln('{')
+				in_init := g.in_init
+				g.in_init = true
+				g.indent++
+				for i, field in expr.fields {
+					g.write(field.name)
+					g.write(': ')
+					g.expr(field.value)
+					if i < expr.fields.len - 1 {
+						g.writeln(',')
+					} else {
+						g.writeln('')
+					}
+				}
+				g.indent--
+				g.in_init = in_init
+			}
+			// without field names, or empty init `Struct{}`
+			else {
+				g.write('{')
+				for i, field in expr.fields {
+					g.expr(field.value)
+					if i < expr.fields.len - 1 {
+						g.write(', ')
+					}
+				}
+			}
+			g.write('}')
+		}
 		ast.KeywordOperator {
 			g.write(expr.op.str())
 			if expr.op in [.key_go, .key_spawn] {
@@ -689,39 +722,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.write(quote_str)
 			g.write(expr.value)
 			// g.write(quote_str)
-		}
-		ast.StructInitExpr {
-			g.expr(expr.typ)
-			// with field names
-			if expr.fields.len > 0 && expr.fields[0].name.len > 0 {
-				g.writeln('{')
-				in_init := g.in_init
-				g.in_init = true
-				g.indent++
-				for i, field in expr.fields {
-					g.write(field.name)
-					g.write(': ')
-					g.expr(field.value)
-					if i < expr.fields.len - 1 {
-						g.writeln(',')
-					} else {
-						g.writeln('')
-					}
-				}
-				g.indent--
-				g.in_init = in_init
-			}
-			// without field names, or empty init `Struct{}`
-			else {
-				g.write('{')
-				for i, field in expr.fields {
-					g.expr(field.value)
-					if i < expr.fields.len - 1 {
-						g.write(', ')
-					}
-				}
-			}
-			g.write('}')
 		}
 		ast.Tuple {
 			g.expr_list(expr.exprs, ', ')
