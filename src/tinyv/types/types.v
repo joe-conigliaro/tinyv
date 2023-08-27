@@ -6,11 +6,9 @@ module types
 import tinyv.ast
 
 // TODO: fix nested sum type in tinyv (like TS)
-// pub type Type = Primitive | Alias | Array | Channel | Char | Enum | FloatLiteral | FnType
-// 	| Interface | IntLiteral | ISize | Map | OptionType | Pointer | ResultType  | Rune
-// 	| String | Struct | SumType | Thread | Tuple | USize | Void
 pub type Type = Alias
 	| Array
+	| ArrayFixed
 	| Channel
 	| Char
 	| Enum
@@ -73,6 +71,11 @@ mut:
 }
 
 struct Array {
+	elem_type Type
+}
+
+struct ArrayFixed {
+	len       int
 	elem_type Type
 }
 
@@ -246,13 +249,8 @@ fn (t Type) base_type() Type {
 		OptionType, ResultType, Pointer {
 			return t.base_type
 		}
-		// Primitive, Array, Channel, Char, Enum, FloatLiteral,
-		// 	FnType, Interface, IntLiteral, ISize, Map, Rune, String,
-		// 	Struct, SumType, Thread, Tuple, USize, Void {
-		// 	return t
-		// }
-		Primitive, Array, Channel, Char, Enum, FnType, Interface, ISize, Map, Rune, String, Struct,
-		SumType, Thread, Tuple, USize, Void, Nil, None, NamedType {
+		Primitive, Array, ArrayFixed, Channel, Char, Enum, FnType, Interface, ISize, Map, Rune,
+		String, Struct, SumType, Thread, Tuple, USize, Void, Nil, None, NamedType {
 			return t
 		}
 	}
@@ -263,14 +261,14 @@ fn (t Type) key_type() Type {
 		Map { return t.key_type }
 		// TOOD: struct here is 'struct string', need to fix this.
 		// we could use an alias? remove once fixed.
-		Array, String, Struct { return int_ }
+		Array, ArrayFixed, String, Struct { return int_ }
 		else { panic('TODO: should never be called on ${t.type_name()}') }
 	}
 }
 
 fn (t Type) value_type() Type {
 	match t {
-		Array { return t.elem_type }
+		Array, ArrayFixed { return t.elem_type }
 		Channel { return t.elem_type or { t } } // TODO: ?
 		Map { return t.value_type }
 		Pointer { return t.base_type.value_type() }
@@ -354,14 +352,9 @@ fn (t Primitive) is_int_literal() bool {
 
 fn (t Type) name() string {
 	match t {
-		// Primitive, Alias, Array, Channel, Char, Enum, FloatLiteral, FnType,
-		// 	Interface, IntLiteral, ISize, Map, OptionType, Pointer, ResultType,
-		// 	Rune, String, Struct, SumType, Thread, Tuple, USize, Void {
-		// 	return t.name()
-		// }
-		Primitive, Alias, Array, Channel, Char, Enum, FnType, Interface, ISize, Map, OptionType,
-		Pointer, ResultType, Rune, String, Struct, SumType, Thread, Tuple, USize, Void, Nil, None,
-		NamedType {
+		Primitive, Alias, Array, ArrayFixed, Channel, Char, Enum, FnType, Interface, ISize, Map,
+		OptionType, Pointer, ResultType, Rune, String, Struct, SumType, Thread, Tuple, USize, Void,
+		Nil, None, NamedType {
 			return t.name()
 		}
 	}
@@ -426,6 +419,10 @@ fn (t Alias) name() string {
 
 fn (t Array) name() string {
 	return '[]${t.elem_type.name()}'
+}
+
+fn (t ArrayFixed) name() string {
+	return '[${t.len}]${t.elem_type.name()}'
 }
 
 fn (t Channel) name() string {

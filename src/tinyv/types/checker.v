@@ -460,6 +460,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			// c.log('ArrayInit:')
 			// `[1,2,3,4]`
 			if expr.exprs.len > 0 {
+				is_fixed := expr.len !is ast.EmptyExpr
 				// TODO: check all exprs
 				first_elem_type := c.expr(expr.exprs.first())
 				if expr.exprs.len == 1 {
@@ -496,8 +497,15 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 					}
 				}
 				c.expected_type = expected_type
-				return Array{
-					elem_type: first_elem_type
+				return if is_fixed {
+					ArrayFixed{
+						len: expr.exprs.len
+						elem_type: first_elem_type
+					}
+				} else {
+					Array{
+						elem_type: first_elem_type
+					}
 				}
 			}
 			// TOOD: check all expressions

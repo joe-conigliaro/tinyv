@@ -642,10 +642,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				lhs = ast.ArrayInitExpr{
 					exprs: exprs
-					// TODO: don't need this, we do need some way to indicate `!` though
-					len: ast.BasicLiteral{
-						kind: .number
-						value: exprs.len.str()
+					// NOTE: indicates fixed `!`
+					len: ast.PostfixExpr{
+						op: .not
+						expr: ast.empty_expr
 					}
 					pos: pos
 				}
