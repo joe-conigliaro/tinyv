@@ -492,15 +492,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.write(')')
 		}
-		ast.ChannelInitExpr {
-			g.expr(expr.typ)
-			g.write('{')
-			if expr.cap !is ast.EmptyExpr {
-				g.write('cap: ')
-				g.expr(expr.cap)
-			}
-			g.write('}')
-		}
 		ast.ComptimeExpr {
 			g.write('$')
 			g.expr(expr.expr)

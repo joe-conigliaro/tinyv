@@ -561,10 +561,6 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			c.log('CastExpr: ${typ.name()}')
 			return typ
 		}
-		ast.ChannelInitExpr {
-			// TODO: checking
-			return c.expr(expr.typ)
-		}
 		ast.ComptimeExpr {
 			cexpr := c.resolve_expr(expr.expr)
 			// TODO: move to checker, where `ast.*Or*` nodes will be resolved.

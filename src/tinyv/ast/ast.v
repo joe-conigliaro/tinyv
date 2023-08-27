@@ -20,7 +20,6 @@ pub type Expr = ArrayInitExpr
 	| CallExpr
 	| CallOrCastExpr
 	| CastExpr
-	| ChannelInitExpr
 	| ComptimeExpr
 	| EmptyExpr
 	| FieldInit
@@ -199,12 +198,6 @@ pub:
 	typ  Expr
 	expr Expr
 	pos  token.Pos
-}
-
-pub struct ChannelInitExpr {
-pub:
-	typ Expr
-	cap Expr = ast.empty_expr
 }
 
 pub struct ComptimeExpr {

@@ -714,49 +714,13 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.name {
-			pos := p.pos
 			lit := p.lit
-			ident_or_type := p.ident_or_named_type()
-			lhs = ident_or_type
+			lhs = p.ident_or_named_type()
 			// raw/c/js string: `r'hello'`
 			if p.line == line && p.tok == .string {
 				lhs = p.string_literal(ast.StringLiteralKind.from_string_tinyv(lit) or {
 					p.error(err.msg())
 				})
-			}
-			// `map[type]type{}` | (`chan{}` | `chan type{}`)
-			// returns type without init when `p.exp_pt` is true
-			// NOTE: this branch can be completely removed and these can be
-			// handled with InitExpr, since they need type checking anwyay.
-			else if ident_or_type is ast.Type {
-				if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
-					return lhs
-				}
-				if ident_or_type is ast.MapType {
-					p.expect(.lcbr)
-					p.expect(.rcbr)
-					return ast.MapInitExpr{
-						typ: lhs
-						pos: pos
-					}
-				} else if ident_or_type is ast.ChannelType {
-					mut cap := ast.empty_expr
-					p.expect(.lcbr)
-					for p.tok != .rcbr {
-						key := p.expect_name()
-						match key {
-							'cap' {}
-							else { p.error('unknown channel attribute `${key}`') }
-						}
-						p.expect(.colon)
-						cap = p.expr(.lowest)
-					}
-					p.next()
-					return ast.ChannelInitExpr{
-						typ: lhs
-						cap: cap
-					}
-				}
 			}
 			// `ident{}`
 			else if p.tok == .lcbr && !p.exp_lcbr {
