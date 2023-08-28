@@ -636,7 +636,6 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.IfExpr {
 			c.open_scope()
-			c.expr(expr.cond)
 			// if sc_names.len > 0 {
 			// 	c.log('if smartcasts:')
 			// 	// dump(sc_names)
@@ -644,6 +643,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			// }
 			sc_names, sc_types := c.extract_smartcasts(expr.cond)
 			c.apply_smartcasts(sc_names, sc_types)
+			c.expr(expr.cond)
 			c.stmt_list(expr.stmts)
 			mut typ := Type(void_)
 			if expr.stmts.len > 0 {
@@ -824,6 +824,9 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 				elem_type: int_
 			})
 		}
+		ast.SelectExpr {
+			c.stmt_list(expr.stmts)
+		}
 		ast.SelectorExpr {
 			// enum value: `.green`
 			if expr.lhs is ast.EmptyExpr {
@@ -870,6 +873,11 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 				}
 				ast.FnType {
 					return c.fn_type(expr, FnTypeAttribute.empty)
+				}
+				ast.GenericType {
+					// TODO:
+					return c.expr(expr.name)
+					// return c
 				}
 				ast.MapType {
 					return Map{
@@ -1174,12 +1182,14 @@ fn (mut c Checker) apply_smartcasts(sc_names []ast.Expr, sc_types []Type) {
 		if sc_name is ast.Ident {
 			c.scope.insert(sc_name.name, sc_type)
 		} else if sc_name is ast.SelectorExpr {
-			field := c.selector_expr(sc_name)
+			// field := c.selector_expr(sc_name)
 			// if sc_name.lhs is ast.Ident {
-			// 	// field := c.find_field_or_method()
+			// 	field := c.find_field_or_method()
 			// 	c.scope.insert(sc_name.lhs.name, SmartCastSelector{origin: field, field: sc_name.rhs.name, cast_type: sc_type})
 			// }
-			c.log('@@ selector smartcast: ${sc_name.name()} - ${field.type_name()}')
+			// c.log('@@ selector smartcast: ${sc_name.name()} - ${field.type_name()}')
+			println('added smartcast for ${sc_name.name()} to ${sc_type.name()}')
+			c.scope.field_smartcasts[sc_name.name()] = sc_type
 		}
 	}
 }
@@ -1553,6 +1563,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 	expecting_method := c.expecting_method
 	c.expecting_method = true
 	mut fn_ := c.expr(lhs_expr)
+	// fn_ := c.expr(expr.lhs)
 	c.expecting_method = expecting_method
 	// c.log('call expr: $fn_.type_name() - $fn_.name() - ${lhs_expr.type_name()}')
 
@@ -1652,7 +1663,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 			// dump(generic_type_map)
 			if generic_type_map.len > 0 {
 				fn_.generic_types << generic_type_map
-				c.env.generic_types[expr.lhs.name()] << generic_type_map
+				c.env.generic_types[lhs_expr.name()] << generic_type_map
 			}
 		} else if lhs_expr is ast.GenericArgs {
 			c.error_with_pos('cannot call non generic fuction with generic argument list',
@@ -1853,10 +1864,25 @@ fn (mut c Checker) ident(ident ast.Ident) Object {
 
 fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
 	c.log('## selector_expr')
-	file := c.file_set.file(expr.pos)
-	pos := file.position(expr.pos)
+	// file := c.file_set.file(expr.pos)
+	// pos := file.position(expr.pos)
 	// c.log('${expr.name()} - $expr.rhs.name')
-	c.log('selector_expr: ${expr.rhs.name} - ${file.name}:${pos.line} - ${pos.column}')
+	// println('selector_expr: ${expr.rhs.name} - ${file.name}:${pos.line} - ${pos.column}')
+
+	// TODO: check todo in scope.v
+	// if expr.lhs in [ast.Ident, ast.SelectorExpr] {
+	// 	if cast_type := c.scope.field_smartcasts[expr.name()] {
+	// 		println('found smartcast for ${expr.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
+	// 		if cast_type is Struct {
+	// 			println(cast_type.fields)
+	// 		}
+	// 		return c.find_field_or_method(cast_type, expr.rhs.name) or {
+	// 			c.error_with_pos('aaa ' + err.msg(), expr.pos)
+	// 		}
+	// 		// return cast_type
+	// 	}
+	// }
+
 	if expr.lhs is ast.Ident {
 		// if expr.lhs.name == 'it' {
 		// 	c.log('# GOT `it` variable')
@@ -1960,6 +1986,19 @@ fn (mut c Checker) find_field_or_method(t Type, name string) !Type {
 					}
 				}
 				return field_or_method_type
+			}
+		}
+		ArrayFixed {
+			if name in ['clone', 'map', 'filter'] {
+				return FnType{
+					return_type: t
+				}
+			} else if name in ['first', 'last'] {
+				return FnType{
+					return_type: t.elem_type
+				}
+			} else if name == 'len' {
+				return int_
 			}
 		}
 		Channel {

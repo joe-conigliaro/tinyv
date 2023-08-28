@@ -19,6 +19,13 @@ const (
 	const_a = 1
 	const_b = 'two'
 )
+// we don't want this parsed as `TypeA[unsafe]`
+__global global_before_attr_a TypeA
+
+[unsafe]
+pub fn fn_with_attr_a() {
+	println('1')
+}
 
 type AliasA = int
 type SumTypeA = StructA | int | string | []string
@@ -325,6 +332,12 @@ fn main_a() {
 	// if StructA{} == StructA{} {
 	// 	println('StructA{} == StructA{}')
 	// }
+	// if struct_init_a is StructA {
+	// 	println(1)
+	// }
+	if struct_init_a is []StructA {
+		println(1)
+	}
 	if a == 1 {
 		println('1 a == $s')
 	}
@@ -411,6 +424,13 @@ fn main_a() {
 	$for x == 1 {
 		println('comptime for')
 	}
+	$for field in U.fields {
+		// TODO: parser needs to handle
+		// currently just skipping past
+		if val.$(field.name).str() != 'Option(none)' {
+			fields_len++
+		}
+	}
 	for_label_a: for i := 4; true; i++ {
 		println(i)
 		for {
@@ -457,6 +477,14 @@ fn main_a() {
 		block_test_a := 1
 	}
 
+	ch_a := chan int{}
+	select {
+		a := <-ch_a {}
+		b := <-ch_a or {
+			panic('error reading channel')
+		}
+	}
+
 	// REMOVE BELOW - TEMP TESTING OR MOVE TO APPRIPRIATE PLACE ABOVE
 
 	x.member.free()
@@ -487,4 +515,8 @@ fn main_a() {
 	}
 
 	rng.shuffle[T](mut res, config_)!
+
+
+	link_cmd := '${call(it.replace('.c',
+		'.o')).join(' ')}'
 }

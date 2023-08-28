@@ -42,6 +42,7 @@ pub type Expr = ArrayInitExpr
 	| PostfixExpr
 	| PrefixExpr
 	| RangeExpr
+	| SelectExpr
 	| SelectorExpr
 	| StringInterLiteral
 	| StringLiteral
@@ -84,6 +85,7 @@ pub type Type = ArrayFixedType
 	| ArrayType
 	| ChannelType
 	| FnType
+	| GenericType
 	| MapType
 	| NilType
 	| NoneType
@@ -92,13 +94,52 @@ pub type Type = ArrayFixedType
 	| ThreadType
 	| TupleType
 
+pub fn (exprs []Expr) name_list() string {
+	mut name_list := ''
+	for i, expr in exprs {
+		name_list += expr.name()
+		if i < exprs.len - 1 {
+			name_list += ','
+		}
+	}
+	return name_list
+}
+
+pub fn (t Type) name() string {
+	return match t {
+		GenericType {
+			'${t.name.name()}[${t.params.name_list()}]'
+		}
+		else {
+			panic('Type.name(): unsupported expr `${t.type_name()}`, currently only supports `ast.Ident` & `ast.SelectorExpr`')
+			// expr.str()
+		}
+	}
+}
+
 pub fn (expr Expr) name() string {
 	return match expr {
-		SelectorExpr {
-			expr.name()
+		BasicLiteral {
+			expr.value
+		}
+		CallExpr {
+			// TODO:
+			'${expr.lhs.name()}()'
+		}
+		GenericArgs {
+			'${expr.lhs.name()}[${expr.args.name_list()}]'
 		}
 		Ident {
 			expr.name
+		}
+		IndexExpr {
+			'${expr.lhs.name()}[${expr.expr.name()}]'
+		}
+		SelectorExpr {
+			expr.name()
+		}
+		Type {
+			expr.name()
 		}
 		else {
 			panic('Expr.name(): unsupported expr `${expr.type_name()}`, currently only supports `ast.Ident` & `ast.SelectorExpr`')
@@ -367,6 +408,12 @@ pub:
 	op    token.Token // `..` exclusive | `...` inclusive
 	start Expr
 	end   Expr
+}
+
+pub struct SelectExpr {
+pub:
+	pos   token.Pos
+	stmts []Stmt
 }
 
 pub struct SelectorExpr {
@@ -737,6 +784,12 @@ pub fn (ident &Ident) str() string {
 // 		}
 // 	}
 // }
+
+pub struct GenericType {
+pub:
+	name   Expr
+	params []Expr
+}
 
 pub struct MapType {
 pub:

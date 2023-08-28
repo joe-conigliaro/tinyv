@@ -62,14 +62,14 @@ pub fn (mut g Gen) gen(file ast.File) {
 	mut sw := time.new_stopwatch()
 	start_no_time:
 	g.file = file
-	g.stmts(g.file.stmts)
+	g.stmt_list(g.file.stmts)
 	if g.pref.verbose {
 		gen_time := sw.elapsed()
 		println('gen (v) ${file.name}: ${gen_time.milliseconds()}ms (${gen_time.microseconds()}us)')
 	}
 }
 
-fn (mut g Gen) stmts(stmts []ast.Stmt) {
+fn (mut g Gen) stmt_list(stmts []ast.Stmt) {
 	for stmt in stmts {
 		g.indent++
 		g.stmt(stmt)
@@ -94,7 +94,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.BlockStmt {
 			g.writeln('{')
-			g.stmts(stmt.stmts)
+			g.stmt_list(stmt.stmts)
 			g.writeln('}')
 		}
 		ast.ConstDecl {
@@ -118,7 +118,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.DeferStmt {
 			g.write('defer {')
-			g.stmts(stmt.stmts)
+			g.stmt_list(stmt.stmts)
 			g.writeln('}')
 		}
 		ast.Directive {
@@ -204,7 +204,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			// normal v function
 			else {
 				g.writeln(' {')
-				g.stmts(stmt.stmts)
+				g.stmt_list(stmt.stmts)
 				g.writeln('}')
 			}
 		}
@@ -240,7 +240,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.in_init = in_init
 			g.writeln(if is_plain { '{' } else { ' {' })
-			g.stmts(stmt.stmts)
+			g.stmt_list(stmt.stmts)
 			g.writeln('}')
 		}
 		ast.ForInStmt {
@@ -512,7 +512,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.fn_type(expr.typ)
 			g.writeln(' {')
-			g.stmts(expr.stmts)
+			g.stmt_list(expr.stmts)
 			g.write('}')
 		}
 		ast.GenericArgs {
@@ -594,7 +594,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.write('${expr.kind} ')
 			g.expr_list(expr.exprs, ', ')
 			g.writeln(' {')
-			g.stmts(expr.stmts)
+			g.stmt_list(expr.stmts)
 			g.writeln('}')
 		}
 		ast.MapInitExpr {
@@ -634,7 +634,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.write('else')
 				}
 				g.writeln(' {')
-				g.stmts(branch.stmts)
+				g.stmt_list(branch.stmts)
 				g.writeln('}')
 			}
 			g.indent--
@@ -650,7 +650,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.OrExpr {
 			g.expr(expr.expr)
 			g.writeln(' or {')
-			g.stmts(expr.stmts)
+			g.stmt_list(expr.stmts)
 			g.write('}')
 			// g.writeln('==== DeSugared OrExpr ====')
 			// g.expr(expr.desugar())
@@ -676,6 +676,11 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.write(' ')
 			g.expr(expr.end)
 			g.write(' ]')
+		}
+		ast.SelectExpr {
+			g.writeln('select {')
+			g.stmt_list(expr.stmts)
+			g.write('}')
 		}
 		ast.SelectorExpr {
 			g.expr(expr.lhs)
@@ -726,7 +731,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			in_init := g.in_init
 			g.in_init = one_liner
-			g.stmts(expr.stmts)
+			g.stmt_list(expr.stmts)
 			g.in_init = in_init
 			if one_liner {
 				g.write(' }')
@@ -757,6 +762,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				ast.FnType {
 					g.write('fn')
 					g.fn_type(expr)
+				}
+				ast.GenericType {
+					g.expr(expr.name)
+					g.generic_list(expr.params)
 				}
 				ast.MapType {
 					g.write('map[')
@@ -814,7 +823,7 @@ fn (mut g Gen) if_expr(expr ast.IfExpr) {
 		g.write(' ')
 	}
 	g.writeln('{')
-	g.stmts(expr.stmts)
+	g.stmt_list(expr.stmts)
 	g.write('}')
 	if expr.else_expr is ast.IfExpr {
 		g.write(' else ')

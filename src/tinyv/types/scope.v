@@ -20,6 +20,8 @@ pub struct Scope {
 	parent &Scope = unsafe { nil }
 mut:
 	objects map[string]Object
+	// TODO: try implement using original concept
+	field_smartcasts map[string]Type
 	// smartcasts map[string]Type
 	// TODO: it may be more efficient looking up local vars using an ID
 	// even if we had to store them in two different places. investigate.

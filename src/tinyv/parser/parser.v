@@ -383,12 +383,21 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// v stdlib, as apposed to being language keywords.
 		.key_isreftype, .key_sizeof, .key_typeof {
 			op := p.tok()
-			p.expect(.lpar)
-			lhs = ast.KeywordOperator{
-				op: op
-				expr: p.expr_or_type(.lowest)
+			// p.expect(.lpar)
+			if p.tok == .lpar {
+				p.next()
+				lhs = ast.KeywordOperator{
+					op: op
+					expr: p.expr_or_type(.lowest)
+				}
+				p.expect(.rpar)
+			} else {
+				// TODO: is this the best way to handle this? (prob not :D)
+				// this allows `typeof[type]()` to work
+				lhs = ast.Ident{
+					name: op.str()
+				}
 			}
-			p.expect(.rpar)
 		}
 		.key_dump, .key_likely, .key_unlikely {
 			op := p.tok()
@@ -423,6 +432,13 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return ast.LockExpr{
 				kind: kind
 				exprs: exprs
+				stmts: p.block()
+			}
+		}
+		.key_select {
+			p.next()
+			return ast.SelectExpr{
+				pos: p.pos
 				stmts: p.block()
 			}
 		}
@@ -709,9 +725,12 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_unsafe {
 			// p.log('ast.UnsafeExpr')
 			p.next()
+			// exp_lcbr := p.exp_lcbr
+			// p.exp_lcbr = false
 			lhs = ast.UnsafeExpr{
 				stmts: p.block()
 			}
+			// p.exp_lcbr = exp_lcbr
 		}
 		.name {
 			lit := p.lit
@@ -729,7 +748,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// TODO: consider the following (tricky to parse)
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
-				return p.assoc_or_init_expr(lhs)
+				lhs = p.assoc_or_init_expr(lhs)
 			}
 		}
 		// native optionals `x := ?mod_a.StructA{}`
@@ -739,8 +758,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// only handle where actually needed instead of expr loop
 			// I may change my mind, however for now this seems best
 			if p.tok == .lcbr && !p.exp_lcbr {
-				return p.assoc_or_init_expr(lhs)
-			} else if p.tok != .lpar && !p.exp_pt {
+				lhs = p.assoc_or_init_expr(lhs)
+			}
+			// NOTE: added for better error detection. may not be needed any more
+			else if p.tok != .lpar && !p.exp_pt {
 				p.error('expecting `(` or `{`')
 			}
 		}
@@ -765,6 +786,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// for now I am doing this outside of the pratt loop
 	// the pratt loop is currently just being used for basic infix & postfix operators
 	// I might decide to change this later.
+	// TOOD: check for cases where we can get stuck in this loop, and fix.
+	// for p.tok != .eof {
 	for {
 		// as cast
 		if p.tok == .key_as {
@@ -833,8 +856,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: if we want we can handle init like this
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
-		// else if p.tok == .lcbr && p.line == line && !p.exp_lcbr {
-		// 	lhs = p.assoc_or_struct_init_expr(lhs)
+		// else if p.tok == .lcbr && !p.exp_lcbr && p.line == line {
+		// 	lhs = p.assoc_or_init_expr(lhs)
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
 		else if p.tok in [.hash, .lsbr] && p.line == line {
@@ -884,6 +907,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// `GenericStruct[int]{}`
 				if p.line == line && p.tok == .lcbr && !p.exp_lcbr {
 					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
+					// lhs = ast.GenericArgs{ lhs: lhs, args: exprs }
 				}
 				// `array[0]()` | `fn[int]()`
 				else if p.tok == .lpar {
@@ -963,9 +987,20 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lhs = ast.InfixExpr{
 				op: op
 				lhs: lhs
+				// TODO: this is currently jsut to support ComptimeExpr `type$
+				// maybe we can optimise this
 				// in the case of `x in y` allow range, eg. `x in 1..10`
 				rhs: if op == .key_in {
 					p.expr_with_range(p.expr(op.right_binding_power()))
+				}
+				// `x is Type` do we ever have an expr in this case?
+				// or always a type so we cam just use `p.expect_type`?
+				else if op == .key_is {
+					// p.expect_type()
+					// NOTE: if we do need exprs for some reason use this
+					// TODO: this is currently jsut to support ComptimeExpr `$type`
+					// maybe we can optimise this
+					p.expr_or_type(op.right_binding_power())
 				} else {
 					p.expr(op.right_binding_power())
 				}
@@ -1082,6 +1117,10 @@ fn (mut p Parser) block() []ast.Stmt {
 	}
 	// rcbr
 	p.next()
+	// TODO: correct way to error on `if x == Type{} {`
+	// if p.tok == .lcbr {
+	// 	p.error('TODO: booom')
+	// }
 	return stmts
 }
 
@@ -1110,13 +1149,19 @@ fn (mut p Parser) attributes() []ast.Attribute {
 	p.next()
 	mut attributes := []ast.Attribute{}
 	for {
+		// TODO: perhaps attrs with `.name` token before `:` we can set name
+		// as apposed to value of `Ident{name}`
 		mut name := ''
 		mut value := ast.empty_expr
 		mut comptime_cond := ast.empty_expr
 		// since unsafe is a keyword
 		if p.tok == .key_unsafe {
 			p.next()
-			name = 'unsafe'
+			// name = 'unsafe'
+			value = ast.Ident{
+				name: 'unsafe'
+				pos: p.pos
+			}
 		}
 		// TODO: properly
 		// consider using normal if expr
@@ -1190,6 +1235,15 @@ fn (mut p Parser) comptime_expr() ast.Expr {
 		.key_if {
 			return ast.ComptimeExpr{
 				expr: p.if_expr(true)
+				pos: pos
+			}
+		}
+		// TODO: is this this the best way to handle this? `$struct` | `$enum`
+		.key_enum, .key_struct {
+			return ast.ComptimeExpr{
+				expr: ast.KeywordOperator{
+					op: p.tok()
+				}
 				pos: pos
 			}
 		}
@@ -1999,6 +2053,17 @@ fn (mut p Parser) ident_or_selector_expr() ast.Expr {
 	ident := p.ident()
 	if p.tok == .dot {
 		p.next()
+		if p.tok == .dollar {
+			p.next()
+			p.expr(.lowest)
+			return ast.SelectorExpr{
+				lhs: ident
+				rhs: ast.Ident{
+					name: 'TODO: comptime selector'
+				}
+				pos: p.pos
+			}
+		}
 		return ast.SelectorExpr{
 			lhs: ident
 			rhs: p.ident()

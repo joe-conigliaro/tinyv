@@ -100,10 +100,11 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// name | chan | map
 		.name {
+			line := p.line
 			pos := p.pos
 			// TODO: cleam this up
 			name := p.ident_or_named_type()
-			if p.tok == .lsbr && name !is ast.Type {
+			if p.tok == .lsbr && name !is ast.Type && p.line == line {
 				// TODO: is there a better solution than this. maybe it should be the
 				// concern of p.fn_parameters() & p.struct_decl() rather than this?
 				// `fn(param_a []type)` | `struct { field_a []type }`
@@ -113,10 +114,10 @@ fn (mut p Parser) try_type() ast.Expr {
 				// TODO: using ast.GenericArgs here may not be correct,
 				// perhaps we should rename it to ast.GenericTypes
 				// if name is ast.Ident && p.pos == pos + name.name.len { return name }
-				return ast.GenericArgs{
-					lhs: name
-					args: p.generic_list()
-				}
+				return ast.Type(ast.GenericType{
+					name: name
+					params: p.generic_list()
+				})
 			}
 			return name
 		}
@@ -212,10 +213,10 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 fn (mut p Parser) ident_or_type() ast.Expr {
 	ident_or_selector := p.ident_or_selector_expr()
 	if p.tok == .lsbr {
-		return ast.GenericArgs{
-			lhs: ident_or_selector
-			args: p.generic_list()
-		}
+		return ast.Type(ast.GenericType{
+			name: ident_or_selector
+			params: p.generic_list()
+		})
 	}
 	return ident_or_selector
 }

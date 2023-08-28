@@ -21,6 +21,8 @@ fn test_typeof_u32() {
 fn test_typeof_string() {
 	assert typeof(string).idx == 20
 	assert typeof(string).name == 'string'
+
+	assert typeof[string]().idx == 20
 }
 
 fn test_typeof_optional_type() {
