@@ -434,7 +434,9 @@ fn main_a() {
 	for x < 100 {
 		println(x)
 	}
-	for ; ; { println('infinite loop') }
+	for a, b := 0, 1; a < 4; a++ {
+		println('$a - $b')
+	}
 	for {
 		println('infinite loop')
 	}

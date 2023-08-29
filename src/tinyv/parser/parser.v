@@ -1273,44 +1273,57 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 	// `for x < y {` | `for x:=1; x<=10; x++ {`
 	if p.tok != .lcbr {
 		mut expr := if p.tok != .semicolon { p.expr(.lowest) } else { ast.empty_expr }
-		// `for mut x, y in z {`
-		if p.tok == .comma {
+		// `x, y` in (`for mut x, y in z {` | `for x, y := 1, 2; ; {`)
+		expr2 := if p.tok == .comma {
 			p.next()
-			value_expr := p.expr(.highest)
-			p.expect(.key_in)
+			p.expr(.highest)
+		} else {
+			ast.empty_expr
+		}
+		// `for x in {`
+		if p.tok == .key_in {
+			// p.expect(.key_in)
+			p.next()
 			init = ast.ForInStmt{
 				key: expr
-				value: value_expr
+				value: expr2
 				expr: p.expr(.lowest)
 			}
-		} else {
-			if p.tok == .lcbr {
-				// `for x in y {`
-				// TODO: maybe handle this differently
-				if mut expr is ast.InfixExpr && expr.op == .key_in {
-					init = ast.ForInStmt{
-						value: expr.lhs
-						expr: expr.rhs
-					}
-				}
-				// `for x < y {`
-				else {
-					cond = expr
+		} else if p.tok == .lcbr {
+			// `for x in y {`
+			// TODO: maybe handle this differently
+			if mut expr is ast.InfixExpr && expr.op == .key_in {
+				init = ast.ForInStmt{
+					value: expr.lhs
+					expr: expr.rhs
 				}
 			}
-			// `for x:=1; x<=10; x++ {`
+			// `for x < y {`
 			else {
-				if p.tok != .semicolon {
-					init = p.complete_simple_stmt(expr)
+				cond = expr
+			}
+		}
+		// `for x:=1; x<=10; x++ {`
+		else {
+			if p.tok != .semicolon {
+				// init = p.complete_simple_stmt(expr)
+				init = if p.tok.is_assignment() {
+					mut exprs := [expr]
+					if expr2 !is ast.EmptyExpr {
+						exprs << expr2
+					}
+					p.assign_stmt(exprs)
+				} else {
+					p.complete_simple_stmt(expr)
 				}
-				p.expect(.semicolon)
-				if p.tok != .semicolon {
-					cond = p.expr(.lowest)
-				}
-				p.expect(.semicolon)
-				if p.tok != .lcbr {
-					post = p.simple_stmt()
-				}
+			}
+			p.expect(.semicolon)
+			if p.tok != .semicolon {
+				cond = p.expr(.lowest)
+			}
+			p.expect(.semicolon)
+			if p.tok != .lcbr {
+				post = p.simple_stmt()
 			}
 		}
 	}
