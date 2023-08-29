@@ -322,8 +322,8 @@ pub:
 
 pub struct KeywordOperator {
 pub:
-	op   token.Token
-	expr Expr
+	op    token.Token
+	exprs []Expr
 }
 
 pub struct Tuple {

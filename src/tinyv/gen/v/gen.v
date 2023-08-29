@@ -587,10 +587,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.KeywordOperator {
 			g.write(expr.op.str())
 			if expr.op in [.key_go, .key_spawn] {
-				g.expr(expr.expr)
+				g.expr(expr.exprs[0])
 			} else {
 				g.write('(')
-				g.expr(expr.expr)
+				g.expr_list(expr.exprs, ', ')
 				g.write(')')
 			}
 		}

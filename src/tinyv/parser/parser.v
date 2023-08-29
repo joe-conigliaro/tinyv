@@ -380,6 +380,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: I would much rather dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
+		// TODO: should these be replaced with something
+		// like `CallExpr{lhs: KeywordOperator}` ?
 		.key_isreftype, .key_sizeof, .key_typeof {
 			op := p.tok()
 			// p.expect(.lpar)
@@ -387,7 +389,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.next()
 				lhs = ast.KeywordOperator{
 					op: op
-					expr: p.expr_or_type(.lowest)
+					exprs: [p.expr_or_type(.lowest)]
 				}
 				p.expect(.rpar)
 			} else {
@@ -403,7 +405,18 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			p.expect(.lpar)
 			lhs = ast.KeywordOperator{
 				op: op
-				expr: p.expr(.lowest)
+				exprs: [p.expr(.lowest)]
+			}
+			p.expect(.rpar)
+		}
+		.key_offsetof {
+			op := p.tok()
+			p.expect(.lpar)
+			expr := p.expr(.lowest)
+			p.expect(.comma)
+			lhs = ast.KeywordOperator{
+				op: op
+				exprs: [expr, p.expr(.lowest)]
 			}
 			p.expect(.rpar)
 		}
@@ -411,7 +424,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			op := p.tok()
 			lhs = ast.KeywordOperator{
 				op: op
-				expr: p.expr(.lowest)
+				exprs: [p.expr(.lowest)]
 			}
 		}
 		.key_nil {

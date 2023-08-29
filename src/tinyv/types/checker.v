@@ -714,7 +714,8 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			return typ
 		}
 		ast.KeywordOperator {
-			typ := c.expr(expr.expr)
+			// TODO:
+			typ := c.expr(expr.exprs[0])
 			match expr.op {
 				.key_go, .key_spawn {
 					return Thread{}
