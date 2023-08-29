@@ -29,6 +29,25 @@ fn (mut p Parser) try_type() ast.Expr {
 				expr: p.expect_type()
 			}
 		}
+		// comptime type: `$enum` | `$struct` |  etc
+		.dollar {
+			p.next()
+			return ast.ComptimeExpr{
+				// TODO: best way to handle this?
+				expr: match p.tok {
+					.name {
+						p.ident()
+					}
+					else {
+						// TODO: match only allowed tokens otherwise error
+						ast.Ident{
+							pos: p.pos
+							name: p.tok().str()
+						}
+					}
+				}
+			}
+		}
 		// variadic: `...type`
 		.ellipsis {
 			p.next()

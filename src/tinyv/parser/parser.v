@@ -506,9 +506,9 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.lsbr {
-			// ArrayInitExpr: `[1,2,3,4]` | `[]int{}` | `[]int{len: 4}` | `[2]int{init: 0}` etc...
+			// ArrayInitExpr: `[1,2,3,4]` | `[]type{}` | `[]type{len: 4}` | `[2]type{init: 0}` etc...
 			// ArrayInitExpr->IndexExpr: `[1,2,3,4][0]` handled here for reasons listed in comment below
-			// ArrayType in CastExpr: `[]u8` in `[]u8(x)` set type as it's known, cast handled later
+			// ArrayType in CastExpr: `[]type` in `[]type(x)` set lhs to type, cast handled later
 			pos := p.pos
 			p.next()
 			// exprs in first `[]` eg. (`1,2,3,4` in `[1,2,3,4]) | (`2` in `[2]int{}`)
@@ -520,10 +520,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			p.next()
-			// (`[2]int{}` | `[2][2]int{}` | `[2][]int{}`) | `[1,2,3,4][0]` | `[2]u8(x)`
+			// (`[2]type{}` | `[2][2]type{}` | `[2][]type{}`) | `[1,2,3,4][0]` | `[2]type`
 			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
 			// and an index directly after initialization. for example, the following:
-			// a) fixed array of fixed array(s): `[2][2]int{}` | `[2][2][2]int{}`
+			// a) fixed array of fixed array(s): `[2][2]type{}` | `[2][2][2]type{}`
 			// b) index directly after init: `[1][0]` | `[x][2][2]` <- vs (a) above
 			// only in this case collect exprs in following `[x][x]` then decide what to do
 			if exprs.len > 0 && p.tok == .lsbr {
@@ -536,7 +536,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 					mut exprs2 := []ast.Expr{}
 					for p.tok != .rsbr {
-						exprs2 << p.expr_with_range(p.expr(.lowest))
+						exprs2 << p.range_expr(p.expr(.lowest))
 						if p.tok == .comma {
 							p.next()
 						}
@@ -544,17 +544,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 					exprs_arr << exprs2
 				}
-				// (`[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`) | `[2]u8(x)`
+				// (`[2]type{}` | `[2][]type{}` | `[2]&type{init: Foo{}}`) | `[2]type`
 				if p.tok in [.amp, .name] && p.line == line {
 					mut typ := p.expect_type()
 					for i := exprs_arr.len - 1; i >= 0; i-- {
 						exprs2 := exprs_arr[i]
 						if exprs2.len == 0 {
-							typ = ast.Type(ast.ArrayType{
+							lhs = ast.Type(ast.ArrayType{
 								elem_type: typ
 							})
 						} else if exprs2.len == 1 {
-							typ = ast.Type(ast.ArrayFixedType{
+							lhs = ast.Type(ast.ArrayFixedType{
 								elem_type: typ
 								len: exprs2[0]
 							})
@@ -563,17 +563,9 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 							p.error('expecting single expr for fixed array length')
 						}
 					}
-					// cast `[2]u8(x)` we know this is a cast
-					// set lhs as the type, cast handled later in expr loop
-					if p.tok == .lpar {
-						lhs = typ
-					}
-					// `[2]int{}` | `[2][]string{}` | `[2]&Foo{init: Foo{}}`
-					else {
-						if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
-							return typ
-						}
-						p.expect(.lcbr)
+					// `[2]type{}`
+					if p.tok == .lcbr && !p.exp_lcbr {
+						p.next()
 						mut init := ast.empty_expr
 						if p.tok != .rcbr {
 							key := p.expect_name()
@@ -589,6 +581,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 							init: init
 							pos: pos
 						}
+					}
+					// `[2]type`
+					else {
+						if !p.exp_pt && p.tok != .lpar {
+							p.error('unexpected type')
+						}
+						// NOTE: no need to chain here afaik
+						return typ
 					}
 				}
 				// `[1][0]` | `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
@@ -610,22 +610,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
-			// (`[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`) | `[]u8(x)`
+			// (`[]type{}` | `[][]type{}` | `[]&type{len: 2}`) | `[]type`
 			else if p.tok in [.amp, .lsbr, .name] && p.line == line {
 				typ := ast.Type(ast.ArrayType{
 					elem_type: p.expect_type()
 				})
-				// cast `[]u8(x)` we know this is a cast
-				// set lhs as the type, cast handled later in expr loop
-				if p.tok == .lpar {
-					lhs = typ
-				}
-				// `[]int{}` | `[][]string{}` | `[]&Foo{len: 2}`
-				else {
-					if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
-						return typ
-					}
-					p.expect(.lcbr)
+				// `[]type{}`
+				if p.tok == .lcbr && !p.exp_lcbr {
+					p.next()
 					mut cap, mut init, mut len := ast.empty_expr, ast.empty_expr, ast.empty_expr
 					for p.tok != .rcbr {
 						key := p.expect_name()
@@ -648,6 +640,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						len: len
 						pos: pos
 					}
+				}
+				// `[]type`
+				else {
+					if !p.exp_pt && p.tok != .lpar {
+						p.error('unexpected type')
+					}
+					// NOTE: no need to chain here afaik
+					return typ
 				}
 			}
 			// `[1,2,3,4]!`
@@ -686,10 +686,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				exp_lcbr = p.exp_lcbr
 				branch_pos := p.pos
 				p.exp_lcbr = true
-				mut cond := [p.expr_with_range(p.expr_or_type(.lowest))]
+				mut cond := [p.range_expr(p.expr_or_type(.lowest))]
 				for p.tok == .comma {
 					p.next()
-					cond << p.expr_with_range(p.expr_or_type(.lowest))
+					cond << p.range_expr(p.expr_or_type(.lowest))
 				}
 				p.exp_lcbr = exp_lcbr
 				branches << ast.MatchBranch{
@@ -759,14 +759,12 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// I may change my mind, however for now this seems best
 			if p.tok == .lcbr && !p.exp_lcbr {
 				lhs = p.assoc_or_init_expr(lhs)
-			}
-			// NOTE: added for better error detection. may not be needed any more
-			else if p.tok != .lpar && !p.exp_pt {
-				p.error('expecting `(` or `{`')
+			} else if !p.exp_pt && p.tok != .lpar {
+				p.error('unexpected type')
 			}
 		}
 		// selector handled in expr chaining loop below
-		// range handled in `p.expr_with_range()`
+		// range handled in `p.range_expr()`
 		.dot, .dotdot, .ellipsis {}
 		else {
 			if p.tok.is_prefix() {
@@ -783,16 +781,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	}
 
 	// expr chaining
-	// for now I am doing this outside of the pratt loop
-	// the pratt loop is currently just being used for basic infix & postfix operators
-	// I might decide to change this later.
-	// TOOD: check for cases where we can get stuck in this loop, and fix.
+	// TOOD: make sure there are no cases where we get stuck stuck in this loop
 	// for p.tok != .eof {
 	for {
 		// as cast
+		// this could be handled with infix instead
+		// if we choose not to support or chaning
 		if p.tok == .key_as {
 			p.next()
-			return ast.AsCastExpr{
+			// not returning since we support chaning or
+			// we can return instead if that is removed
+			lhs = ast.AsCastExpr{
 				expr: lhs
 				typ: p.expect_type()
 			}
@@ -886,7 +885,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// println('HERE')
 				lhs = ast.IndexExpr{
 					lhs: lhs
-					expr: p.expr_with_range(p.expr(.lowest))
+					expr: p.range_expr(p.expr(.lowest))
 					is_gated: true
 				}
 				p.expect(.rsbr)
@@ -897,7 +896,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// NOTE: `ast.GenericArgsOrIndexExpr` is only used for cases
 				// which absolutely cannot be determined until a later stage
 				// so try and determine every case we possibly can below
-				expr := p.expr_with_range(p.expr_or_type(.lowest))
+				expr := p.range_expr(p.expr_or_type(.lowest))
 				mut exprs := [expr]
 				for p.tok == .comma {
 					p.next()
@@ -961,6 +960,15 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				rhs: p.ident()
 				pos: p.pos
 			}
+		}
+		// doing this here since it can be
+		// used between chaining selectors
+		// eg. `struct.field?.field`
+		else if p.tok in [.not, .question] {
+			lhs = ast.PostfixExpr{
+				op: p.tok()
+				expr: lhs
+			}
 		} else if p.tok == .key_or {
 			// p.log('ast.OrExpr')
 			pos := p.pos
@@ -987,20 +995,13 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lhs = ast.InfixExpr{
 				op: op
 				lhs: lhs
-				// TODO: this is currently jsut to support ComptimeExpr `type$
-				// maybe we can optimise this
-				// in the case of `x in y` allow range, eg. `x in 1..10`
+				// `x in y` allow range for this case, eg. `x in 1..10`
 				rhs: if op == .key_in {
-					p.expr_with_range(p.expr(op.right_binding_power()))
+					p.range_expr(p.expr(op.right_binding_power()))
 				}
-				// `x is Type` do we ever have an expr in this case?
-				// or always a type so we cam just use `p.expect_type`?
+				// `x is Type`
 				else if op == .key_is {
-					// p.expect_type()
-					// NOTE: if we do need exprs for some reason use this
-					// TODO: this is currently jsut to support ComptimeExpr `$type`
-					// maybe we can optimise this
-					p.expr_or_type(op.right_binding_power())
+					p.expect_type()
 				} else {
 					p.expr(op.right_binding_power())
 				}
@@ -1019,9 +1020,9 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	return lhs
 }
 
-// will allow support of range after lhs_expr
+// parse and return `ast.RangeExpr` if found, otherwise return `lhs_expr`
 [inline]
-fn (mut p Parser) expr_with_range(lhs_expr ast.Expr) ast.Expr {
+fn (mut p Parser) range_expr(lhs_expr ast.Expr) ast.Expr {
 	if p.tok in [.dotdot, .ellipsis] {
 		return ast.RangeExpr{
 			op: p.tok()
@@ -1235,15 +1236,6 @@ fn (mut p Parser) comptime_expr() ast.Expr {
 		.key_if {
 			return ast.ComptimeExpr{
 				expr: p.if_expr(true)
-				pos: pos
-			}
-		}
-		// TODO: is this this the best way to handle this? `$struct` | `$enum`
-		.key_enum, .key_struct {
-			return ast.ComptimeExpr{
-				expr: ast.KeywordOperator{
-					op: p.tok()
-				}
 				pos: pos
 			}
 		}

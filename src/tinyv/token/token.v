@@ -151,38 +151,43 @@ pub fn (t Token) right_binding_power() BindingPower {
 
 [inline]
 pub fn (t Token) is_prefix() bool {
-	return match t {
-		.minus, .amp, .mul, .not, .bit_not, .arrow { true }
-		else { false }
-	}
+	return t in [.minus, .amp, .mul, .not, .bit_not, .arrow]
 }
 
 [inline]
 pub fn (t Token) is_infix() bool {
-	return match t {
-		.plus, .minus, .mod, .mul, .div, .eq, .ne, .gt, .lt, .key_in /* , .key_as */, .ge, .le,
-		.logical_or, .xor, .not_in, .key_is, .not_is, .and /* .dot, */, .pipe, .amp, .left_shift,
-		.right_shift, .right_shift_unsigned, .arrow {
-			true
-		}
-		else {
-			false
-		}
-	}
+	return t in [
+		.plus,
+		.minus,
+		.mod,
+		.mul,
+		.div,
+		.eq,
+		.ne,
+		.gt,
+		.lt,
+		.key_in /* , .key_as */,
+		.ge,
+		.le,
+		.logical_or,
+		.xor,
+		.not_in,
+		.key_is,
+		.not_is,
+		.and /* .dot, */,
+		.pipe,
+		.amp,
+		.left_shift,
+		.right_shift,
+		.right_shift_unsigned,
+		.arrow,
+	]
 }
 
 [inline]
 pub fn (t Token) is_postfix() bool {
-	// If we want pratt loop to handle `fn()!` | `fn()?`
-	// I will most likely continue doing this manually.
+	return t in [.inc, .dec]
 	// return t in [.inc, .dec, .not, .question]
-	// NOTE: changed to pratt handling, code was left
-	// commented in parser in case we change back
-	return match t {
-		// .inc, .dec { true }
-		.inc, .dec, .not, .question { true }
-		else { false }
-	}
 }
 
 [inline]
@@ -191,39 +196,33 @@ pub fn (t Token) is_assignment() bool {
 	// .decl_assign -> :=
 	// .plus_assign -> +=
 	// .minus_assign -> -=
-	return match t {
-		.assign, .decl_assign, .plus_assign, .minus_assign, .div_assign, .mul_assign, .xor_assign,
-		.mod_assign, .or_assign, .and_assign, .right_shift_assign, .left_shift_assign,
-		.right_shift_unsigned_assign {
-			true
-		}
-		else {
-			false
-		}
-	}
+	return t in [
+		.assign,
+		.decl_assign,
+		.plus_assign,
+		.minus_assign,
+		.div_assign,
+		.mul_assign,
+		.xor_assign,
+		.mod_assign,
+		.or_assign,
+		.and_assign,
+		.right_shift_assign,
+		.left_shift_assign,
+		.right_shift_unsigned_assign,
+	]
 }
 
 [inline]
 pub fn (t Token) is_overloadable() bool {
-	return match t {
-		.plus, .minus, .pipe, .xor, .eq, .ne, .lt, .le, .gt, .ge {
-			// `+` |  `-` |  `|` | `^`
-			// `==` | `!=` | `<` | `<=` | `>` | `>=`
-			true
-		}
-		else {
-			false
-		}
-	}
+	// `+` |  `-` |  `|` | `^` | `==` | `!=` | `<` | `<=` | `>` | `>=`
+	return t in [.plus, .minus, .pipe, .xor, .eq, .ne, .lt, .le, .gt, .ge]
 }
 
 [inline]
 pub fn (t Token) is_comparison() bool {
-	return match t {
-		// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | '!in' | `is` | '!is'
-		.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is { true }
-		else { false }
-	}
+	// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | '!in' | `is` | '!is'
+	return t in [.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is]
 }
 
 // NOTE: probably switch back to map again later.

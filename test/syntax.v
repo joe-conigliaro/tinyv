@@ -20,12 +20,10 @@ const (
 	const_b = 'two'
 )
 // we don't want this parsed as `TypeA[unsafe]`
-__global global_before_attr_a TypeA
+__global global_before_fn_with_attr_a TypeA
 
 [unsafe]
-pub fn fn_with_attr_a() {
-	println('1')
-}
+pub fn fn_with_attr_after_global_a() {}
 
 type AliasA = int
 type SumTypeA = StructA | int | string | []string
@@ -87,6 +85,9 @@ struct StructC {
 	field_b shared []int = [0]
 }
 
+struct StructD {
+	field_a ?&StructD
+}
 struct C.StructA {}
 
 interface InterfaceA {
@@ -140,6 +141,16 @@ fn fn_optional_a() ?int {
 
 fn fn_optional_b() ?int {
 	return fn_optional_a()?
+}
+
+fn fn_optional_c() ?&StructD {
+	a := StructD{
+		field_a: &StructD{}
+	}
+	dump(a.field_a)
+	dump(a.field_a?.field_a)
+	assert a.field_a?.field_a == none
+	return a.field_a?
 }
 
 fn fn_opt_c() ?int {
@@ -367,6 +378,12 @@ fn main_a() {
 	$if option_a ? {
 		println('custom option: `v -d option_a`')
 	}
+	$if T is $array {
+		println('T is array')		
+	}
+	$else $if T is $struct {
+		println('T is struct')		
+	}
 	for val_a in array_init_a {
 		println(val_a)
 	}
@@ -443,6 +460,11 @@ fn main_a() {
 	}
 	sumtype_a := SumTypeA(111)
 	as_cast_a := sumtype_a as int
+	// NOTE: or for as is not currently supported
+	// I may remove it unless supported is added
+	as_cast_b := sumtype_a as int or {
+		println('cast error')
+	}
 	match sumtype_a {
 		StructA { println('StructA') }
 		int { println('int') }
