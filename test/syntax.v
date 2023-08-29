@@ -424,12 +424,15 @@ fn main_a() {
 			}
 		}
 	}
-	for idx_a:=0; idx_a<=100; idx_a++ {
-		println(idx_a)
+	for a:=0; a<=100; a++ {
+		println(a)
 	}
-	for idx_a:=0; idx_a<=100; {
-		idx_a++
-		println(idx_a)
+	for mut a:=0; a<=100; {
+		a++
+		println(a)
+	}
+	for a, b := 0, 1; a < 4; a++ {
+		println('$a - $b')
 	}
 	// currently erroring in this case
 	// for a := 1 {}
@@ -439,8 +442,8 @@ fn main_a() {
 	for x < 100 {
 		println(x)
 	}
-	for a, b := 0, 1; a < 4; a++ {
-		println('$a - $b')
+	for ; ; {
+		println('infinite loop')
 	}
 	for {
 		println('infinite loop')
