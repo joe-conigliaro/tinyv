@@ -491,10 +491,14 @@ fn (mut s Scanner) number() {
 		// 0b (binary)
 		if c in [`b`, `B`] {
 			s.offset++
-			for s.src[s.offset] in [`0`, `1`] {
-				s.offset++
+			for {
+				c2 := s.src[s.offset]
+				if c2 in [`0`, `1`] || c2 == `_` {
+					s.offset++
+					continue
+				}
+				return
 			}
-			return
 		}
 		// 0x (hex)
 		else if c in [`x`, `X`] {

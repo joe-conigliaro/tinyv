@@ -80,11 +80,10 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 		attributes = p.attributes()
 		for attribute in attributes {
 			if attribute.value is ast.Ident {
-				match attribute.value.name {
-					'has_globals' {}
-					else {
-						p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
-					}
+				// TODO: when no module and first stmt is struct attribute mistaken for file level attribute
+				if attribute.value.name !in ['generated', 'has_globals', 'heap', 'manualfree',
+					'has_globals'] {
+					p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
 				}
 			}
 		}
@@ -749,6 +748,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
 				lhs = p.assoc_or_init_expr(lhs)
+				// TODO: think about the best way to handle this
+				// struct init was chaining with selector expr
+				// {
+				// 	.enum_val_a: StructInit{
+				// 		...
+				// 	}
+				// 	.enum_val_b: ...
+				// }
+				if p.line != line {
+					return lhs
+				}
 			}
 		}
 		// native optionals `x := ?mod_a.StructA{}`
@@ -1665,6 +1675,12 @@ fn (mut p Parser) fn_arguments() []ast.Expr {
 fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.EnumDecl {
 	p.next()
 	name := p.expect_name()
+	as_type := if p.tok == .key_as {
+		p.next()
+		p.expect_type()
+	} else {
+		ast.empty_expr
+	}
 	// p.log('ast.EnumDecl: $name')
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
@@ -1685,6 +1701,7 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 		attributes: attributes
 		is_public: is_public
 		name: name
+		as_type: as_type
 		fields: fields
 	}
 }

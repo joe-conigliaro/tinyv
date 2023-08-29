@@ -138,6 +138,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			}
 			g.write('enum ')
 			g.write(stmt.name)
+			if stmt.as_type !is ast.EmptyExpr {
+				g.write(' as ')
+				g.expr(stmt.as_type)
+			}
 			g.writeln(' {')
 			g.indent++
 			for field in stmt.fields {

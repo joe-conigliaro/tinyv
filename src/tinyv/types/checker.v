@@ -263,6 +263,7 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 					name: field.name
 				}
 			}
+			// as_type := decl.as_type !is ast.EmptyExpr { c.expr(decl.as_type) } else { Type(int_) }
 			obj := Enum{
 				is_flag: decl.attributes.has('flag')
 				name: decl.name

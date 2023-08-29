@@ -612,6 +612,7 @@ pub:
 	attributes []Attribute
 	is_public  bool
 	name       string
+	as_type    Expr = ast.empty_expr
 	fields     []FieldDecl
 }
 

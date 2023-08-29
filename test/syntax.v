@@ -50,6 +50,11 @@ enum EnumA {
 	value_c = 2
 }
 
+enum EnumB as u16 {
+	value_a
+	value_b
+}
+
 [attribute_a: 'attribute_a_val'; attribute_b]
 [attribute_c: 'attribute_c_val']
 [attribute_d]
