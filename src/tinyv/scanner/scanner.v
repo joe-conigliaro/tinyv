@@ -412,6 +412,7 @@ fn (mut s Scanner) comment() {
 	}
 	// multi line
 	else if c == `*` {
+		s.offset++
 		mut ml_comment_depth := 1
 		for s.offset < s.src.len {
 			c2 := s.src[s.offset]

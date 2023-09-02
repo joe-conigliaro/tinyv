@@ -1,5 +1,11 @@
-// this file is just to test the parser so there may be a
-// bunch of stuff in here that does not really make sense
+// this file is just to test the scanner & parser so there may
+// be a bunch of stuff in here that does not really make sense
+/* multi
+   line
+   comment */
+/*// nested comment a */
+/* // nested comment b */
+/*/* nested comment c */*/
 [has_globals]
 module main
 
@@ -83,6 +89,11 @@ struct StructB {
 mut:
 	field_a int
 	field_b string
+	// TODO:
+	// field_c struct {
+	// 	field_a string
+	// 	field_b int = 1
+	// }
 }
 
 struct StructC {
@@ -93,6 +104,7 @@ struct StructC {
 struct StructD {
 	field_a ?&StructD
 }
+
 struct C.StructA {}
 
 interface InterfaceA {
