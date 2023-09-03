@@ -151,6 +151,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 					g.write(' = ')
 					g.expr(field.value)
 				}
+				if field.attributes.len > 0 {
+					g.write(' ')
+					g.attributes(field.attributes)
+				}
 				g.writeln('')
 			}
 			g.indent--

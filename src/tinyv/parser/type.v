@@ -82,6 +82,8 @@ fn (mut p Parser) try_type() ast.Expr {
 			p.next()
 			return ast.Type(ast.NoneType{})
 		}
+		// inline / anonymous struct
+		// .key_struct {}
 		// tuple (multi return): `(type, type)`
 		.lpar {
 			p.next()

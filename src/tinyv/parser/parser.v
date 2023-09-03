@@ -82,7 +82,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 			if attribute.value is ast.Ident {
 				// TODO: when no module and first stmt is struct attribute mistaken for file level attribute
 				if attribute.value.name !in ['generated', 'has_globals', 'heap', 'manualfree',
-					'has_globals'] {
+					'has_globals', 'translated'] {
 					p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
 				}
 			}
@@ -376,6 +376,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_if {
 			lhs = p.if_expr(false)
+			// chaining eg. `a := if cond { 1 } else { 2 } * 10`
+			line = p.line
 		}
 		// NOTE: I would much rather dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
@@ -1704,9 +1706,11 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 			p.next()
 			value = p.expr(.lowest)
 		}
+		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
 		fields << ast.FieldDecl{
 			name: field_name
 			value: value
+			attributes: field_attributes
 		}
 	}
 	p.next()

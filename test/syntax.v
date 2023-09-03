@@ -51,8 +51,10 @@ fn fn_with_attribute_after_array_init() { println('v') }
 
 [attribute_a]
 enum EnumA {
-	value_a
-	value_b
+	value_a     [json: 'ValueA']
+	value_b     [json: 'ValueB']
+	// TODO: uncomment once new attr syntax added
+	// value_c = 2 [json: 'ValueC']
 	value_c = 2
 }
 
