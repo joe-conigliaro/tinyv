@@ -83,7 +83,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 			attributes = attribute_stmt.clone()
 			for attribute in attributes {
 				if attribute.value is ast.Ident {
-					if attribute.value.name !in ['has_globals', 'manualfree'] {
+					if attribute.value.name !in ['has_globals', 'generated', 'manualfree'] {
 						p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
 					}
 				}
@@ -206,8 +206,15 @@ fn (mut p Parser) stmt() ast.Stmt {
 		}
 		.key_assert {
 			p.next()
+			expr := p.expr(.lowest)
 			return ast.AssertStmt{
-				expr: p.expr(.lowest)
+				expr: expr
+				extra: if p.tok == .comma {
+					p.next()
+					p.expr(.lowest)
+				} else {
+					ast.empty_expr
+				}
 			}
 		}
 		.key_break, .key_continue, .key_goto {
@@ -457,10 +464,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_select {
 			p.next()
-			return ast.SelectExpr{
-				pos: p.pos
-				stmts: p.block()
-			}
+			p.expect(.lcbr)
+			se := p.select_expr()
+			p.expect(.rcbr)
+			return se
 		}
 		.dollar {
 			p.next()
@@ -967,7 +974,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				else {
 					// `fn[GenericStructA[int]]` | `GenericStructA[GenericStructB[int]]]` nested generic args
 					// TODO: make sure this does not cause false positives, may need extra check (.comma, .rsbr)
-					if p.exp_pt && expr in [ast.GenericArgs, ast.Ident, ast.SelectorExpr] /* && p.tok in [.comma, .rsbr] */  {
+					// if p.exp_pt && expr in [ast.GenericArgs, ast.Ident, ast.SelectorExpr] && p.tok in [.comma, .rsbr] {
+					if p.exp_pt && expr in [ast.GenericArgs, ast.Ident, ast.SelectorExpr] {
 						lhs = ast.GenericArgs{
 							lhs: lhs
 							args: exprs
@@ -1606,7 +1614,8 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 	typ := p.fn_type()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
-	stmts := if p.tok == .lcbr /* || p.line == line */  {
+	// stmts := if p.tok == .lcbr || p.line == line {
+	stmts := if p.tok == .lcbr {
 		p.block()
 	} else {
 		[]ast.Stmt{}
@@ -1901,6 +1910,21 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		fields: fields
 		pos: pos
 	}
+}
+
+fn (mut p Parser) select_expr() ast.Expr {
+	exp_lcbr := p.exp_lcbr
+	p.exp_lcbr = true
+	stmt := p.simple_stmt()
+	p.exp_lcbr = exp_lcbr
+	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
+	select_expr := ast.SelectExpr{
+		pos: p.pos
+		stmt: stmt
+		stmts: stmts
+		next: if p.tok != .rcbr { p.select_expr() } else { ast.empty_expr }
+	}
+	return select_expr
 }
 
 fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {

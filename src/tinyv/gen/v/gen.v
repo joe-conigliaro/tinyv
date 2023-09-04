@@ -82,6 +82,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		ast.AssertStmt {
 			g.write('assert ')
 			g.expr(stmt.expr)
+			if stmt.extra !is ast.EmptyExpr {
+				g.write(', ')
+				g.expr(stmt.extra)
+			}
 			g.writeln('')
 		}
 		ast.AssignStmt {
@@ -209,7 +213,8 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			// v fns with compiler implementations eg. `pub fn (a array) filter(predicate fn (voidptr) bool) array`
 			// NOTE: can we use generics for these fns, also make sure we parser error for normal fns without a body
 			// TODO: is it the correct way to handle those cases (the fn definitions, not this code)?
-			if /* stmt.language == .c && */ stmt.stmts.len == 0 {
+			// if stmt.language == .c && stmt.stmts.len == 0 {
+			if stmt.stmts.len == 0 {
 				g.writeln('')
 			}
 			// normal v function
@@ -662,7 +667,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.writeln(' or {')
 			g.stmt_list(expr.stmts)
-			g.write('}')
+			g.writeln('}')
 			// g.writeln('==== DeSugared OrExpr ====')
 			// g.expr(expr.desugar())
 		}
@@ -690,7 +695,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.SelectExpr {
 			g.writeln('select {')
-			g.stmt_list(expr.stmts)
+			g.indent++
+			g.select_expr(expr)
+			g.indent--
 			g.write('}')
 		}
 		ast.SelectorExpr {
@@ -839,6 +846,23 @@ fn (mut g Gen) if_expr(expr ast.IfExpr) {
 	if expr.else_expr is ast.IfExpr {
 		g.write(' else ')
 		g.if_expr(expr.else_expr)
+	}
+}
+
+fn (mut g Gen) select_expr(expr ast.SelectExpr) {
+	// TODO: fix missing writeln after block due to `p.in_init`
+	in_init := g.in_init
+	g.in_init = true
+	g.stmt(expr.stmt)
+	g.in_init = in_init
+	if expr.stmts.len > 0 {
+		g.writeln(' {')
+		g.stmt_list(expr.stmts)
+		g.write('}')
+	}
+	g.writeln('')
+	if expr.next is ast.SelectExpr {
+		g.select_expr(expr.next)
 	}
 }
 

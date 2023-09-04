@@ -338,6 +338,9 @@ fn main_a() {
 	prefix_c := -infix_a + 2
 	prefix_optional_a := ?mod_a.StructA{}
 	prefix_optional_b := ?mod_a.StructA(none)
+	assert a == 1
+	assert a == 1, 'a does not equal 1'
+	assert c <= 2, 'c is greater than 2'
 	if res := fn_optional_a() {
 		println('if guard: $res')
 	}
@@ -524,10 +527,14 @@ fn main_a() {
 
 	ch_a := chan int{}
 	select {
-		a := <-ch_a {}
-		b := <-ch_a or {
+		a := <-ch_a
+		b := <-ch_a { a+=2 }
+		c := <-ch_a or {
 			panic('error reading channel')
 		}
+		500 * time.millisecond {
+			eprintln('> more than 0.5s passed without a channel being ready')
+		}		
 	}
 
 	// REMOVE BELOW - TEMP TESTING OR MOVE TO APPRIPRIATE PLACE ABOVE

@@ -414,7 +414,9 @@ pub:
 pub struct SelectExpr {
 pub:
 	pos   token.Pos
+	stmt  Stmt
 	stmts []Stmt
+	next  Expr = ast.empty_expr
 }
 
 pub struct SelectorExpr {
@@ -553,7 +555,8 @@ pub:
 // Statements
 pub struct AssertStmt {
 pub:
-	expr Expr
+	expr  Expr
+	extra Expr = ast.empty_expr
 }
 
 pub struct AssignStmt {
