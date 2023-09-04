@@ -77,13 +77,15 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	// or we are missing a stmt which supports attributes in this match
 	mut attributes := []ast.Attribute{}
 	if p.tok in [.attribute, .lsbr] {
-		attributes = p.attributes()
-		for attribute in attributes {
-			if attribute.value is ast.Ident {
-				// TODO: when no module and first stmt is struct attribute mistaken for file level attribute
-				if attribute.value.name !in ['generated', 'has_globals', 'heap', 'manualfree',
-					'has_globals', 'translated'] {
-					p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
+		attribute_stmt := p.attribute_stmt()
+		top_stmts << attribute_stmt
+		if attribute_stmt is []ast.Attribute {
+			attributes = attribute_stmt.clone()
+			for attribute in attributes {
+				if attribute.value is ast.Ident {
+					if attribute.value.name !in ['has_globals', 'manualfree'] {
+						p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
+					}
 				}
 			}
 		}
@@ -185,33 +187,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 			return p.type_decl(false)
 		}
 		.attribute, .lsbr {
-			// NOTE: could also return AttributeStmt{attributes: attributes, stmt: stmt}
-			attributes := p.attributes()
-			mut is_pub := false
-			if p.tok == .key_pub {
-				p.next()
-				is_pub = true
-			}
-			match p.tok {
-				.key_enum {
-					return p.enum_decl(is_pub, attributes)
-				}
-				.key_fn {
-					return p.fn_decl(is_pub, attributes)
-				}
-				.key_global {
-					return p.global_decl(attributes)
-				}
-				.key_interface {
-					return p.interface_decl(is_pub, attributes)
-				}
-				.key_struct, .key_union {
-					return p.struct_decl(is_pub, attributes)
-				}
-				else {
-					p.error('${p.tok} does not currently support attributes')
-				}
-			}
+			return p.attribute_stmt()
 		}
 		else {
 			p.error('unknown top stmt: ${p.tok} - ${p.file.name}:${p.line}')
@@ -291,6 +267,36 @@ fn (mut p Parser) stmt() ast.Stmt {
 		}
 	}
 	p.error('unknown stmt: ${p.tok}')
+}
+
+fn (mut p Parser) attribute_stmt() ast.Stmt {
+	// NOTE: could also return AttributeStmt{attributes: attributes, stmt: stmt}
+	attributes := p.attributes()
+	mut is_pub := false
+	if p.tok == .key_pub {
+		p.next()
+		is_pub = true
+	}
+	match p.tok {
+		.key_enum {
+			return p.enum_decl(is_pub, attributes)
+		}
+		.key_fn {
+			return p.fn_decl(is_pub, attributes)
+		}
+		.key_global {
+			return p.global_decl(attributes)
+		}
+		.key_interface {
+			return p.interface_decl(is_pub, attributes)
+		}
+		.key_struct, .key_union {
+			return p.struct_decl(is_pub, attributes)
+		}
+		else {
+			return attributes
+		}
+	}
 }
 
 [inline]

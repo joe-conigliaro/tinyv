@@ -92,6 +92,9 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.writeln('')
 			}
 		}
+		[]ast.Attribute {
+			g.attributes(stmt)
+		}
 		ast.BlockStmt {
 			g.writeln('{')
 			g.stmt_list(stmt.stmts)

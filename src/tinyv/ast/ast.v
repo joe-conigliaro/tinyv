@@ -74,6 +74,7 @@ pub type Stmt = AssertStmt
 	| ReturnStmt
 	| StructDecl
 	| TypeDecl
+	| []Attribute
 
 // pub type Decl = ConstDecl | EnumDecl | FnDecl | GlobalDecl
 // 	| InterfaceDecl | StructDecl | TypeDecl
