@@ -9,7 +9,8 @@ pub enum Token {
 	and_assign // &=
 	arrow // <-
 	assign // =
-	at // @
+	// at // @
+	attribute
 	bit_not // ~
 	char // `A` - rune
 	colon // :
@@ -234,7 +235,8 @@ pub fn (t Token) str() string {
 		.and_assign { '&=' }
 		.arrow { '<-' }
 		.assign { '=' }
-		.at { '@' }
+		// .at { '@' }
+		.attribute { '@[' }
 		.bit_not { '~' }
 		.char { 'char' }
 		.colon { ':' }

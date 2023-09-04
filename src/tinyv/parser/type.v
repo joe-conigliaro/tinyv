@@ -223,7 +223,12 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 		line := p.line
 		p.next()
 		return ast.Type(ast.ThreadType{
-			elem_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+			// TODO: is there a better way to check this?
+			elem_type: if p.line == line && p.tok !in [.lpar, .lcbr] {
+				p.try_type()
+			} else {
+				ast.empty_expr
+			}
 		})
 	}
 	// `ident` | `selector` - ident or type name

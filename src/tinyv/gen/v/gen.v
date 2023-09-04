@@ -840,7 +840,7 @@ fn (mut g Gen) if_expr(expr ast.IfExpr) {
 }
 
 fn (mut g Gen) attributes(attributes []ast.Attribute) {
-	g.write('[')
+	g.write('@[')
 	for i, attribute in attributes {
 		if attribute.comptime_cond !is ast.EmptyExpr {
 			g.write('if ')

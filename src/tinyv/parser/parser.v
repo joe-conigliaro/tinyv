@@ -76,7 +76,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	// file level attributes
 	// or we are missing a stmt which supports attributes in this match
 	mut attributes := []ast.Attribute{}
-	if p.tok == .lsbr {
+	if p.tok in [.attribute, .lsbr] {
 		attributes = p.attributes()
 		for attribute in attributes {
 			if attribute.value is ast.Ident {
@@ -184,7 +184,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_type {
 			return p.type_decl(false)
 		}
-		.lsbr {
+		.attribute, .lsbr {
 			// NOTE: could also return AttributeStmt{attributes: attributes, stmt: stmt}
 			attributes := p.attributes()
 			mut is_pub := false
@@ -1170,7 +1170,7 @@ fn (mut p Parser) expr_list() []ast.Expr {
 	return exprs
 }
 
-// [attribute]
+// @[attribute] | [attribute]
 fn (mut p Parser) attributes() []ast.Attribute {
 	p.next()
 	mut attributes := []ast.Attribute{}
@@ -1232,9 +1232,9 @@ fn (mut p Parser) attributes() []ast.Attribute {
 			continue
 		}
 		p.expect(.rsbr)
-		// [attribute_a]
+		// @[attribute_a]
 		// [attribute_b]
-		if p.tok == .lsbr {
+		if p.tok in [.attribute, .lsbr] {
 			p.next()
 			continue
 		}
@@ -1706,7 +1706,11 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 			p.next()
 			value = p.expr(.lowest)
 		}
-		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
+		field_attributes := if p.tok in [.attribute, .lsbr] {
+			p.attributes()
+		} else {
+			[]ast.Attribute{}
+		}
 		fields << ast.FieldDecl{
 			name: field_name
 			value: value
@@ -1868,7 +1872,11 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		} else {
 			ast.empty_expr
 		}
-		field_attributes := if p.tok == .lsbr { p.attributes() } else { []ast.Attribute{} }
+		field_attributes := if p.tok in [.attribute, .lsbr] {
+			p.attributes()
+		} else {
+			[]ast.Attribute{}
+		}
 		fields << ast.FieldDecl{
 			name: field_name
 			typ: field_type

@@ -104,10 +104,16 @@ pub fn (mut s Scanner) scan() token.Token {
 		s.lit = s.src[s.pos..s.offset]
 		return .number
 	}
-	// c/raw string | keyword | name
+	// keyword | name
 	else if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || c in [`_`, `@`] {
 		s.offset++
-		// keyword | name
+		// NOTE: I have made `@[` a token instead of using `@` and `[` because `@`
+		// is not currently used as a token, and it is also easier to parse this way.
+		// if/when `@` becomes used as a token of it's own, then I may change this.
+		if c == `@` && s.src[s.offset] == `[` {
+			s.offset++
+			return .attribute
+		}
 		for s.offset < s.src.len {
 			c3 := s.src[s.offset]
 			if (c3 >= `a` && c3 <= `z`) || (c3 >= `A` && c3 <= `Z`)

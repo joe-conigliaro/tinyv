@@ -50,11 +50,12 @@ pub const const_array_followed_by_attribute_a = ['a', 'b']
 fn fn_with_attribute_after_array_init() { println('v') }
 
 [attribute_a]
+@[attribute_b]
 enum EnumA {
 	value_a     [json: 'ValueA']
-	value_b     [json: 'ValueB']
-	// TODO: uncomment once new attr syntax added
-	// value_c = 2 [json: 'ValueC']
+	value_b     @[json: 'ValueB']
+	// NOTE: will not work with old attribute syntax due to ambiguity
+	value_c = 2 @[json: 'ValueC']
 	value_c = 2
 }
 
@@ -64,8 +65,8 @@ enum EnumB as u16 {
 }
 
 [attribute_a: 'attribute_a_val'; attribute_b]
-[attribute_c: 'attribute_c_val']
-[attribute_d]
+@[attribute_c: 'attribute_c_val']
+@[attribute_d]
 ['/product/edit'; post]
 struct StructA {
 	field_a int
@@ -73,12 +74,10 @@ struct StructA {
 	field_c fn(int) int
 	field_d string = 'foo'
 	field_e int = 1 + 2 + (4*4)
-	// NOTE: no point doing any trickery to try and fix these cases
-	// when the attribute syntax is updated everything will just work
-	// TODO: uncomment when attribute syntax is updated
-	// field_f string = 'bar' [attribute_a; attribute_b]
-	// field_g int = 111 [attribute_a; attribute_b]
-	// field_h int = field_h_default() [attribute_a]
+	// NOTE: will not work with old attribute syntax due to ambiguity
+	field_f string = 'bar' @[attribute_a; attribute_b]
+	field_g int = 111 @[attribute_a; attribute_b]
+	field_h int = field_h_default() @[attribute_a]
 }
 
 fn StructA.static_method_a() int {
@@ -89,8 +88,8 @@ fn StructA.static_method_a() int {
 struct StructB {
 	StructA // embedded
 mut:
-	field_a int
-	field_b string
+	field_a int    [attribute_a: 'value_a']
+	field_b string @[attribute_b: 'value_b']
 	// TODO:
 	// field_c struct {
 	// 	field_a string
