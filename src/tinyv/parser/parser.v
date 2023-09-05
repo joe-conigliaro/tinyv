@@ -1391,11 +1391,11 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 			if p.tok != .semicolon {
 				// init = p.complete_simple_stmt(expr)
 				init = if p.tok.is_assignment() {
-					mut exprs := [expr]
-					if expr2 !is ast.EmptyExpr {
-						exprs << expr2
-					}
-					p.assign_stmt(exprs)
+					p.assign_stmt(if expr2 is ast.EmptyExpr {
+						[expr]
+					} else {
+						[expr, expr2]
+					})
 				} else {
 					p.complete_simple_stmt(expr)
 				}
