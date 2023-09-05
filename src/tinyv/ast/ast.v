@@ -44,6 +44,7 @@ pub type Expr = ArrayInitExpr
 	| RangeExpr
 	| SelectExpr
 	| SelectorExpr
+	| SqlExpr
 	| StringInterLiteral
 	| StringLiteral
 	| Tuple
@@ -52,7 +53,8 @@ pub type Expr = ArrayInitExpr
 
 // TODO: decide if this going to be done like this (FieldInit)
 
-pub type Stmt = AssertStmt
+pub type Stmt = AsmStmt
+	| AssertStmt
 	| AssignStmt
 	| BlockStmt
 	| ComptimeStmt
@@ -547,12 +549,22 @@ pub fn (sif StringInterFormat) str() string {
 	}
 }
 
+pub struct SqlExpr {
+pub:
+	expr Expr
+}
+
 pub struct UnsafeExpr {
 pub:
 	stmts []Stmt
 }
 
 // Statements
+pub struct AsmStmt {
+pub:
+	arch string
+}
+
 pub struct AssertStmt {
 pub:
 	expr  Expr

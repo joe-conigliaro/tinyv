@@ -79,6 +79,10 @@ fn (mut g Gen) stmt_list(stmts []ast.Stmt) {
 
 fn (mut g Gen) stmt(stmt ast.Stmt) {
 	match stmt {
+		ast.AsmStmt {
+			g.writeln('asm ${stmt.arch} {')
+			g.writeln('}')
+		}
 		ast.AssertStmt {
 			g.write('assert ')
 			g.expr(stmt.expr)
@@ -736,6 +740,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.write(quote_str)
 			g.write(expr.value)
 			// g.write(quote_str)
+		}
+		ast.SqlExpr {
+			g.write('sql ')
+			g.expr(expr.expr)
+			g.writeln(' {')
+			g.write('}')
 		}
 		ast.Tuple {
 			g.expr_list(expr.exprs, ', ')

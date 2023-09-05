@@ -83,7 +83,8 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 			attributes = attribute_stmt.clone()
 			for attribute in attributes {
 				if attribute.value is ast.Ident {
-					if attribute.value.name !in ['has_globals', 'generated', 'manualfree'] {
+					if attribute.value.name !in ['has_globals', 'generated', 'manualfree',
+						'translated'] {
 						p.warn('invalid file level attribute `${attribute.name}` (or should `${p.tok}` support attributes)')
 					}
 				}
@@ -141,6 +142,9 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 		}
 		.hash {
 			return p.directive()
+		}
+		.key_asm {
+			return p.asm_stmt()
 		}
 		.key_const {
 			return p.const_decl(false)
@@ -203,6 +207,9 @@ fn (mut p Parser) stmt() ast.Stmt {
 		}
 		.hash {
 			return p.directive()
+		}
+		.key_asm {
+			return p.asm_stmt()
 		}
 		.key_assert {
 			p.next()
@@ -485,6 +492,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				expr: p.expr(.lowest)
 			}
 			p.exp_lcbr = exp_lcbr
+			line = p.line
 			p.expect(.rpar)
 		}
 		.lcbr {
@@ -762,8 +770,23 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.name {
 			lit := p.lit
 			lhs = p.ident_or_named_type()
+			if lit == 'sql' {
+				exp_lcbr := p.exp_lcbr
+				p.exp_lcbr = true
+				expr := p.expr(.lowest)
+				p.exp_lcbr = exp_lcbr
+				p.expect(.lcbr)
+				// TODO:
+				for p.tok != .rcbr {
+					p.next()
+				}
+				p.expect(.rcbr)
+				lhs = ast.SqlExpr{
+					expr: expr
+				}
+			}
 			// raw/c/js string: `r'hello'`
-			if p.line == line && p.tok == .string {
+			else if p.line == line && p.tok == .string {
 				lhs = p.string_literal(ast.StringLiteralKind.from_string_tinyv(lit) or {
 					p.error(err.msg())
 				})
@@ -775,14 +798,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// TODO: consider the following (tricky to parse)
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
-				lhs = p.assoc_or_init_expr(lhs)
-				// TODO: think about the best way to handle this
-				// struct init was chaining with selector expr
+				lhs = p.assoc_or_init_expr(lhs, mut line)
+				// NOTE: don't chain `StructInitA{}.enum_value_b` as SelectorExpr
+				// to do this for all InitExpr's return at selector expr instead
 				// {
-				// 	.enum_val_a: StructInit{
-				// 		...
+				// 	.enum_value_a: StructInitA {
+				// 		field_a: 'value_a'
 				// 	}
-				// 	.enum_val_b: ...
+				// 	.enum_value_b: ...
 				// }
 				if p.line != line {
 					return lhs
@@ -796,7 +819,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			// only handle where actually needed instead of expr loop
 			// I may change my mind, however for now this seems best
 			if p.tok == .lcbr && !p.exp_lcbr {
-				lhs = p.assoc_or_init_expr(lhs)
+				lhs = p.assoc_or_init_expr(lhs, mut line)
 			} else if !p.exp_pt && p.tok != .lpar {
 				p.error('unexpected type')
 			}
@@ -943,7 +966,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
 				if p.line == line && p.tok == .lcbr && !p.exp_lcbr {
-					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
+					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs }, mut
+						line)
 					// lhs = ast.GenericArgs{ lhs: lhs, args: exprs }
 				}
 				// `array[0]()` | `fn[int]()`
@@ -1256,6 +1280,26 @@ fn (mut p Parser) attributes() []ast.Attribute {
 	}
 	// p.log('ast.Attribute: $name')
 	return attributes
+}
+
+// TODO:
+fn (mut p Parser) asm_stmt() ast.AsmStmt {
+	p.next()
+	_ = if p.tok == .key_volatile {
+		p.next()
+		true
+	} else {
+		false
+	}
+	arch := p.expect_name()
+	p.expect(.lcbr)
+	for p.tok != .rcbr {
+		p.next()
+	}
+	p.expect(.rcbr)
+	return ast.AsmStmt{
+		arch: arch
+	}
 }
 
 [inline]
@@ -1912,7 +1956,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	}
 }
 
-fn (mut p Parser) select_expr() ast.Expr {
+fn (mut p Parser) select_expr() ast.SelectExpr {
 	exp_lcbr := p.exp_lcbr
 	p.exp_lcbr = true
 	stmt := p.simple_stmt()
@@ -1927,7 +1971,8 @@ fn (mut p Parser) select_expr() ast.Expr {
 	return select_expr
 }
 
-fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
+// line is updated to the line of the closing `}` for chaining support
+fn (mut p Parser) assoc_or_init_expr(typ ast.Expr, mut line &int) ast.Expr {
 	p.next() // .lcbr
 	// assoc
 	if p.tok == .ellipsis {
@@ -1945,6 +1990,7 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 				value: p.expr(.lowest)
 			}
 		}
+		line = p.line
 		p.next()
 		return ast.AssocExpr{
 			typ: typ
@@ -1983,6 +2029,7 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 			value: value
 		}
 	}
+	line = p.line
 	p.next()
 	return ast.InitExpr{
 		typ: typ

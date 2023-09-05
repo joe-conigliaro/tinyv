@@ -56,7 +56,6 @@ enum EnumA {
 	value_b     @[json: 'ValueB']
 	// NOTE: will not work with old attribute syntax due to ambiguity
 	value_c = 2 @[json: 'ValueC']
-	value_c = 2
 }
 
 enum EnumB as u16 {
@@ -252,6 +251,19 @@ fn main_a() {
 	map_init_short_string_string = {} // test empty
 	map_init_short_string_array_string := {'key_a': ['value_a', 'value_b']}
 	map_init_short_ident_string := {key_a: 'value_a'} // unsupported key type
+	mut map_init_short_enum_value_init_expr := map[EnumA]StructA{}
+	// make sure we don't chain `StructA{field_a: 1}.value_b` as SelectorExpr
+	map_init_short_enum_value_init_expr = {
+		.value_a: StructA{
+			field_a: 1
+		}
+		.value_b: StructA{
+			field_a: 1
+		}
+		.value_c: StructA{
+			field_a: 1
+		}
+	}
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
 	struct_init_b := foo.StructA{field_a: 1, field_b: 'v'}
 	struct_init_c := StructA{1, 'v'}
@@ -332,7 +344,10 @@ fn main_a() {
 	infix_b := 1 + 2 * 3 / 4 + 5
 	infix_c := infix_a * 4 * 2 + 11 / 2
 	infix_d := a == b && c == d
-	infix_and_par_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
+	infix_and_paren_expr_a := ((((infix_b + 1) * 2) + 111) * 2) / 2
+	infix_and_paren_expr_b := (((((x * array_init_a[0] +
+		array_init_a[1]) * x + array_init_a[2]) * x + array_init_a[3]) * x +
+		array_init_a[4]) * x + array_init_a[5]) * x + array_init_a[6]
 	prefix_a := &StructA{}
 	prefix_b := &&StructA{}
 	prefix_c := -infix_a + 2
@@ -528,7 +543,7 @@ fn main_a() {
 	ch_a := chan int{}
 	select {
 		a := <-ch_a
-		b := <-ch_a { a+=2 }
+		b := <-ch_a { b+=2 }
 		c := <-ch_a or {
 			panic('error reading channel')
 		}
