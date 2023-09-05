@@ -121,11 +121,10 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// name | chan | map
 		.name {
-			line := p.line
 			pos := p.pos
 			// TODO: cleam this up
 			name := p.ident_or_named_type()
-			if p.tok == .lsbr && name !is ast.Type && p.line == line {
+			if p.tok == .lsbr && name !is ast.Type && p.line == p.tok_prev_line {
 				// TODO: is there a better solution than this. maybe it should be the
 				// concern of p.fn_parameters() & p.struct_decl() rather than this?
 				// `fn(param_a []type)` | `struct { field_a []type }`
@@ -144,20 +143,18 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// result: `!` | `!type`
 		.not {
-			line := p.line
 			p.next()
 			return ast.Type(ast.ResultType{
-				base_type: if p.line == line { p.try_type() } else { ast.empty_expr }
-				// base_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				base_type: if p.line == p.tok_prev_line { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.line == p.tok_prev_line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		// option: `?` | `?type`
 		.question {
-			line := p.line
 			p.next()
 			return ast.Type(ast.OptionType{
-				base_type: if p.line == line { p.try_type() } else { ast.empty_expr }
-				// base_type: if p.line == line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				base_type: if p.line == p.tok_prev_line { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.line == p.tok_prev_line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		else {
@@ -170,12 +167,11 @@ fn (mut p Parser) try_type() ast.Expr {
 // function type / signature
 fn (mut p Parser) fn_type() ast.FnType {
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
-	line := p.line
 	params := p.fn_parameters()
 	return ast.FnType{
 		generic_params: generic_params
 		params: params
-		return_type: if p.line == line { p.try_type() } else { ast.empty_expr }
+		return_type: if p.line == p.tok_prev_line { p.try_type() } else { ast.empty_expr }
 	}
 }
 
@@ -203,9 +199,8 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 	}
 	// `chan` | `chan type`
 	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
-		line := p.line
 		p.next()
-		elem_type := if p.line == line { p.try_type() } else { ast.empty_expr }
+		elem_type := if p.line == p.tok_prev_line { p.try_type() } else { ast.empty_expr }
 		if elem_type !is ast.EmptyExpr {
 			return ast.Type(ast.ChannelType{
 				elem_type: elem_type
@@ -220,11 +215,10 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 	// `thread` | `thread type`
 	else if p.lit.len == 6 && p.lit[0] == `t` && p.lit[1] == `h` && p.lit[2] == `r`
 		&& p.lit[3] == `e` && p.lit[4] == `a` && p.lit[5] == `d` {
-		line := p.line
 		p.next()
 		return ast.Type(ast.ThreadType{
 			// TODO: is there a better way to check this?
-			elem_type: if p.line == line && p.tok !in [.lpar, .lcbr] {
+			elem_type: if p.line == p.tok_prev_line && p.tok !in [.lpar, .lcbr] {
 				p.try_type()
 			} else {
 				ast.empty_expr
