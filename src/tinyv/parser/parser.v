@@ -921,23 +921,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
 		else if p.tok in [.hash, .lsbr] && p.line == line {
-			// struct init field w/ default literal value & attributes
-			// do not incorrectly parse as index expr `'foo'[index]`
-			// `field_d string = 'foo' [attribute_a]`
-			// `field_d int = 111 [attribute_a]`
-			if mut lhs is ast.BasicLiteral {
-				// NOTE: if we end up with many situations like this it may be worth
-				// using pratt bp loop for chaining, for now I don't see the value
-				// if int(min_bp) > int(p.tok.left_binding_power()) {
-				if min_bp == .highest {
-					return lhs
-				}
-				// TODO: move to later stage for supporting vars / exprs
-				// eg. `if lhs.type is number { error(... }`
-				if lhs.kind == .number {
-					p.error('cannot index number')
-				}
-			}
 			// `array#[idx]`
 			if p.tok == .hash {
 				p.next()

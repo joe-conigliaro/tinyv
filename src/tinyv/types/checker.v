@@ -666,6 +666,8 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.IndexExpr {
 			lhs_type := c.expr(expr.lhs)
+			// TODO: make sure lhs_type is indexable
+			// if !lhs_type.is_indexable() { c.error('cannot index ${lhs_type.name()}') }
 			value_type := if expr.expr is ast.RangeExpr {
 				lhs_type
 			} else {
