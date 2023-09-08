@@ -565,6 +565,17 @@ fn main_a() {
 			eprintln('> more than 0.5s passed without a channel being ready')
 		}		
 	}
+	__asm {
+	    ldrex   tmp, [addr]
+	    strex   tmp, value, [addr]
+	}
+	sql := 'test_ident_named_sql'
+	db_a := sqlite.connect('db_a') or {
+		panic('could not connect to db: ${err}')
+	}
+	nr_items := sql db {
+		select count from items
+	}
 
 	// REMOVE BELOW - TEMP TESTING OR MOVE TO APPRIPRIATE PLACE ABOVE
 
