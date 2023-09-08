@@ -455,6 +455,14 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_lock, .key_rlock {
 			kind := p.tok()
+			// `lock { stmts... }`
+			if p.tok == .lcbr {
+				return ast.LockExpr{
+					kind: kind
+					stmts: p.block()
+				}
+			}
+			// `lock expr { stmts... }`
 			exp_lcbr := p.exp_lcbr
 			p.exp_lcbr = true
 			exprs := p.expr_list()
@@ -1357,14 +1365,18 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 		else {
 			if p.tok != .semicolon {
 				// init = p.complete_simple_stmt(expr)
-				init = if p.tok.is_assignment() {
-					p.assign_stmt(if expr2 is ast.EmptyExpr {
-						[expr]
-					} else {
-						[expr, expr2]
-					})
+				if expr2 is ast.EmptyExpr {
+					init = p.complete_simple_stmt(expr)
 				} else {
-					p.complete_simple_stmt(expr)
+					mut exprs := [expr, expr2]
+					for p.tok == .comma {
+						p.next()
+						exprs << p.expr(.lowest)
+					}
+					if !p.tok.is_assignment() {
+						p.error('expecting assignment `for a, b, c := 1, 2, 3; ... {`')
+					}
+					init = p.assign_stmt(exprs)
 				}
 			}
 			p.expect(.semicolon)
@@ -1415,8 +1427,16 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	// 	p.next()
 	// }
 	// if guard
-	// TODO: is `if a, b := multi_return_opt() {` allowed?
-	if p.tok == .decl_assign {
+	if p.tok == .comma {
+		s := p.complete_simple_stmt(cond)
+		if s is ast.AssignStmt {
+			cond = ast.IfGuardExpr{
+				stmt: s
+			}
+		} else {
+			p.error('expecting assignment `if a, b := c {`')
+		}
+	} else if p.tok in [.assign, .decl_assign] {
 		cond = ast.IfGuardExpr{
 			stmt: p.assign_stmt([cond])
 		}

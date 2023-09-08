@@ -187,6 +187,10 @@ fn fn_multi_return_a() (int, int) {
 	return 1,2
 }
 
+fn fn_multi_return_optional_a() ?(int, int) {
+	return 1,2
+}
+
 fn fn_variadic_a(arb_a int, arg_b ...string) {
 	fn_variadic_b(...arg_b)
 	fn_variadic_b(...['a', 'b', 'c', 'd'])
@@ -356,15 +360,17 @@ fn main_a() {
 	assert a == 1
 	assert a == 1, 'a does not equal 1'
 	assert c <= 2, 'c is greater than 2'
-	if res := fn_optional_a() {
-		println('if guard: $res')
-	}
-	// NOTE: can be easily allowed if needed
-	// if res2, res2 := fn_optional_a(), fn_optional_b() {
-	// 	println('why? lol')
-	// }
 	if val := array_init_a[0] {
 		println(val)
+	}
+	if res_a := fn_optional_a() {
+		println('if guard: $res_a')
+	}
+	if res_a, res_b := fn_multi_return_optional_a() {
+		println('if guard: $res_a, $res_b')
+	}
+	if res_a, res_b := fn_optional_a(), fn_optional_b() {
+		println('if guard: ${res_a}, ${res_b}')
 	}
 	if err == IError(MyError{}) {
 		println('err == IError(MyError{})')
@@ -465,6 +471,9 @@ fn main_a() {
 	for a, b := 0, 1; a < 4; a++ {
 		println('$a - $b')
 	}
+	for a, b, c, d := 0, 1, 2, 3; a < 4; a++ {
+		println('$a - $b')
+	}
 	// currently erroring in this case
 	// for a := 1 {}
 	for ; x < 100; {
@@ -534,6 +543,11 @@ fn main_a() {
 	shared arr_string_shared := []String{}
 	lock arr_string_shared {
 		arr_string_shared << 'a'
+	}
+	shared a := []int{}
+	lock {
+		a << 1
+		a << 2
 	}
 	fn_a('string', unsafe {*ptr_a})
 	{
