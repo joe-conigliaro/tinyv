@@ -771,7 +771,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.name {
 			lit := p.lit
 			lhs = p.ident_or_named_type()
-			if lit == 'sql' {
+			// `sql x {}` otherwise ident named `sql`
+			if lit == 'sql' && p.line == p.tok_prev_line && p.tok == .name {
 				exp_lcbr := p.exp_lcbr
 				p.exp_lcbr = true
 				expr := p.expr(.lowest)
