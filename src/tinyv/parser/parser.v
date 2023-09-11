@@ -19,14 +19,17 @@ mut:
 	// track state
 	exp_lcbr bool // expecting `{` parsing `x` in `for|if|match x {` etc
 	exp_pt   bool // expecting (p)ossible (t)ype from `p.expr()`
-	// start token info
-	line          int
-	lit           string
-	pos           token.Pos
-	tok           token.Token = .unknown
-	tok_next_     token.Token = .unknown // DO NOT access directly, use `p.peek()`
-	tok_prev_line int         // used for chaining, not needed in (auto_semi)
-	// end token info
+	// token info : start
+	line      int
+	lit       string
+	pos       token.Pos
+	tok       token.Token = .unknown
+	tok_next_ token.Token = .unknown // DO NOT access directly, use `p.peek()`
+	// token info : end
+	// used for chaining expressions. we could also store the prev line for every
+	// token in `p.next()`, however I am currently just updating it where needed.
+	// not needed in `auto_semi` branch, where we use `;` instead of line number
+	expr_line int
 }
 
 pub fn Parser.new(prefs &pref.Preferences) &Parser {
@@ -44,7 +47,7 @@ fn (mut p Parser) init(filename string, src string, mut file_set token.FileSet) 
 	p.pos = 0
 	p.tok = .unknown
 	p.tok_next_ = .unknown
-	p.tok_prev_line = 0
+	p.expr_line = 0
 	// init
 	// TODO: consider another way to pass in file set?
 	p.file = file_set.add_file(filename, -1, src.len)
@@ -227,8 +230,9 @@ fn (mut p Parser) stmt() ast.Stmt {
 			}
 		}
 		.key_break, .key_continue, .key_goto {
+			p.expr_line = p.line
 			op := p.tok()
-			if p.line == p.tok_prev_line && p.tok == .name {
+			if p.line == p.expr_line && p.tok == .name {
 				return ast.FlowControlStmt{
 					op: op
 					label: p.lit()
@@ -353,6 +357,7 @@ fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
 
 fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line')
+	p.expr_line = p.line
 	mut lhs := ast.empty_expr
 	match p.tok {
 		.char, .key_false, .key_true, .number {
@@ -536,6 +541,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 				}
 			}
+			p.expr_line = p.line
 			p.next()
 			lhs = ast.MapInitExpr{
 				keys: keys
@@ -570,7 +576,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// NOTE: checking line here for this case:
 				// `pub const const_a = ['a', 'b', 'c', 'd']`
 				// '[attribute_a; attribute_b]''
-				for p.tok == .lsbr && p.line == p.tok_prev_line {
+				for p.tok == .lsbr && p.line == p.expr_line {
 					p.next()
 					mut exprs2 := []ast.Expr{}
 					for p.tok != .rsbr {
@@ -583,7 +589,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					exprs_arr << exprs2
 				}
 				// (`[2]type{}` | `[2][]type{}` | `[2]&type{init: Foo{}}`) | `[2]type`
-				if p.tok in [.amp, .name] && p.line == p.tok_prev_line {
+				if p.tok in [.amp, .name] && p.line == p.expr_line {
 					mut typ := p.expect_type()
 					for i := exprs_arr.len - 1; i >= 0; i-- {
 						exprs2 := exprs_arr[i]
@@ -649,7 +655,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// (`[]type{}` | `[][]type{}` | `[]&type{len: 2}`) | `[]type`
-			else if p.tok in [.amp, .lsbr, .name] && p.line == p.tok_prev_line {
+			else if p.tok in [.amp, .lsbr, .name] && p.line == p.expr_line {
 				typ := ast.Type(ast.ArrayType{
 					elem_type: p.expect_type()
 				})
@@ -743,6 +749,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 			}
+			p.expr_line = p.line
 			// rcbr
 			p.next()
 			lhs = ast.MatchExpr{
@@ -772,7 +779,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lit := p.lit
 			lhs = p.ident_or_named_type()
 			// `sql x {}` otherwise ident named `sql`
-			if lit == 'sql' && p.line == p.tok_prev_line && p.tok == .name {
+			if lit == 'sql' && p.line == p.expr_line && p.tok == .name {
 				exp_lcbr := p.exp_lcbr
 				p.exp_lcbr = true
 				expr := p.expr(.lowest)
@@ -788,7 +795,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// raw/c/js string: `r'hello'`
-			else if p.line == p.tok_prev_line && p.tok == .string {
+			else if p.line == p.expr_line && p.tok == .string {
 				lhs = p.string_literal(ast.StringLiteralKind.from_string_tinyv(lit) or {
 					p.error(err.msg())
 				})
@@ -809,7 +816,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// 	}
 				// 	.enum_value_b: ...
 				// }
-				if p.line != p.tok_prev_line {
+				if p.line != p.expr_line {
 					return lhs
 				}
 			}
@@ -858,7 +865,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// call | cast
-		else if p.tok == .lpar && p.line == p.tok_prev_line {
+		else if p.tok == .lpar && p.line == p.expr_line {
 			pos := p.pos
 			// p.log('ast.CastExpr or CallExpr: ${typeof(lhs)}')
 			exp_lcbr := p.exp_lcbr
@@ -909,11 +916,11 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: if we want we can handle init like this
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
-		// else if p.tok == .lcbr && !p.exp_lcbr && p.line == p.tok_prev_line {
+		// else if p.tok == .lcbr && !p.exp_lcbr && p.line == p.expr_line {
 		// 	lhs = p.assoc_or_init_expr(lhs)
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
-		else if p.tok in [.hash, .lsbr] && p.line == p.tok_prev_line {
+		else if p.tok in [.hash, .lsbr] && p.line == p.expr_line {
 			// `array#[idx]`
 			if p.tok == .hash {
 				p.next()
@@ -941,7 +948,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
-				if p.line == p.tok_prev_line && p.tok == .lcbr && !p.exp_lcbr {
+				if p.line == p.expr_line && p.tok == .lcbr && !p.exp_lcbr {
 					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
 					// lhs = ast.GenericArgs{ lhs: lhs, args: exprs }
 				}
@@ -990,6 +997,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		// SelectorExpr
 		else if p.tok == .dot {
+			p.expr_line = p.line
 			p.next()
 			// p.log('ast.SelectorExpr')
 			lhs = ast.SelectorExpr{
@@ -1025,7 +1033,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		if p.tok.is_infix() {
 			// TODO: handle by checking expr?
 			// deref assign: `*a = b`
-			if p.tok == .mul && p.line != p.tok_prev_line {
+			if p.tok == .mul && p.line != p.expr_line {
 				return lhs
 			}
 			pos := p.pos
@@ -1103,7 +1111,6 @@ fn (mut p Parser) next() {
 	} else {
 		p.tok = p.scanner.scan()
 	}
-	p.tok_prev_line = p.line
 	p.line = p.file.line_count()
 	p.lit = p.scanner.lit
 	p.pos = p.file.pos(p.scanner.pos)
@@ -1155,6 +1162,7 @@ fn (mut p Parser) block() []ast.Stmt {
 	for p.tok != .rcbr {
 		stmts << p.stmt()
 	}
+	p.expr_line = p.line
 	// rcbr
 	p.next()
 	// TODO: correct way to error on `if x == Type{} {`
@@ -1503,12 +1511,13 @@ fn (mut p Parser) import_stmt() ast.ImportStmt {
 
 fn (mut p Parser) directive() ast.Directive {
 	// value := p.lit() // if we scan whole line see scanner
+	p.expr_line = p.line
 	p.next()
 	name := p.expect_name()
 	// TODO: handle properly
 	mut value := ''
 	// mut value := p.lit()
-	for p.line == p.tok_prev_line {
+	for p.line == p.expr_line {
 		if p.tok == .name {
 			value += p.lit()
 		} else {
@@ -1562,7 +1571,8 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 		// TODO: use parse_ident & type
 		// receiver := p.ident() ?
 		is_mut := p.tok == .key_mut
-		if is_mut {
+		is_shared := p.tok == .key_shared
+		if is_mut || is_shared {
 			p.next()
 		}
 		// // TODO: clean up, will this be done here or in checker
@@ -1607,7 +1617,7 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 			p.expect(.rpar)
 			mut return_type := ast.empty_expr
 			_ = return_type
-			if p.tok != .lcbr && p.line == p.tok_prev_line {
+			if p.tok != .lcbr && p.line == p.expr_line {
 				return_type = p.expect_type()
 			}
 			p.block()
@@ -1644,7 +1654,7 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 	typ := p.fn_type()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
-	// stmts := if p.tok == .lcbr || p.line == p.tok_prev_line {
+	// stmts := if p.tok == .lcbr || p.line == p.expr_line {
 	stmts := if p.tok == .lcbr {
 		p.block()
 	} else {
@@ -1831,7 +1841,7 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 		mut field_name := ''
 		mut field_type := p.expect_type()
 		// `field type`
-		if p.line == p.tok_prev_line {
+		if p.line == p.expr_line {
 			if mut field_type is ast.Ident {
 				field_name = field_type.name
 			} else {
@@ -1895,7 +1905,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		// NOTE: case documented in `p.try_type()` todo
 		embed_or_name := p.expect_type()
 		// embedded struct
-		if p.line != p.tok_prev_line {
+		if p.line != p.expr_line {
 			if language != .v {
 				p.error('${language} structs do not support embedding')
 			}
@@ -1973,6 +1983,7 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 				value: p.expr(.lowest)
 			}
 		}
+		p.expr_line = p.line
 		p.next()
 		return ast.AssocExpr{
 			typ: typ
@@ -2011,6 +2022,7 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 			value: value
 		}
 	}
+	p.expr_line = p.line
 	p.next()
 	return ast.InitExpr{
 		typ: typ
@@ -2155,6 +2167,7 @@ fn (mut p Parser) ident() ast.Ident {
 
 [inline]
 fn (mut p Parser) ident_or_selector_expr() ast.Expr {
+	p.expr_line = p.line
 	ident := p.ident()
 	if p.tok == .dot {
 		p.next()

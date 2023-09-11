@@ -158,30 +158,32 @@ pub fn (t Token) is_prefix() bool {
 [inline]
 pub fn (t Token) is_infix() bool {
 	return t in [
-		.plus,
+		.amp,
+		.and,
+		.arrow,
+		.div,
+		// .dot,
+		.eq,
+		.ge,
+		.gt,
+		// .key_as,
+		.key_in,
+		.key_is,
+		.le,
+		.left_shift,
+		.logical_or,
+		.lt,
 		.minus,
 		.mod,
 		.mul,
-		.div,
-		.eq,
 		.ne,
-		.gt,
-		.lt,
-		.key_in /* , .key_as */,
-		.ge,
-		.le,
-		.logical_or,
-		.xor,
 		.not_in,
-		.key_is,
 		.not_is,
-		.and /* .dot, */,
 		.pipe,
-		.amp,
-		.left_shift,
+		.plus,
 		.right_shift,
 		.right_shift_unsigned,
-		.arrow,
+		.xor,
 	]
 }
 
@@ -193,37 +195,33 @@ pub fn (t Token) is_postfix() bool {
 
 [inline]
 pub fn (t Token) is_assignment() bool {
-	// .assign -> =
-	// .decl_assign -> :=
-	// .plus_assign -> +=
-	// .minus_assign -> -=
 	return t in [
+		.and_assign,
 		.assign,
 		.decl_assign,
-		.plus_assign,
-		.minus_assign,
 		.div_assign,
-		.mul_assign,
-		.xor_assign,
-		.mod_assign,
-		.or_assign,
-		.and_assign,
-		.right_shift_assign,
 		.left_shift_assign,
+		.minus_assign,
+		.mod_assign,
+		.mul_assign,
+		.or_assign,
+		.plus_assign,
+		.right_shift_assign,
 		.right_shift_unsigned_assign,
+		.xor_assign,
 	]
 }
 
 [inline]
 pub fn (t Token) is_overloadable() bool {
-	// `+` |  `-` |  `|` | `^` | `==` | `!=` | `<` | `<=` | `>` | `>=`
-	return t in [.plus, .minus, .pipe, .xor, .eq, .ne, .lt, .le, .gt, .ge]
+	// `/` | `==` | `>=` | `>` | `<=` | `<` | `-` | `%` | `*` | `!=` | `|` | `+` | `^`
+	return t in [.div, .eq, .ge, .gt, .le, .lt, .minus, .mod, .mul, .ne, .pipe, .plus, .xor]
 }
 
 [inline]
 pub fn (t Token) is_comparison() bool {
-	// `==` | `!=` | `<` | `<=` | `>` | `>=` | `in` | '!in' | `is` | '!is'
-	return t in [.eq, .ne, .lt, .le, .gt, .ge, .key_in, .not_in, .key_is, .not_is]
+	// `==` | `>=` | `>` | `in` | `is` | `<=` | `<` | `!=` | `!in` | `!is`
+	return t in [.eq, .ge, .gt, .key_in, .key_is, .le, .lt, .ne, .not_in, .not_is]
 }
 
 // NOTE: probably switch back to map again later.
