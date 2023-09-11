@@ -371,9 +371,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		}
 		.key_fn {
 			p.next()
-			// TODO: closure variable capture syntax is the same as generic arg/param syntax. This should change.
-			// for clarity and also generic closures cannot exist, even though there is probably no use for them.
+			// TODO: closure variable capture syntax is the same as generic param syntax. IMO This should change.
+			// If we have both a capture list and generic params, we can always assume that the capture list comes
+			// first. However if we only have one or the other we will need to work out what we have. the only way
+			// to currently do this is to check for an ident where the name's first char is a capital, this is not
+			// great at all, and would be the only place in the parser where a capital letter is relied upon, or even
+			// the name at all is relied upon. imo this is context the parser should not need, and we should either
+			// change the varibale capture syntax, or move the position of the capture list, for example:
+			// change syntax: `fn <var_a, var_b> [T] () { ... }`, move position: `fn [T] () { ... } [var_a, var_b]`
+			// personally I think `fn <var_a, var_b> [T] () { ... }` is a great option.
 			mut captured_vars := []ast.Expr{}
+			mut generic_params := []ast.Expr{}
 			if p.tok == .lsbr {
 				p.next()
 				for p.tok != .rsbr {
@@ -384,10 +392,28 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.next()
 			}
+			// we have generic params after capture list
 			if p.tok == .lsbr {
-				p.error('generic closure')
+				generic_params = p.generic_list()
 			}
-			typ := p.fn_type()
+			// if we had one or the other determine what it is
+			else if captured_vars.len > 0 {
+				expr_0 := captured_vars[0]
+				if expr_0 is ast.Ident {
+					if expr_0.name[0].is_capital() {
+						generic_params = captured_vars.clone()
+						captured_vars = []
+					}
+				}
+			}
+			mut typ := p.fn_type()
+			// if we had generic params update the fn type / sig (params are stored here)
+			if generic_params.len > 0 {
+				typ = ast.FnType{
+					...typ
+					generic_params: generic_params
+				}
+			}
 			if p.exp_pt && (p.tok != .lcbr || p.exp_lcbr) {
 				return ast.Type(typ)
 			}

@@ -508,6 +508,19 @@ fn main_a() {
 			}
 		}
 	}
+	// fn literals
+	// capture list & generic params
+	fn [a, b] [T] () {
+		println('captured vars: ${a}, ${b}')
+	}[int]()
+	// capture list only
+	fn [a, b] () {
+		println('captured vars: ${a}, ${b}')
+	}()
+	// generic params only
+	fn [T] () {
+		println(typeof(T))
+	}[int]()
 	sumtype_a := SumTypeA(111)
 	as_cast_a := sumtype_a as int
 	// NOTE: or for as is not currently supported
