@@ -384,13 +384,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			mut generic_params := []ast.Expr{}
 			if p.tok == .lsbr {
 				p.next()
-				for p.tok != .rsbr {
-					captured_vars << p.expr(.lowest)
-					if p.tok == .comma {
-						p.next()
-					}
-				}
-				p.next()
+				captured_vars = p.expr_list()
+				p.expect(.rsbr)
 			}
 			// we have generic params after capture list
 			if p.tok == .lsbr {
