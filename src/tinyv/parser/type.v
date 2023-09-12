@@ -143,6 +143,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// result: `!` | `!type`
 		.not {
+			p.expr_line = p.line
 			p.next()
 			return ast.Type(ast.ResultType{
 				base_type: if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }
@@ -151,6 +152,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// option: `?` | `?type`
 		.question {
+			p.expr_line = p.line
 			p.next()
 			return ast.Type(ast.OptionType{
 				base_type: if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }

@@ -34,6 +34,8 @@ pub fn fn_with_attr_after_global_a() {}
 type AliasA = int
 type SumTypeA = StructA | int | string | []string
 
+pub type OptionalA = ?int
+
 pub type DatabasePool[T] = fn (tid int) T
 
 // we don't want this to be parsed as:
