@@ -336,9 +336,9 @@ pub:
 
 pub struct LockExpr {
 pub:
-	kind  token.Token
-	exprs []Expr
-	stmts []Stmt
+	lock_exprs  []Expr
+	rlock_exprs []Expr
+	stmts       []Stmt
 }
 
 pub struct MapInitExpr {

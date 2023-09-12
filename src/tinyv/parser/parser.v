@@ -480,22 +480,34 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			return ast.Type(ast.NoneType{})
 		}
 		.key_lock, .key_rlock {
-			kind := p.tok()
+			mut kind := p.tok()
 			// `lock { stmts... }`
 			if p.tok == .lcbr {
 				return ast.LockExpr{
-					kind: kind
 					stmts: p.block()
 				}
 			}
-			// `lock expr { stmts... }`
+			mut lock_exprs := []ast.Expr{}
+			mut rlock_exprs := []ast.Expr{}
 			exp_lcbr := p.exp_lcbr
 			p.exp_lcbr = true
-			exprs := p.expr_list()
+			// `r?lock exprs { stmts... }`
+			for p.tok != .lcbr {
+				if kind == .key_lock {
+					lock_exprs << p.expr_list()
+				} else if kind == .key_rlock {
+					rlock_exprs << p.expr_list()
+				}
+				if p.tok != .semicolon {
+					break
+				}
+				p.next()
+				kind = p.tok()
+			}
 			p.exp_lcbr = exp_lcbr
 			return ast.LockExpr{
-				kind: kind
-				exprs: exprs
+				lock_exprs: lock_exprs
+				rlock_exprs: rlock_exprs
 				stmts: p.block()
 			}
 		}

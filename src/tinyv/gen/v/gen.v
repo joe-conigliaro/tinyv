@@ -611,8 +611,23 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 		}
 		ast.LockExpr {
-			g.write('${expr.kind} ')
-			g.expr_list(expr.exprs, ', ')
+			has_lock_exprs := expr.lock_exprs.len > 0
+			has_rlock_exprs := expr.rlock_exprs.len > 0
+			if !has_lock_exprs && !has_rlock_exprs {
+				g.write('lock')
+			} else {
+				if has_lock_exprs {
+					g.write('lock ')
+					g.expr_list(expr.lock_exprs, ', ')
+					if has_rlock_exprs {
+						g.write('; ')
+					}
+				}
+				if has_rlock_exprs {
+					g.write('rlock ')
+					g.expr_list(expr.rlock_exprs, ', ')
+				}
+			}
 			g.writeln(' {')
 			g.stmt_list(expr.stmts)
 			g.writeln('}')

@@ -555,14 +555,22 @@ fn main_a() {
 		d++
 		d
 	}
-	shared arr_string_shared := []String{}
-	lock arr_string_shared {
-		arr_string_shared << 'a'
-	}
-	shared a := []int{}
+	shared array_int_shared_a := []int{}
+	shared array_string_shared_a := []String{}
 	lock {
-		a << 1
-		a << 2
+		array_int_shared_a << 1
+		array_int_shared_a << 2
+	}
+	lock array_string_shared_a {
+		array_string_shared_a << 'a'
+		array_string_shared_a << 'b'
+	}
+	lock array_int_shared; rlock array_string_shared {
+		array_int_shared << 3
+		println(array_string_shared[0])
+	}
+	lock a,b; rlock c,d; lock e,f; rlock g,h {
+		println('silly lock test')
 	}
 	fn_a('string', unsafe {*ptr_a})
 	{
