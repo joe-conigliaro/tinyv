@@ -516,6 +516,7 @@ pub enum StringInterFormat {
 	float
 	hex
 	octal
+	pointer_address
 	string
 }
 
@@ -529,6 +530,7 @@ pub fn StringInterFormat.from_u8(c u8) !StringInterFormat {
 		`f`, `F` { .float }
 		`x`, `X` { .hex }
 		`o` { .octal }
+		`p` { .pointer_address }
 		`s` { .string }
 		else { error('unknown formatter `${c.ascii_str()}`') }
 	}
@@ -545,6 +547,7 @@ pub fn (sif StringInterFormat) str() string {
 		.float { 'f' }
 		.hex { 'x' }
 		.octal { 'o' }
+		.pointer_address { 'p' }
 		.string { 's' }
 	}
 }
