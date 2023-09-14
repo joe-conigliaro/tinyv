@@ -600,6 +600,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					p.next()
 				}
 			}
+			p.expr_line = p.line
 			p.next()
 			// (`[2]type{}` | `[2][2]type{}` | `[2][]type{}`) | `[1,2,3,4][0]` | `[2]type`
 			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
@@ -1539,12 +1540,14 @@ fn (mut p Parser) import_stmt() ast.ImportStmt {
 	// `import mod { sym1, sym2 }`
 	if p.tok == .lcbr {
 		p.next()
-		// symbols << p.expr_or_type(.lowest)
-		symbols << p.ident_or_type()
-		for p.tok == .comma {
-			p.next()
+		for p.tok == .name {
 			// symbols << p.expr_or_type(.lowest)
 			symbols << p.ident_or_type()
+			if p.tok == .comma {
+				p.next()
+			} else {
+				break
+			}
 		}
 		p.expect(.rcbr)
 	}
