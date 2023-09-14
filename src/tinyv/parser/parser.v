@@ -823,7 +823,12 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.expect(.lcbr)
 				// TODO:
 				for p.tok != .rcbr {
-					p.next()
+					// otherwise we will break on `}` from `${x}`
+					if p.tok == .string {
+						p.string_literal(.v)
+					} else {
+						p.next()
+					}
 				}
 				p.expect(.rcbr)
 				lhs = ast.SqlExpr{

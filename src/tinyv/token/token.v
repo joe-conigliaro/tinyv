@@ -189,8 +189,8 @@ pub fn (t Token) is_infix() bool {
 
 [inline]
 pub fn (t Token) is_postfix() bool {
-	return t in [.inc, .dec]
-	// return t in [.inc, .dec, .not, .question]
+	return t in [.dec, .inc]
+	// return t in [.dec, .inc, .not, .question]
 }
 
 [inline]

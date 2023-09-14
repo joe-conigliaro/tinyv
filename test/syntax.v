@@ -599,6 +599,9 @@ fn main_a() {
 	nr_items := sql db {
 		select count from items
 	}
+	users := sql db {
+		select from User where name == 'first${user_suffix}'
+	}
 
 	// REMOVE BELOW - TEMP TESTING OR MOVE TO APPRIPRIATE PLACE ABOVE
 
