@@ -748,6 +748,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.Type {
 			match expr {
 				ast.AnonStructType {
+					g.write('struct')
 					g.struct_decl_body(expr.generic_params, expr.embedded, expr.fields)
 				}
 				ast.ArrayType {
