@@ -1032,7 +1032,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// SelectorExpr
-		else if p.tok == .dot {
+		else if p.tok == .dot && p.line == p.expr_line {
 			p.expr_line = p.line
 			p.next()
 			// p.log('ast.SelectorExpr')
