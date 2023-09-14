@@ -492,6 +492,9 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			exp_lcbr := p.exp_lcbr
 			p.exp_lcbr = true
 			// `r?lock exprs { stmts... }`
+			// NOTE/TODO: `lock a; rlock c; lock b; rlock d {` will become
+			// `lock a, b; rlock c, d` unlike in the main parser, where it remains
+			// the same. this may need to be changed to match the current behaviour.
 			for p.tok != .lcbr {
 				if kind == .key_lock {
 					lock_exprs << p.expr_list()
