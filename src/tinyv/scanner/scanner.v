@@ -18,8 +18,9 @@ pub struct Scanner {
 	mode               Mode
 	skip_interpolation bool
 mut:
-	file &token.File = &token.File{}
-	src  string
+	file        &token.File = &token.File{}
+	src         string
+	insert_semi bool
 pub mut:
 	offset int // current char offset
 	pos    int // token offset (start of current token)
@@ -70,16 +71,29 @@ pub fn (mut s Scanner) scan() token.Token {
 	s.whitespace()
 	if s.offset == s.src.len {
 		s.lit = ''
+		if s.insert_semi {
+			s.insert_semi = false
+			return .semicolon
+		}
 		s.file.add_line(s.offset)
 		return .eof
 	}
 	c := s.src[s.offset]
 	s.pos = s.offset
+	preserve_insert_semi := s.insert_semi
+	s.insert_semi = false
+	if c == `\n` {
+		s.lit = ''
+		return .semicolon
+	}
 	// comment | `/=` | `/`
-	if c == `/` {
+	else if c == `/` {
 		c2 := s.src[s.offset + 1]
 		// comment
 		if c2 in [`/`, `*`] {
+			if preserve_insert_semi {
+				s.insert_semi = true
+			}
 			s.comment()
 			if !s.mode.has(.scan_comments) {
 				unsafe {
@@ -102,6 +116,7 @@ pub fn (mut s Scanner) scan() token.Token {
 	else if c >= `0` && c <= `9` {
 		s.number()
 		s.lit = s.src[s.pos..s.offset]
+		s.insert_semi = true
 		return .number
 	}
 	// keyword | name
@@ -124,7 +139,11 @@ pub fn (mut s Scanner) scan() token.Token {
 			break
 		}
 		s.lit = s.src[s.pos..s.offset]
-		return token.Token.from_string_tinyv(s.lit)
+		tok := token.Token.from_string_tinyv(s.lit)
+		if tok in [.key_break, .key_continue, .key_none, .key_return, .key_false, .key_true, .name] {
+			s.insert_semi = true
+		}
+		return tok
 	}
 	// string
 	else if c in [`'`, `"`] {
@@ -135,6 +154,7 @@ pub fn (mut s Scanner) scan() token.Token {
 		// TODO: I would prefer a better way to handle raw
 		s.string_literal(s.in_str_inter || s.src[s.offset - 2] == `r`, c)
 		s.lit = s.src[s.pos..s.offset]
+		s.insert_semi = true
 		return .string
 	}
 	// byte (char) `a`
@@ -154,9 +174,11 @@ pub fn (mut s Scanner) scan() token.Token {
 		}
 		s.offset++
 		s.lit = s.src[s.pos + 1..s.offset - 1]
+		s.insert_semi = true
 		return .char
 	}
 	// s.lit not set, as tokens below get converted directly to string
+	// s.lit = c
 	s.lit = ''
 	s.offset++
 	match c {
@@ -200,6 +222,7 @@ pub fn (mut s Scanner) scan() token.Token {
 					return .not_is
 				}
 			}
+			s.insert_semi = true
 			return .not
 		}
 		`=` {
@@ -353,24 +376,29 @@ pub fn (mut s Scanner) scan() token.Token {
 					s.in_str_inter = false
 				}
 			}
+			s.insert_semi = true
 			return .rcbr
 		}
 		`(` {
 			return .lpar
 		}
 		`)` {
+			s.insert_semi = true
 			return .rpar
 		}
 		`[` {
+			s.insert_semi = true
 			return .lsbr
 		}
 		`]` {
+			s.insert_semi = true
 			return .rsbr
 		}
 		`;` {
 			return .semicolon
 		}
 		`?` {
+			s.insert_semi = true
 			return .question
 		}
 		else {
@@ -388,12 +416,16 @@ fn (mut s Scanner) whitespace() {
 			s.offset++
 			continue
 		} else if c == `\n` {
+			if s.insert_semi {
+				return
+			}
 			s.offset++
 			s.file.add_line(s.offset)
 			continue
 		}
 		break
 	}
+	// s.insert_semi = false
 }
 
 @[direct_array_access]

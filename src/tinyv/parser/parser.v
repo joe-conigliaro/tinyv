@@ -26,10 +26,6 @@ mut:
 	tok       token.Token = .unknown
 	tok_next_ token.Token = .unknown // DO NOT access directly, use `p.peek()`
 	// token info : end
-	// used for chaining expressions. we could also store the prev line for every
-	// token in `p.next()`, however I am currently just updating it where needed.
-	// not needed in `auto_semi` branch, where we use `;` instead of line number
-	expr_line int
 }
 
 pub fn Parser.new(prefs &pref.Preferences) &Parser {
@@ -47,7 +43,6 @@ fn (mut p Parser) init(filename string, src string, mut file_set token.FileSet) 
 	p.pos = 0
 	p.tok = .unknown
 	p.tok_next_ = .unknown
-	p.expr_line = 0
 	// init
 	// TODO: consider another way to pass in file set?
 	p.file = file_set.add_file(filename, -1, src.len)
@@ -103,6 +98,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 		module_stmt := ast.ModuleStmt{
 			name: p.expect_name()
 		}
+		p.expect(.semicolon)
 		top_stmts << module_stmt
 		mod = module_stmt.name
 	} else {
@@ -116,6 +112,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	}
 	for p.tok == .key_import {
 		import_stmt := p.import_stmt()
+		p.expect(.semicolon)
 		imports << import_stmt
 		top_stmts << import_stmt
 	}
@@ -173,8 +170,10 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 		// NOTE: handling moved to parse_file
 		// .key_module {
 		// 	p.next()
+		// 	name := p.expect_name()
+		// 	p.expect(.semicolon)
 		// 	return ast.ModuleStmt{
-		// 		name: p.expect_name()
+		// 		name: name
 		// 	}
 		// }
 		.key_pub {
@@ -219,7 +218,7 @@ fn (mut p Parser) stmt() ast.Stmt {
 		.key_assert {
 			p.next()
 			expr := p.expr(.lowest)
-			return ast.AssertStmt{
+			stmt := ast.AssertStmt{
 				expr: expr
 				extra: if p.tok == .comma {
 					p.next()
@@ -228,16 +227,20 @@ fn (mut p Parser) stmt() ast.Stmt {
 					ast.empty_expr
 				}
 			}
+			p.expect_semi()
+			return stmt
 		}
 		.key_break, .key_continue, .key_goto {
-			p.expr_line = p.line
 			op := p.tok()
-			if p.line == p.expr_line && p.tok == .name {
+			if p.tok == .name {
+				label := p.lit()
+				p.expect_semi()
 				return ast.FlowControlStmt{
 					op: op
-					label: p.lit()
+					label: label
 				}
 			} else {
+				p.expect_semi()
 				return ast.FlowControlStmt{
 					op: op
 				}
@@ -245,28 +248,38 @@ fn (mut p Parser) stmt() ast.Stmt {
 		}
 		.key_defer {
 			p.next()
+			stmts := p.block()
+			p.expect(.semicolon)
 			return ast.DeferStmt{
-				stmts: p.block()
+				stmts: stmts
 			}
 		}
 		.key_for {
 			return p.for_stmt()
 		}
 		.key_return {
-			line := p.line
 			// p.log('ast.ReturnStmt')
 			p.next()
-			if p.tok == .rcbr || p.line != line {
+			// TODO: clean up semi stuff (use expr list)
+			if p.tok == .semicolon {
+				p.next()
 				return ast.ReturnStmt{}
 			}
-			return ast.ReturnStmt{
+			rs := ast.ReturnStmt{
 				exprs: p.expr_list()
 			}
+			p.expect_semi()
+			if p.tok != .rcbr {
+				p.error_expected(.rcbr, p.tok)
+			}
+			return rs
 		}
 		.lcbr {
 			// anonymous / scoped block `{ a := 1 }`
+			stmts := p.block()
+			p.expect_semi()
 			return ast.BlockStmt{
-				stmts: p.block()
+				stmts: stmts
 			}
 		}
 		else {
@@ -283,7 +296,7 @@ fn (mut p Parser) stmt() ast.Stmt {
 					stmt: if p.tok == .key_for { p.for_stmt() } else { ast.empty_stmt }
 				}
 			}
-			return p.complete_simple_stmt(expr)
+			return p.complete_simple_stmt(expr, false)
 		}
 	}
 	p.error('unknown stmt: ${p.tok}')
@@ -321,10 +334,10 @@ fn (mut p Parser) attribute_stmt() ast.Stmt {
 
 @[inline]
 fn (mut p Parser) simple_stmt() ast.Stmt {
-	return p.complete_simple_stmt(p.expr(.lowest))
+	return p.complete_simple_stmt(p.expr(.lowest), false)
 }
 
-fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
+fn (mut p Parser) complete_simple_stmt(expr ast.Expr, expecting_semi bool) ast.Stmt {
 	// stand alone expression in a statement list
 	// eg: `if x == 1 {`, `x++`, `mut x := 1`, `a,`b := 1,2`
 	// multi assign from match/if `a, b := if x == 1 { 1,2 } else { 3,4 }
@@ -337,15 +350,33 @@ fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
 			p.next()
 			exprs << p.expr(.lowest)
 		}
+		// TODO: can we get rid of this dupe code?
 		if p.tok.is_assignment() {
-			return p.assign_stmt(exprs)
+			assign_stmt := p.assign_stmt(exprs)
+			// TODO: best way? decide if we will force them
+			// NOTE: allow multiple exprs on single line without `;` should be removed
+			if p.tok == .semicolon && !expecting_semi {
+				p.next()
+			}
+			return assign_stmt
 		}
 		// multi return values (last statement, no return keyword)
 		return ast.ExprStmt{ast.Tuple{
 			exprs: exprs
 		}}
 	} else if p.tok.is_assignment() {
-		return p.assign_stmt([expr])
+		assign_stmt := p.assign_stmt([expr])
+		// TODO: best way? decide if we will force them
+		// NOTE: allow multiple exprs on single line without `;` should be removed
+		if p.tok == .semicolon && !expecting_semi {
+			p.next()
+		}
+		return assign_stmt
+	}
+	// TODO: best way? decide if we will force them
+	// NOTE: allow multiple exprs on single line without `;` should be removed
+	if p.tok == .semicolon && !expecting_semi {
+		p.next()
 	}
 	// TODO: add check for all ExprStmt eg.
 	// if expr is ast.ArrayInitExpr {
@@ -358,7 +389,6 @@ fn (mut p Parser) complete_simple_stmt(expr ast.Expr) ast.Stmt {
 
 fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// p.log('EXPR: $p.tok - $p.line')
-	p.expr_line = p.line
 	mut lhs := ast.empty_expr
 	match p.tok {
 		.char, .key_false, .key_true, .number {
@@ -584,11 +614,11 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				p.expect(.colon)
 				val := p.expr(.lowest)
 				vals << val
-				if p.tok == .comma {
+				// if p.tok == .comma {
+				if p.tok in [.comma, .semicolon] {
 					p.next()
 				}
 			}
-			p.expr_line = p.line
 			p.next()
 			lhs = ast.MapInitExpr{
 				keys: keys
@@ -609,8 +639,18 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				if p.tok == .comma {
 					p.next()
 				}
+				// `[
+				//    1,
+				//    2
+				//  ]`
+				// TODO: move to `p.expr_list()` and use that?
+				else if p.tok == .semicolon {
+					// NOTE: this is missing trailing `,`, we can skip this if we want
+					p.error('missing `,` ?')
+					// p.next()
+					// break
+				}
 			}
-			p.expr_line = p.line
 			p.next()
 			// (`[2]type{}` | `[2][2]type{}` | `[2][]type{}`) | `[1,2,3,4][0]` | `[2]type`
 			// NOTE: it's tricky to differentiate between a fixed array of fixed array(s)
@@ -621,7 +661,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if exprs.len > 0 && p.tok == .lsbr {
 				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
-				// for p.tok == .lsbr && p.line == p.expr_line {
 				for p.tok == .lsbr {
 					p.next()
 					mut exprs2 := []ast.Expr{}
@@ -635,7 +674,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					exprs_arr << exprs2
 				}
 				// (`[2]type{}` | `[2][]type{}` | `[2]&type{init: Foo{}}`) | `[2]type`
-				if p.tok in [.amp, .name] && p.line == p.expr_line {
+				if p.tok in [.amp, .name] {
 					elem_type := p.expect_type()
 					for i := exprs_arr.len - 1; i >= 0; i-- {
 						exprs2 := exprs_arr[i]
@@ -702,7 +741,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// (`[]type{}` | `[][]type{}` | `[]&type{len: 2}`) | `[]type`
-			else if p.tok in [.amp, .lsbr, .name] && p.line == p.expr_line {
+			else if p.tok in [.amp, .lsbr, .name] {
 				lhs = ast.Type(ast.ArrayType{
 					elem_type: p.expect_type()
 				})
@@ -789,15 +828,16 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					stmts: p.block()
 					pos: branch_pos
 				}
+				p.expect_semi()
 				if p.tok == .key_else {
 					p.next()
 					branches << ast.MatchBranch{
 						stmts: p.block()
 						pos: branch_pos
 					}
+					p.expect_semi()
 				}
 			}
-			p.expr_line = p.line
 			// rcbr
 			p.next()
 			lhs = ast.MatchExpr{
@@ -826,7 +866,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			lit := p.lit
 			lhs = p.ident_or_named_type()
 			// `sql x {}` otherwise ident named `sql`
-			if lit == 'sql' && p.line == p.expr_line && p.tok == .name {
+			if lit == 'sql' && p.tok == .name {
 				exp_lcbr := p.exp_lcbr
 				p.exp_lcbr = true
 				expr := p.expr(.lowest)
@@ -847,7 +887,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 			}
 			// raw/c/js string: `r'hello'`
-			else if p.line == p.expr_line && p.tok == .string {
+			else if p.tok == .string {
 				lhs = p.string_literal(ast.StringLiteralKind.from_string_tinyv(lit) or {
 					p.error(err.msg())
 				})
@@ -860,17 +900,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				// `if err == IError(Eof{}) {`
 				// `if Foo{} == Foo{} {`
 				lhs = p.assoc_or_init_expr(lhs)
-				// NOTE: don't chain `StructInitA{}.enum_value_b` as SelectorExpr
-				// to do this for all InitExpr's return at selector expr instead
-				// {
-				// 	.enum_value_a: StructInitA {
-				// 		field_a: 'value_a'
-				// 	}
-				// 	.enum_value_b: ...
-				// }
-				if p.line != p.expr_line {
-					return lhs
-				}
 			}
 		}
 		// native optionals `x := ?mod_a.StructA{}`
@@ -917,7 +946,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// call | cast
-		else if p.tok == .lpar && p.line == p.expr_line {
+		else if p.tok == .lpar {
 			pos := p.pos
 			// p.log('ast.CastExpr or CallExpr: ${typeof(lhs)}')
 			exp_lcbr := p.exp_lcbr
@@ -968,11 +997,11 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// NOTE: if we want we can handle init like this
 		// this is only needed for ident or selector, so there is really
 		// no point handling it here, since it wont be used for chaining
-		// else if p.tok == .lcbr && !p.exp_lcbr && p.line == p.expr_line {
+		// else if p.tok == .lcbr && !p.exp_lcbr {
 		// 	lhs = p.assoc_or_init_expr(lhs)
 		// }
 		// index or generic call (args part, call handled above): `expr[i]` | `expr#[i]` | `expr[exprs]()`
-		else if p.tok in [.hash, .lsbr] && p.line == p.expr_line {
+		else if p.tok in [.hash, .lsbr] {
 			// `array#[idx]`
 			if p.tok == .hash {
 				p.next()
@@ -1000,7 +1029,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				p.expect(.rsbr)
 				// `GenericStruct[int]{}`
-				if p.line == p.expr_line && p.tok == .lcbr && !p.exp_lcbr {
+				if p.tok == .lcbr && !p.exp_lcbr {
 					lhs = p.assoc_or_init_expr(ast.GenericArgs{ lhs: lhs, args: exprs })
 					// lhs = ast.GenericArgs{ lhs: lhs, args: exprs }
 				}
@@ -1048,11 +1077,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// SelectorExpr
-		// else if p.tok == .dot && p.line == p.expr_line {
-		// TODO: add some rules about this behaviour, like auto_semi
-		// with those ruels this behaviour will probably change
 		else if p.tok == .dot {
-			p.expr_line = p.line
 			p.next()
 			// p.log('ast.SelectorExpr')
 			lhs = ast.SelectorExpr{
@@ -1080,6 +1105,17 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				stmts: p.block()
 				pos: pos
 			}
+		}
+		// range
+		else if p.tok in [.dotdot, .ellipsis] {
+			// p.log('ast.RangeExpr')
+			// no need to continue
+			return ast.RangeExpr{
+				op: p.tok()
+				start: lhs
+				// if range ever gets used in other places, wont be able to check .rsbr
+				end: if p.tok == .rsbr { ast.empty_expr } else { p.expr(.lowest) }
+			}
 		} else {
 			break
 		}
@@ -1087,11 +1123,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 	// pratt
 	for int(min_bp) <= int(p.tok.left_binding_power()) {
 		if p.tok.is_infix() {
-			// TODO: handle by checking expr?
-			// deref assign: `*a = b`
-			if p.tok == .mul && p.line != p.expr_line {
-				return lhs
-			}
 			pos := p.pos
 			op := p.tok()
 			lhs = ast.InfixExpr{
@@ -1185,6 +1216,20 @@ fn (mut p Parser) expect(tok token.Token) {
 	p.next()
 }
 
+@[inline]
+pub fn (mut p Parser) expect_semi() {
+	match p.tok {
+		// semicolon is optional before a closing ')' or '}'
+		.rpar, .rcbr {}
+		.semicolon {
+			p.next()
+		}
+		else {
+			p.error_expected(.semicolon, p.tok)
+		}
+	}
+}
+
 // expect `.name` & return `p.lit` & go to next token
 @[inline]
 fn (mut p Parser) expect_name() string {
@@ -1222,7 +1267,6 @@ fn (mut p Parser) block() []ast.Stmt {
 	for p.tok != .rcbr {
 		stmts << p.stmt()
 	}
-	p.expr_line = p.line
 	// rcbr
 	p.next()
 	// TODO: correct way to error on `if x == Type{} {`
@@ -1316,6 +1360,7 @@ fn (mut p Parser) attributes() []ast.Attribute {
 			continue
 		}
 		p.expect(.rsbr)
+		p.expect_semi()
 		// @[attribute_a]
 		if p.tok == .attribute {
 			p.next()
@@ -1385,9 +1430,20 @@ fn (mut p Parser) comptime_stmt() ast.Stmt {
 				stmt: p.for_stmt()
 			}
 		}
-		else {
+		// don't expect semi, if_expr eats the final `;` because of
+		// comptime if, and I don't want to peek ahead an extra token.
+		// If the `$` in each branch is removed from IfExpr then this
+		// can be handled the same as all other cases
+		.key_if {
 			return ast.ExprStmt{
 				expr: p.comptime_expr()
+			}
+		}
+		else {
+			expr := p.comptime_expr()
+			p.expect_semi()
+			return ast.ExprStmt{
+				expr: expr
 			}
 		}
 	}
@@ -1434,9 +1490,9 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 		// `for x:=1; x<=10; x++ {`
 		else {
 			if p.tok != .semicolon {
-				// init = p.complete_simple_stmt(expr)
+				// init = p.complete_simple_stmt(expr, true)
 				if expr2 is ast.EmptyExpr {
-					init = p.complete_simple_stmt(expr)
+					init = p.complete_simple_stmt(expr, true)
 				} else {
 					mut exprs := [expr, expr2]
 					for p.tok == .comma {
@@ -1460,11 +1516,13 @@ fn (mut p Parser) for_stmt() ast.ForStmt {
 		}
 	}
 	p.exp_lcbr = exp_lcbr
+	stmts := p.block()
+	p.expect_semi()
 	return ast.ForStmt{
 		init: init
 		cond: cond
 		post: post
-		stmts: p.block()
+		stmts: stmts
 	}
 }
 
@@ -1503,7 +1561,7 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	// }
 	// if guard
 	if p.tok == .comma {
-		s := p.complete_simple_stmt(cond)
+		s := p.complete_simple_stmt(cond, false)
 		if s is ast.AssignStmt {
 			cond = ast.IfGuardExpr{
 				stmt: s
@@ -1517,7 +1575,16 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 		}
 	}
 	p.exp_lcbr = exp_lcbr
+	// TODO: this is to error on if with `{` on next line
+	if p.tok == .semicolon {
+		// p.next()
+		p.error('unexpected newline, expecting `{` after if clause')
+	}
 	stmts := p.block()
+	// this is because semis get inserted after branches (same in Go)
+	if p.tok == .semicolon {
+		p.next()
+	}
 	// else
 	if p.tok == .key_else || (p.tok == .dollar && p.peek() == .key_else) {
 		// we are using expect instead of next to ensure we error when `is_comptime`
@@ -1578,14 +1645,15 @@ fn (mut p Parser) import_stmt() ast.ImportStmt {
 }
 
 fn (mut p Parser) directive() ast.Directive {
+	line := p.line
 	// value := p.lit() // if we scan whole line see scanner
-	p.expr_line = p.line
 	p.next()
 	name := p.expect_name()
 	// TODO: handle properly
-	mut value := ''
-	// mut value := p.lit()
-	for p.line == p.expr_line {
+	// NOTE: these line checks will be removed once this is parsed properly
+	// and only needed since auto semi is not inserted after `>`
+	mut value := p.lit()
+	for p.line == line {
 		if p.tok == .name {
 			value += p.lit()
 		} else {
@@ -1593,6 +1661,7 @@ fn (mut p Parser) directive() ast.Directive {
 			p.next()
 		}
 	}
+	// p.next()
 	return ast.Directive{
 		name: name
 		value: value
@@ -1614,10 +1683,12 @@ fn (mut p Parser) const_decl(is_public bool) ast.ConstDecl {
 			name: name
 			value: value
 		}
+		p.expect(.semicolon)
 		if !is_grouped {
 			break
 		} else if p.tok == .rpar {
 			p.next()
+			p.expect(.semicolon)
 			break
 		}
 	}
@@ -1685,10 +1756,11 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 			p.expect(.rpar)
 			mut return_type := ast.empty_expr
 			_ = return_type
-			if p.tok != .lcbr && p.line == p.expr_line {
+			if p.tok != .lcbr {
 				return_type = p.expect_type()
 			}
 			p.block()
+			p.expect(.semicolon)
 			// TODO
 			return ast.FnDecl{
 				pos: p.pos
@@ -1722,12 +1794,12 @@ fn (mut p Parser) fn_decl(is_public bool, attributes []ast.Attribute) ast.FnDecl
 	typ := p.fn_type()
 	// p.log('ast.FnDecl: $name $p.lit - $p.tok ($p.lit) - $p.tok_next_')
 	// also check line for better error detection
-	// stmts := if p.tok == .lcbr || p.line == p.expr_line {
 	stmts := if p.tok == .lcbr {
 		p.block()
 	} else {
 		[]ast.Stmt{}
 	}
+	p.expect(.semicolon)
 	return ast.FnDecl{
 		attributes: attributes
 		is_public: is_public
@@ -1829,6 +1901,9 @@ fn (mut p Parser) fn_arguments() []ast.Expr {
 				name: (expr as ast.Ident).name
 				value: p.expr(.lowest)
 			}
+			if p.tok == .semicolon {
+				p.next()
+			}
 		} else {
 			args << expr
 		}
@@ -1865,6 +1940,11 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 		} else {
 			[]ast.Attribute{}
 		}
+		// p.expect_semi()
+		// p.expect(.semicolon)
+		if p.tok == .semicolon {
+			p.next()
+		}
 		fields << ast.FieldDecl{
 			name: field_name
 			value: value
@@ -1872,6 +1952,8 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 		}
 	}
 	p.next()
+	// p.expect_semi()
+	p.expect(.semicolon)
 	return ast.EnumDecl{
 		attributes: attributes
 		is_public: is_public
@@ -1907,10 +1989,12 @@ fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 				typ: p.expect_type()
 			}
 		}
+		p.expect(.semicolon)
 		if !is_grouped {
 			break
 		} else if p.tok == .rpar {
 			p.next()
+			p.expect(.semicolon)
 			break
 		}
 	}
@@ -1937,7 +2021,8 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 		// embed_or_name := p.expect_type()
 		embed_or_name := p.ident_or_selector_expr()
 		// embedded interface
-		if p.line != p.expr_line {
+		if p.tok == .semicolon {
+			p.next()
 			embedded << embed_or_name
 			continue
 		}
@@ -1949,9 +2034,12 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 			}
 			typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
 		}
+		// p.expect_semi()
+		p.expect(.semicolon)
 	}
 	// rcbr
 	p.next()
+	p.expect(.semicolon)
 	return ast.InterfaceDecl{
 		is_public: is_public
 		attributes: attributes
@@ -2020,10 +2108,11 @@ fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.F
 		// embed_or_name := p.expect_type()
 		embed_or_name := p.ident_or_selector_expr()
 		// embedded struct
-		if p.line != p.expr_line {
+		if p.tok == .semicolon {
 			if language != .v {
 				p.error('${language} structs do not support embedding')
 			}
+			p.next()
 			embedded << embed_or_name
 			continue
 		}
@@ -2045,6 +2134,9 @@ fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.F
 		} else {
 			[]ast.Attribute{}
 		}
+		if p.tok == .semicolon {
+			p.next()
+		}
 		fields << ast.FieldDecl{
 			name: field_name
 			typ: field_type
@@ -2053,6 +2145,7 @@ fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.F
 		}
 	}
 	p.next()
+	p.expect(.semicolon)
 	return embedded, fields
 }
 
@@ -2061,7 +2154,11 @@ fn (mut p Parser) select_expr() ast.SelectExpr {
 	p.exp_lcbr = true
 	stmt := p.simple_stmt()
 	p.exp_lcbr = exp_lcbr
-	stmts := if p.tok == .lcbr { p.block() } else { []ast.Stmt{} }
+	mut stmts := []ast.Stmt{}
+	if p.tok == .lcbr {
+		stmts = p.block()
+		p.expect_semi()
+	}
 	select_expr := ast.SelectExpr{
 		pos: p.pos
 		stmt: stmt
@@ -2077,6 +2174,7 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 	if p.tok == .ellipsis {
 		p.next()
 		lx := p.expr(.lowest)
+		p.expect(.semicolon)
 		mut fields := []ast.FieldInit{}
 		for p.tok != .rcbr {
 			if p.tok == .comma {
@@ -2088,8 +2186,8 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 				name: field_name
 				value: p.expr(.lowest)
 			}
+			p.expect_semi()
 		}
-		p.expr_line = p.line
 		p.next()
 		return ast.AssocExpr{
 			typ: typ
@@ -2127,8 +2225,11 @@ fn (mut p Parser) assoc_or_init_expr(typ ast.Expr) ast.Expr {
 			name: field_name
 			value: value
 		}
+		if p.tok == .semicolon {
+			p.next()
+		}
+		// p.expect(.semicolon)
 	}
-	p.expr_line = p.line
 	p.next()
 	return ast.InitExpr{
 		typ: typ
@@ -2242,6 +2343,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 
 	// alias `type MyType = int`
 	if p.tok != .pipe {
+		p.expect(.semicolon)
 		return ast.TypeDecl{
 			is_public: is_public
 			language: language
@@ -2257,6 +2359,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 		p.next()
 		variants << p.expect_type()
 	}
+	p.expect(.semicolon)
 	// TODO: consider separate node for alias / sum type ?
 	return ast.TypeDecl{
 		is_public: is_public
@@ -2269,7 +2372,6 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 
 @[inline]
 fn (mut p Parser) ident() ast.Ident {
-	p.expr_line = p.line
 	return ast.Ident{
 		pos: p.pos
 		name: p.expect_name()
@@ -2278,7 +2380,6 @@ fn (mut p Parser) ident() ast.Ident {
 
 @[inline]
 fn (mut p Parser) ident_or_selector_expr() ast.Expr {
-	p.expr_line = p.line
 	ident := p.ident()
 	if p.tok == .dot {
 		p.next()

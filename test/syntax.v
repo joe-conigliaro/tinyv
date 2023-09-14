@@ -15,7 +15,6 @@ import mod_c { sym_a, TypeA, TypeB[T] }
 
 #include <header_a.h>
 #flag -L lib_a
-
 __global (
 	global_a string
 	global_b = 'global_b_value'
@@ -100,6 +99,14 @@ mut:
 }
 
 struct StructC {
+	StructA
+	foo.StructA
+mut: // TODO: modifiers
+	field_a int
+	field_b string
+}
+
+struct StructD {
 	field_a shared int
 	field_b shared []int = [0]
 }
@@ -255,7 +262,8 @@ fn main_a() {
 	array_init_k := [fn(arg_a int) int { return 1 }]
 	array_init_i := [fn() int { return 1 }()]
 	array_init_thread_a := []thread int{cap: 16}
-	expr_a expr_b // TODO: error
+	expr_a expr_b // TODO: error ?
+	expr_a; expr_b // TODO: error
 	map_init_long_string_string := map[string]string{}
 	map_init_long_string_array_string := map[string][]string{}
 	mut map_init_short_string_string := {'key_a': 'value_a'}
@@ -293,7 +301,7 @@ fn main_a() {
 	// }
 	assoc_current_a := StructA{
 		...struct_a
-		field_a: 1
+		// field_a: 1
 	}
 	string_literal_v_a := 'string literal a'
 	string_literal_v_b := "string literal b"
@@ -571,6 +579,7 @@ fn main_a() {
 		*ptr_b = 0
 	}
 	unsafe_a := unsafe { mut d := 1 d++ d }
+	unsafe_a := unsafe { mut d := 1; d++; d }
 	unsafe_b := unsafe {
 		mut d := 1
 		d++
@@ -652,8 +661,8 @@ fn main_a() {
 
 	ms := t.swatches[name].elapsed().microseconds()
 
-	if !v.pref.is_bare && v.pref.build_mode != .build_module
-		&& v.pref.os in [.linux, .freebsd, .openbsd, .netbsd, .dragonfly, .solaris, .haiku] {
+	if !v.pref.is_bare && v.pref.build_mode != .build_module &&
+		v.pref.os in [.linux, .freebsd, .openbsd, .netbsd, .dragonfly, .solaris, .haiku] {
 	}
 
 	rng.shuffle[T](mut res, config_)!

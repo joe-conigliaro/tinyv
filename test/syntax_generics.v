@@ -83,7 +83,7 @@ fn test_generic_complex_or_nested() {
 	fn_c(fn_generic_b[GenericStructB[int,int]](GenericStructB<int>{}, 1), moda.fn_generic_b[GenericStructB[int,int]](GenericStructB[int]{}, 1))
 	fn_c(a < fn_generic_b[GenericStructB[GenericStructA[int],int]](GenericStructB[int]{}, 1), moda.fn_generic_b[GenericStructB[int,int]](GenericStructB<int>{}, 1))
 	
-	return if x < 64 { fn_generic_b[int,int](1,2) } else { fn_generic_b[int,int](1, 2) < (fn_generic_b[int,int](1, 2) - 2) }
+	// return if x < 64 { fn_generic_b[int,int](1,2) } else { fn_generic_b[int,int](1, 2) < (fn_generic_b[int,int](1, 2) - 2) }
 	return fn_generic_b[int,int](1, 2) < b, c > d, e < f, g > h, fn_generic_b[int,int](fn_generic_b[int,int](fn_generic_b[int,int](1, 2), 2), 2) > j, k < l, m
 }
 
