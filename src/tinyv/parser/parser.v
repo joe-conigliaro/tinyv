@@ -515,6 +515,16 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				stmts: p.block()
 			}
 		}
+		.key_struct {
+			p.next()
+			typ := ast.Keyword{
+				tok: .key_struct
+			}
+			if p.exp_pt && p.tok != .lcbr {
+				return typ
+			}
+			lhs = p.assoc_or_init_expr(typ)
+		}
 		.key_select {
 			p.next()
 			p.expect(.lcbr)
@@ -1927,20 +1937,38 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	p.next()
 	language := p.decl_language()
 	name := p.expect_name()
+	generic_params, embedded, fields := p.struct_decl_body(language)
+	return ast.StructDecl{
+		attributes: attributes
+		is_public: is_public
+		embedded: embedded
+		language: language
+		name: name
+		generic_params: generic_params
+		fields: fields
+		pos: pos
+	}
+}
+
+// returns (generic_params, embedded_types, fields)
+fn (mut p Parser) struct_decl_body(language ast.Language) ([]ast.Expr, []ast.Expr, []ast.FieldDecl) {
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	// p.log('ast.StructDecl: $name')
 	// probably C struct decl with no body or {}
 	if p.tok != .lcbr {
-		return ast.StructDecl{
-			is_public: is_public
-			language: language
-			name: name
-		}
+		// return ast.StructDecl{
+		// 	is_public: is_public
+		// 	language: language
+		// 	name: name
+		// }
+		// TODO: compiler bug (should get types from expected type)
+		// return [],[],[]
+		return []ast.Expr{}, []ast.Expr{}, []ast.FieldDecl{}
 	}
 	p.next()
 	// fields
-	mut fields := []ast.FieldDecl{}
 	mut embedded := []ast.Expr{}
+	mut fields := []ast.FieldDecl{}
 	for p.tok != .rcbr {
 		is_pub := p.tok == .key_pub
 		if is_pub {
@@ -1989,16 +2017,7 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		}
 	}
 	p.next()
-	return ast.StructDecl{
-		attributes: attributes
-		is_public: is_public
-		embedded: embedded
-		language: language
-		name: name
-		generic_params: generic_params
-		fields: fields
-		pos: pos
-	}
+	return generic_params, embedded, fields
 }
 
 fn (mut p Parser) select_expr() ast.SelectExpr {

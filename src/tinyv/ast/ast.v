@@ -32,6 +32,7 @@ pub type Expr = ArrayInitExpr
 	| IndexExpr
 	| InfixExpr
 	| InitExpr
+	| Keyword
 	| KeywordOperator
 	| LockExpr
 	| MapInitExpr
@@ -84,7 +85,8 @@ pub type Stmt = AsmStmt
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
-pub type Type = ArrayFixedType
+pub type Type = AnonStructType
+	| ArrayFixedType
 	| ArrayType
 	| ChannelType
 	| FnType
@@ -137,6 +139,9 @@ pub fn (expr Expr) name() string {
 		}
 		IndexExpr {
 			'${expr.lhs.name()}[${expr.expr.name()}]'
+		}
+		Keyword {
+			expr.tok.str()
 		}
 		SelectorExpr {
 			expr.name()
@@ -321,6 +326,11 @@ pub struct InitExpr {
 pub:
 	typ    Expr
 	fields []FieldInit
+}
+
+pub struct Keyword {
+pub:
+	tok token.Token
 }
 
 pub struct KeywordOperator {
@@ -804,6 +814,13 @@ pub fn (ident &Ident) str() string {
 // 		}
 // 	}
 // }
+
+pub struct AnonStructType {
+pub:
+	generic_params []Expr
+	embedded       []Expr
+	fields         []FieldDecl
+}
 
 pub struct GenericType {
 pub:

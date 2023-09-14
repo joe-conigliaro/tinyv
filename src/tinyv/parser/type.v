@@ -83,7 +83,19 @@ fn (mut p Parser) try_type() ast.Expr {
 			return ast.Type(ast.NoneType{})
 		}
 		// inline / anonymous struct
-		// .key_struct {}
+		.key_struct {
+			p.next()
+			generic_params, embedded, fields := p.struct_decl_body(.v)
+			// TODO: should we use this or just StructDecl
+			// also I'm not a big fan of the 3 multi rerturn values
+			// however I'm also not a fan or using StructDecl since
+			// it technically is not one :D lol hrmmmmmmm
+			return ast.Type(ast.AnonStructType{
+				generic_params: generic_params
+				embedded: embedded
+				fields: fields
+			})
+		}
 		// tuple (multi return): `(type, type)`
 		.lpar {
 			p.next()

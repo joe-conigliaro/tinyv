@@ -367,49 +367,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 			g.writeln('')
 		}
 		ast.StructDecl {
-			if stmt.attributes.len > 0 {
-				g.attributes(stmt.attributes)
-				g.writeln('')
-			}
-			if stmt.is_public {
-				g.write('pub ')
-			}
-			g.write('struct ')
-			if stmt.language != .v {
-				g.write(stmt.language.str())
-				g.write('.')
-			}
-			g.write(stmt.name)
-			if stmt.generic_params.len > 0 {
-				g.generic_list(stmt.generic_params)
-			}
-			if stmt.fields.len > 0 {
-				g.writeln(' {')
-			} else {
-				g.write(' {')
-			}
-			g.indent++
-			for embed in stmt.embedded {
-				g.expr(embed)
-				g.writeln('')
-			}
-			for field in stmt.fields {
-				g.write(field.name)
-				g.write(' ')
-				g.expr(field.typ)
-				// if field.value != none {
-				if field.value !is ast.EmptyExpr {
-					g.write(' = ')
-					g.expr(field.value)
-				}
-				if field.attributes.len > 0 {
-					g.write(' ')
-					g.attributes(field.attributes)
-				}
-				g.writeln('')
-			}
-			g.indent--
-			g.writeln('}')
+			g.struct_decl(stmt)
 		}
 		ast.TypeDecl {
 			g.write('type ')
@@ -600,6 +558,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			}
 			g.write('}')
 		}
+		ast.Keyword {
+			g.write(expr.tok.str())
+		}
 		ast.KeywordOperator {
 			g.write(expr.op.str())
 			if expr.op in [.key_go, .key_spawn] {
@@ -786,6 +747,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		// TODO: I really would like to allow matching the nested sumtypes like TS
 		ast.Type {
 			match expr {
+				ast.AnonStructType {
+					g.struct_decl_body(expr.generic_params, expr.embedded, expr.fields)
+				}
 				ast.ArrayType {
 					g.write('[]')
 					g.expr(expr.elem_type)
@@ -931,6 +895,56 @@ fn (mut g Gen) fn_type(typ ast.FnType) {
 		g.write(' ')
 		g.expr(typ.return_type)
 	}
+}
+
+fn (mut g Gen) struct_decl(stmt ast.StructDecl) {
+	if stmt.attributes.len > 0 {
+		g.attributes(stmt.attributes)
+		g.writeln('')
+	}
+	if stmt.is_public {
+		g.write('pub ')
+	}
+	g.write('struct ')
+	if stmt.language != .v {
+		g.write(stmt.language.str())
+		g.write('.')
+	}
+	g.write(stmt.name)
+	g.struct_decl_body(stmt.generic_params, stmt.embedded, stmt.fields)
+}
+
+fn (mut g Gen) struct_decl_body(generic_params []ast.Expr, embedded []ast.Expr, fields []ast.FieldDecl) {
+	if generic_params.len > 0 {
+		g.generic_list(generic_params)
+	}
+	if fields.len > 0 {
+		g.writeln(' {')
+	} else {
+		g.write(' {')
+	}
+	g.indent++
+	for embed in embedded {
+		g.expr(embed)
+		g.writeln('')
+	}
+	for field in fields {
+		g.write(field.name)
+		g.write(' ')
+		g.expr(field.typ)
+		// if field.value != none {
+		if field.value !is ast.EmptyExpr {
+			g.write(' = ')
+			g.expr(field.value)
+		}
+		if field.attributes.len > 0 {
+			g.write(' ')
+			g.attributes(field.attributes)
+		}
+		g.writeln('')
+	}
+	g.indent--
+	g.writeln('}')
 }
 
 [inline]

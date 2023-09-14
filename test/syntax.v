@@ -91,11 +91,10 @@ struct StructB {
 mut:
 	field_a int    [attribute_a: 'value_a']
 	field_b string @[attribute_b: 'value_b']
-	// TODO:
-	// field_c struct {
-	// 	field_a string
-	// 	field_b int = 1
-	// }
+	field_c struct {
+		field_a string
+		field_b int = 1
+	}
 }
 
 struct StructC {
