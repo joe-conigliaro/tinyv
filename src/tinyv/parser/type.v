@@ -135,7 +135,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			pos := p.pos
 			// TODO: cleam this up
 			name := p.ident_or_named_type()
-			if p.tok == .lsbr && name !is ast.Type && p.line == p.expr_line {
+			if p.tok == .lsbr && name !is ast.Type && p.tok != .semicolon {
 				// TODO: stacking TODO's so I remember todo :D
 				// TODO: is there a better solution than this. maybe it should be the
 				// concern of p.fn_parameters() & p.struct_decl() rather than this?
@@ -155,20 +155,18 @@ fn (mut p Parser) try_type() ast.Expr {
 		}
 		// result: `!` | `!type`
 		.not {
-			p.expr_line = p.line
 			p.next()
 			return ast.Type(ast.ResultType{
-				base_type: if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }
-				// base_type: if p.line == p.expr_line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				base_type: if p.tok != .semicolon { p.try_type() } else { ast.empty_expr }
+				// base_type: p.tok != .semicolon { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		// option: `?` | `?type`
 		.question {
-			p.expr_line = p.line
 			p.next()
 			return ast.Type(ast.OptionType{
-				base_type: if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }
-				// base_type: if p.line == p.expr_line { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
+				base_type: if p.tok != .semicolon { p.try_type() } else { ast.empty_expr }
+				// base_type: if p.tok != .semicolon { p.try_type() or { ast.empty_expr } } else { ast.empty_expr }
 			})
 		}
 		else {
@@ -180,13 +178,12 @@ fn (mut p Parser) try_type() ast.Expr {
 
 // function type / signature
 fn (mut p Parser) fn_type() ast.FnType {
-	p.expr_line = p.line
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	params := p.fn_parameters()
 	return ast.FnType{
 		generic_params: generic_params
 		params: params
-		return_type: if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }
+		return_type: if p.tok != .semicolon { p.try_type() } else { ast.empty_expr }
 	}
 }
 
@@ -194,7 +191,6 @@ fn (mut p Parser) fn_type() ast.FnType {
 @[direct_array_access]
 fn (mut p Parser) ident_or_named_type() ast.Expr {
 	pos := p.pos
-	p.expr_line = p.line
 	// `map[type]type`
 	if p.lit.len == 3 && p.lit[0] == `m` && p.lit[1] == `a` && p.lit[2] == `p` {
 		p.next()
@@ -216,7 +212,7 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 	// `chan` | `chan type`
 	if p.lit.len == 4 && p.lit[0] == `c` && p.lit[1] == `h` && p.lit[2] == `a` && p.lit[3] == `n` {
 		p.next()
-		elem_type := if p.line == p.expr_line { p.try_type() } else { ast.empty_expr }
+		elem_type := if p.tok != .semicolon { p.try_type() } else { ast.empty_expr }
 		if elem_type !is ast.EmptyExpr {
 			return ast.Type(ast.ChannelType{
 				elem_type: elem_type
@@ -233,12 +229,7 @@ fn (mut p Parser) ident_or_named_type() ast.Expr {
 		&& p.lit[3] == `e` && p.lit[4] == `a` && p.lit[5] == `d` {
 		p.next()
 		return ast.Type(ast.ThreadType{
-			// TODO: is there a better way to check this?
-			elem_type: if p.line == p.expr_line && p.tok !in [.lpar, .lcbr] {
-				p.try_type()
-			} else {
-				ast.empty_expr
-			}
+			elem_type: if p.tok != .semicolon { p.try_type() } else { ast.empty_expr }
 		})
 	}
 	// `ident` | `selector` - ident or type name
