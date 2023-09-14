@@ -428,6 +428,9 @@ fn main_a() {
 	$else $if T is $struct {
 		println('T is struct')		
 	}
+	$if T in [?int, ?int] {
+		println('option int')
+	}
 	for val_a in array_init_a {
 		println(val_a)
 	}

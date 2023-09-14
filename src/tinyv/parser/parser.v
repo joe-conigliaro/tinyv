@@ -795,8 +795,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				pos: match_pos
 			}
 		}
-		.key_mut, .key_shared, .key_static, .key_volatile {
-			// also /* .key_atomic. */
+		.key_atomic, .key_mut, .key_shared, .key_static, .key_volatile {
 			lhs = ast.Modifier{
 				kind: p.tok()
 				expr: p.expr(.highest)
@@ -1468,7 +1467,12 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 	p.exp_lcbr = true
 	// mut cond := p.expr(.lowest)
 	// NOTE: the line above works, but avoid calling p.expr()
-	mut cond := if p.tok == .lcbr { ast.empty_expr } else { p.expr(.lowest) }
+	mut cond := if p.tok == .lcbr {
+		ast.empty_expr
+	} else {
+		// eg. `$if T in [?int, ?int] {`
+		if is_comptime { p.expr_or_type(.lowest) } else { p.expr(.lowest) }
+	}
 	mut else_expr := ast.empty_expr
 	// if p.tok == .question {
 	// 	// TODO: handle individual cases like this or globally
