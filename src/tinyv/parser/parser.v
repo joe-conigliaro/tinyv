@@ -253,9 +253,10 @@ fn (mut p Parser) stmt() ast.Stmt {
 			return p.for_stmt()
 		}
 		.key_return {
+			line := p.line
 			// p.log('ast.ReturnStmt')
 			p.next()
-			if p.tok == .rcbr {
+			if p.tok == .rcbr || p.line != line {
 				return ast.ReturnStmt{}
 			}
 			return ast.ReturnStmt{
@@ -1207,8 +1208,10 @@ fn (mut p Parser) block() []ast.Stmt {
 	// rcbr
 	p.next()
 	// TODO: correct way to error on `if x == Type{} {`
+	// is this the correct place for this, will it work in every case?
 	// if p.tok == .lcbr {
-	// 	p.error('TODO: booom')
+	// 	// TODO: better error message
+	// 	p.error('init must be in parens when `{` is expected, eg. `if x == (Type{}) {`')
 	// }
 	return stmts
 }
