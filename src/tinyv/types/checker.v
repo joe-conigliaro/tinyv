@@ -855,7 +855,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.Type {
 			match expr {
-				ast.AnonStructType {}
+				ast.AnonStructDeclType {}
 				ast.ArrayType {
 					return Array{
 						elem_type: c.expr(expr.elem_type)

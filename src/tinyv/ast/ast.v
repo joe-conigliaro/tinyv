@@ -85,7 +85,7 @@ pub type Stmt = AsmStmt
 // TOOD: (re)implement nested sumtype like TS (was removed from v)
 // currently need to cast to type in parser.type. Should I leave like
 // this or add these directly to Expr until nesting is implemented?
-pub type Type = AnonStructType
+pub type Type = AnonStructDeclType
 	| ArrayFixedType
 	| ArrayType
 	| ChannelType
@@ -815,7 +815,7 @@ pub fn (ident &Ident) str() string {
 // 	}
 // }
 
-pub struct AnonStructType {
+pub struct AnonStructDeclType {
 pub:
 	generic_params []Expr
 	embedded       []Expr

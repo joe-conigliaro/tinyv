@@ -1937,7 +1937,22 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	p.next()
 	language := p.decl_language()
 	name := p.expect_name()
-	generic_params, embedded, fields := p.struct_decl_body(language)
+	// p.log('ast.StructDecl: $name')
+	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
+	// probably C struct decl with no body or {}
+	if p.tok != .lcbr {
+		if language == .v {
+			p.error('v struct decl must have a body')
+		}
+		return ast.StructDecl{
+			is_public: is_public
+			language: language
+			name: name
+			generic_params: generic_params
+			pos: pos
+		}
+	}
+	embedded, fields := p.struct_decl_fields(language)
 	return ast.StructDecl{
 		attributes: attributes
 		is_public: is_public
@@ -1950,22 +1965,9 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	}
 }
 
-// returns (generic_params, embedded_types, fields)
-fn (mut p Parser) struct_decl_body(language ast.Language) ([]ast.Expr, []ast.Expr, []ast.FieldDecl) {
-	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
-	// p.log('ast.StructDecl: $name')
-	// probably C struct decl with no body or {}
-	if p.tok != .lcbr {
-		// return ast.StructDecl{
-		// 	is_public: is_public
-		// 	language: language
-		// 	name: name
-		// }
-		// TODO: compiler bug (should get types from expected type)
-		// return [],[],[]
-		return []ast.Expr{}, []ast.Expr{}, []ast.FieldDecl{}
-	}
-	p.next()
+// returns (embedded_types, fields)
+fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.FieldDecl) {
+	p.expect(.lcbr)
 	// fields
 	mut embedded := []ast.Expr{}
 	mut fields := []ast.FieldDecl{}
@@ -2017,7 +2019,7 @@ fn (mut p Parser) struct_decl_body(language ast.Language) ([]ast.Expr, []ast.Exp
 		}
 	}
 	p.next()
-	return generic_params, embedded, fields
+	return embedded, fields
 }
 
 fn (mut p Parser) select_expr() ast.SelectExpr {

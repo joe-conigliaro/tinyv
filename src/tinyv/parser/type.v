@@ -85,12 +85,11 @@ fn (mut p Parser) try_type() ast.Expr {
 		// inline / anonymous struct
 		.key_struct {
 			p.next()
-			generic_params, embedded, fields := p.struct_decl_body(.v)
+			generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
+			embedded, fields := p.struct_decl_fields(.v)
 			// TODO: should we use this or just StructDecl
-			// also I'm not a big fan of the 3 multi rerturn values
-			// however I'm also not a fan or using StructDecl since
-			// it technically is not one :D lol hrmmmmmmm
-			return ast.Type(ast.AnonStructType{
+			// even though it technically is not one? hrmm
+			return ast.Type(ast.AnonStructDeclType{
 				generic_params: generic_params
 				embedded: embedded
 				fields: fields

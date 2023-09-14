@@ -747,9 +747,12 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		// TODO: I really would like to allow matching the nested sumtypes like TS
 		ast.Type {
 			match expr {
-				ast.AnonStructType {
+				ast.AnonStructDeclType {
 					g.write('struct')
-					g.struct_decl_body(expr.generic_params, expr.embedded, expr.fields)
+					if expr.generic_params.len > 0 {
+						g.generic_list(expr.generic_params)
+					}
+					g.struct_decl_fields(expr.embedded, expr.fields)
 				}
 				ast.ArrayType {
 					g.write('[]')
@@ -912,13 +915,13 @@ fn (mut g Gen) struct_decl(stmt ast.StructDecl) {
 		g.write('.')
 	}
 	g.write(stmt.name)
-	g.struct_decl_body(stmt.generic_params, stmt.embedded, stmt.fields)
+	if stmt.generic_params.len > 0 {
+		g.generic_list(stmt.generic_params)
+	}
+	g.struct_decl_fields(stmt.embedded, stmt.fields)
 }
 
-fn (mut g Gen) struct_decl_body(generic_params []ast.Expr, embedded []ast.Expr, fields []ast.FieldDecl) {
-	if generic_params.len > 0 {
-		g.generic_list(generic_params)
-	}
+fn (mut g Gen) struct_decl_fields(embedded []ast.Expr, fields []ast.FieldDecl) {
 	if fields.len > 0 {
 		g.writeln(' {')
 	} else {
