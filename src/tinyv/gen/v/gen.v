@@ -747,7 +747,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		// TODO: I really would like to allow matching the nested sumtypes like TS
 		ast.Type {
 			match expr {
-				ast.AnonStructDeclType {
+				ast.AnonStructType {
 					g.write('struct')
 					if expr.generic_params.len > 0 {
 						g.generic_list(expr.generic_params)

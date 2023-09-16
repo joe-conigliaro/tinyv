@@ -89,7 +89,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			embedded, fields := p.struct_decl_fields(.v)
 			// TODO: should we use this or just StructDecl
 			// even though it technically is not one? hrmm
-			return ast.Type(ast.AnonStructDeclType{
+			return ast.Type(ast.AnonStructType{
 				generic_params: generic_params
 				embedded: embedded
 				fields: fields
