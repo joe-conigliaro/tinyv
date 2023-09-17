@@ -295,6 +295,9 @@ fn main_a() {
 	call_f := array_init_k[0]()
 	call_g := array_init_k[fn() { return 0 }()]()
 	call_h := array_init_k[array_init_b[0]]()
+	call_selector_a := 'hello v world'
+		.split(' v ')
+		.join(' ')
 	call_comptime_a := $fn_a('string', 1)
 	// comptime call as expr stmt only
 	$fn_a('string', 1)
@@ -580,11 +583,14 @@ fn main_a() {
 	}
 
 	ch_a := chan int{}
+	_ = <-ch_a or {
+		println('channel closed')
+	}
 	select {
 		a := <-ch_a
 		b := <-ch_a { b+=2 }
 		c := <-ch_a or {
-			panic('error reading channel')
+			panic('channel closed')
 		}
 		500 * time.millisecond {
 			eprintln('> more than 0.5s passed without a channel being ready')

@@ -400,22 +400,29 @@ fn (mut g Gen) expr(expr ast.Expr) {
 					g.write('!')
 				}
 			} else {
+				has_init := expr.init !is ast.EmptyExpr
+				has_len := expr.len !is ast.EmptyExpr
+				has_cap := expr.cap !is ast.EmptyExpr
 				g.expr(expr.typ)
 				g.write('{')
 				// if expr.init != none {
-				if expr.init !is ast.EmptyExpr {
+				if has_init {
 					g.write('init: ')
 					g.expr(expr.init)
-					g.write(', ')
+					if has_len || has_cap {
+						g.write(', ')
+					}
 				}
 				// if expr.len != none {
-				if expr.len !is ast.EmptyExpr {
+				if has_len {
 					g.write('len: ')
 					g.expr(expr.len)
-					g.write(', ')
+					if has_cap {
+						g.write(', ')
+					}
 				}
 				// if expr.cap != none {
-				if expr.cap !is ast.EmptyExpr {
+				if has_cap {
 					g.write('cap: ')
 					g.expr(expr.cap)
 				}

@@ -150,7 +150,7 @@ pub fn (expr Expr) name() string {
 			expr.name()
 		}
 		else {
-			panic('Expr.name(): unsupported expr `${expr.type_name()}`, currently only supports `ast.Ident` & `ast.SelectorExpr`')
+			panic('Expr.name(): unsupported expr `${expr.type_name()}`, add it?')
 			// expr.str()
 		}
 	}

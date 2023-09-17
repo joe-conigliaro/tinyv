@@ -638,16 +638,16 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				}
 				// (`[2]type{}` | `[2][]type{}` | `[2]&type{init: Foo{}}`) | `[2]type`
 				if p.tok in [.amp, .name] && p.line == p.expr_line {
-					mut typ := p.expect_type()
+					elem_type := p.expect_type()
 					for i := exprs_arr.len - 1; i >= 0; i-- {
 						exprs2 := exprs_arr[i]
 						if exprs2.len == 0 {
 							lhs = ast.Type(ast.ArrayType{
-								elem_type: typ
+								elem_type: elem_type
 							})
 						} else if exprs2.len == 1 {
 							lhs = ast.Type(ast.ArrayFixedType{
-								elem_type: typ
+								elem_type: elem_type
 								len: exprs2[0]
 							})
 						} else {
@@ -669,18 +669,19 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 						}
 						p.next()
 						lhs = ast.ArrayInitExpr{
-							typ: typ
+							typ: lhs
 							init: init
 							pos: pos
 						}
 					}
 					// `[2]type`
-					else {
-						if !p.exp_pt && p.tok != .lpar {
+					// casts are completed in expr loop
+					else if p.tok != .lpar {
+						if !p.exp_pt {
 							p.error('unexpected type')
 						}
-						// NOTE: no need to chain here afaik
-						return typ
+						// no need to chain here
+						return lhs
 					}
 				}
 				// `[1][0]` | `[1,2,3,4][0]` | `[[1,2,3,4]][0][1]` <-- index directly after init
@@ -704,7 +705,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 			// (`[]type{}` | `[][]type{}` | `[]&type{len: 2}`) | `[]type`
 			else if p.tok in [.amp, .lsbr, .name] && p.line == p.expr_line {
-				typ := ast.Type(ast.ArrayType{
+				lhs = ast.Type(ast.ArrayType{
 					elem_type: p.expect_type()
 				})
 				// `[]type{}`
@@ -726,7 +727,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 					p.next()
 					lhs = ast.ArrayInitExpr{
-						typ: typ
+						typ: lhs
 						init: init
 						cap: cap
 						len: len
@@ -734,12 +735,13 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 					}
 				}
 				// `[]type`
-				else {
-					if !p.exp_pt && p.tok != .lpar {
+				// casts are completed in expr loop
+				else if p.tok != .lpar {
+					if !p.exp_pt {
 						p.error('unexpected type')
 					}
-					// NOTE: no need to chain here afaik
-					return typ
+					// no need to chain here
+					return lhs
 				}
 			}
 			// `[1,2,3,4]!`
@@ -1062,6 +1064,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		// doing this here since it can be
 		// used between chaining selectors
 		// eg. `struct.field?.field`
+		// NOTE: should this require parens?
 		else if p.tok in [.not, .question] {
 			lhs = ast.PostfixExpr{
 				op: p.tok()
@@ -2243,6 +2246,7 @@ fn (mut p Parser) ident_or_selector_expr() ast.Expr {
 	ident := p.ident()
 	if p.tok == .dot {
 		p.next()
+		// TODO: remove this / come up with a good solution
 		if p.tok == .dollar {
 			p.next()
 			p.expr(.lowest)
