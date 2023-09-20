@@ -578,6 +578,17 @@ fn (mut g Gen) expr(expr ast.Expr) {
 				g.write(')')
 			}
 		}
+		ast.LambdaExpr {
+			g.write('|')
+			for i, ident in expr.idents {
+				g.write(ident.name)
+				if i < expr.idents.len - 1 {
+					g.write(', ')
+				}
+			}
+			g.write('| ')
+			g.expr(expr.expr)
+		}
 		ast.LockExpr {
 			has_lock_exprs := expr.lock_exprs.len > 0
 			has_rlock_exprs := expr.rlock_exprs.len > 0

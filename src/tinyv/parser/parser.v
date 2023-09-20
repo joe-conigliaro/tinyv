@@ -1772,16 +1772,40 @@ fn (mut p Parser) fn_parameters() []ast.Parameter {
 fn (mut p Parser) fn_arguments() []ast.Expr {
 	p.expect(.lpar)
 	// args := if p.tok == .rpar { []ast.Expr{} } else { p.expr_list() }
-	// NOTE: not using p.expr_list() as I need to support config syntax
+	// NOTE: not using p.expr_list() as I need to support some special
+	// things like varg, lambda expression, and struct config syntax
 	// TODO: config syntax is getting deprecated, will become maps
 	// eventually use named default params instead (once implemented)
 	mut args := []ast.Expr{}
 	for p.tok != .rpar {
-		// TODO: is this how we will handle `...varg`
-		expr := if p.tok == .ellipsis { ast.Expr(ast.PrefixExpr{
-				op: p.tok()
-				expr: p.expr(.lowest)
-			}) } else { p.expr(.lowest) }
+		// NOTE: since these are only supported in fn arguments
+		// we will only handle them here, rather than in `p.expr`
+		expr := match p.tok {
+			// `...varg`
+			.ellipsis {
+				ast.Expr(ast.PrefixExpr{
+					op: p.tok()
+					expr: p.expr(.lowest)
+				})
+			}
+			// lambda expression
+			.pipe {
+				p.next()
+				mut idents := [p.ident()]
+				for p.tok == .comma {
+					p.next()
+					idents << p.ident()
+				}
+				p.expect(.pipe)
+				ast.LambdaExpr{
+					idents: idents
+					expr: p.expr(.lowest)
+				}
+			}
+			else {
+				p.expr(.lowest)
+			}
+		}
 		// short struct config syntax
 		// TODO: if also supported anywhere else it can be moved to `p.expr()`
 		if p.tok == .colon {

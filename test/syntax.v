@@ -192,12 +192,16 @@ fn fn_multi_return_optional_a() ?(int, int) {
 	return 1,2
 }
 
-fn fn_variadic_a(arb_a int, arg_b ...string) {
+fn fn_variadic_a(arg_a int, arg_b ...string) {
 	fn_variadic_b(...arg_b)
 	fn_variadic_b(...['a', 'b', 'c', 'd'])
 }
 
 fn fn_variadic_b(arg_a ...string) {
+	println(arg_a)
+}
+
+fn fn_arg_struct_int_a(arg_a StructA, arg_b int) {
 	println(arg_a)
 }
 
@@ -295,6 +299,8 @@ fn main_a() {
 	call_f := array_init_k[0]()
 	call_g := array_init_k[fn() { return 0 }()]()
 	call_h := array_init_k[array_init_b[0]]()
+	call_config_syntax_a := fn_arg_struct_int_a(field_a: 1, field_b: 'b', 2)
+	call_lambda_expr_a := array_init_a.sorted(|x,y| x > y)
 	call_selector_a := 'hello v world'
 		.split(' v ')
 		.join(' ')

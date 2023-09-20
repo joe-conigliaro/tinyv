@@ -34,6 +34,7 @@ pub type Expr = ArrayInitExpr
 	| InitExpr
 	| Keyword
 	| KeywordOperator
+	| LambdaExpr
 	| LockExpr
 	| MapInitExpr
 	| MatchExpr
@@ -342,6 +343,12 @@ pub:
 pub struct Tuple {
 pub:
 	exprs []Expr
+}
+
+pub struct LambdaExpr {
+pub:
+	idents []Ident
+	expr   Expr
 }
 
 pub struct LockExpr {
