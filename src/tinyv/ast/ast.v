@@ -347,8 +347,8 @@ pub:
 
 pub struct LambdaExpr {
 pub:
-	idents []Ident
-	expr   Expr
+	args []Ident
+	expr Expr
 }
 
 pub struct LockExpr {

@@ -301,6 +301,7 @@ fn main_a() {
 	call_h := array_init_k[array_init_b[0]]()
 	call_config_syntax_a := fn_arg_struct_int_a(field_a: 1, field_b: 'b', 2)
 	call_lambda_expr_a := array_init_a.sorted(|x,y| x > y)
+	call_lambda_expr_b := f(|| 1)
 	call_selector_a := 'hello v world'
 		.split(' v ')
 		.join(' ')

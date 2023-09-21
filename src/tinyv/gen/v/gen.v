@@ -580,9 +580,9 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		}
 		ast.LambdaExpr {
 			g.write('|')
-			for i, ident in expr.idents {
-				g.write(ident.name)
-				if i < expr.idents.len - 1 {
+			for i, arg in expr.args {
+				g.write(arg.name)
+				if i < expr.args.len - 1 {
 					g.write(', ')
 				}
 			}

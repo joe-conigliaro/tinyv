@@ -1788,17 +1788,24 @@ fn (mut p Parser) fn_arguments() []ast.Expr {
 					expr: p.expr(.lowest)
 				})
 			}
-			// lambda expression
+			// lambda expression - no args
+			.logical_or {
+				p.next()
+				ast.LambdaExpr{
+					expr: p.expr(.lowest)
+				}
+			}
+			// lambda expression - with args
 			.pipe {
 				p.next()
-				mut idents := [p.ident()]
+				mut le_args := [p.ident()]
 				for p.tok == .comma {
 					p.next()
-					idents << p.ident()
+					le_args << p.ident()
 				}
 				p.expect(.pipe)
 				ast.LambdaExpr{
-					idents: idents
+					args: le_args
 					expr: p.expr(.lowest)
 				}
 			}
