@@ -809,7 +809,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_atomic, .key_mut, .key_shared, .key_static, .key_volatile {
-			lhs = ast.Modifier{
+			lhs = ast.ModifierExpr{
 				kind: p.tok()
 				expr: p.expr(.highest)
 			}

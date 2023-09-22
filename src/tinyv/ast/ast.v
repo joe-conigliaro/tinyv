@@ -38,7 +38,7 @@ pub type Expr = ArrayInitExpr
 	| LockExpr
 	| MapInitExpr
 	| MatchExpr
-	| Modifier
+	| ModifierExpr
 	| OrExpr
 	| ParenExpr
 	| PostfixExpr
@@ -380,13 +380,27 @@ pub:
 	pos      token.Pos
 }
 
-pub struct Modifier {
+// TODO: possibly merge modifiers into a bitfield where
+// multiple modifiers are used. this could also be used
+// for struct decl `mut:`, `pub mut:` etc. consider this
+// [flag]
+// pub enum Modifier {
+// 	.atomic
+// 	.global
+// 	.mutable
+// 	.public
+// 	.shared
+// 	.static
+// 	.volatile
+// }
+
+pub struct ModifierExpr {
 pub:
 	kind token.Token
 	expr Expr
 }
 
-// pub fn (expr Modifier) unwrap() Expr {
+// pub fn (expr ModifierExpr) unwrap() Expr {
 // 	return expr.expr
 // }
 

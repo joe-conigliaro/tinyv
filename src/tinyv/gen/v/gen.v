@@ -656,7 +656,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			// g.writeln(' ==== DeSugared MatchExpr  ==== ')
 			// g.expr(expr.desugar())
 		}
-		ast.Modifier {
+		ast.ModifierExpr {
 			g.write(expr.kind.str())
 			g.write(' ')
 			g.expr(expr.expr)

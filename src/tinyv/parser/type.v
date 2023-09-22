@@ -62,7 +62,7 @@ fn (mut p Parser) try_type() ast.Expr {
 		.key_atomic, .key_shared {
 			kind := p.tok
 			p.next()
-			return ast.Modifier{
+			return ast.ModifierExpr{
 				kind: kind
 				expr: p.expect_type()
 			}

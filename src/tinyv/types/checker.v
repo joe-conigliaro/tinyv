@@ -751,7 +751,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		ast.MatchExpr {
 			return c.match_expr(expr, true)
 		}
-		ast.Modifier {
+		ast.ModifierExpr {
 			// if expr.expr !is ast.Ident && expr.expr !is ast.Type {
 			// 	panic('not ident: $expr.expr.type_name()')
 			// }
@@ -1058,7 +1058,7 @@ fn (mut c Checker) stmt(stmt ast.Stmt) {
 					c.scope.insert(stmt.init.key.name, key_type)
 				}
 				value_type := expr_type.value_type()
-				if stmt.init.value is ast.Modifier {
+				if stmt.init.value is ast.ModifierExpr {
 					if stmt.init.value.expr is ast.Ident {
 						// println('setting for value var $stmt.init.value.expr.name to $value_type.name()')
 						c.scope.insert(stmt.init.value.expr.name, value_type)
@@ -1237,7 +1237,7 @@ fn (mut c Checker) fn_decl(decl ast.FnDecl) {
 	// TODO:
 	if decl.is_method {
 		// mut is_mut := false
-		// receiver_type := if decl.receiver.typ is ast.Modifier {
+		// receiver_type := if decl.receiver.typ is ast.ModifierExpr {
 		// 	c.log('MUT RECEIVER')
 		// 	is_mut = decl.receiver.typ.kind == .key_mut
 		// 	if is_mut { Type(Pointer{base_type: c.expr(decl.receiver.typ.expr)}) }
@@ -1365,7 +1365,7 @@ fn (mut c Checker) match_expr(expr ast.MatchExpr, used_as_expr bool) Type {
 	return last_stmt_type
 }
 
-// TODO: unwrap Modifier etc
+// TODO: unwrap ModifierExpr etc
 // fn (mut c Checker) argument() ast.Expr {}
 
 fn (mut c Checker) resolve_generic_arg_or_index_expr(expr ast.GenericArgOrIndexExpr) ast.Expr {
@@ -1422,7 +1422,7 @@ fn (mut c Checker) resolve_expr(expr ast.Expr) ast.Expr {
 // TODO:
 fn (mut c Checker) unwrap_ident(expr ast.Expr) ast.Expr {
 	match expr {
-		ast.Modifier {
+		ast.ModifierExpr {
 			return expr.expr
 		}
 		else {
@@ -1441,7 +1441,7 @@ fn (mut c Checker) unwrap_assign_lhs_expr(expr ast.Expr) ast.Expr {
 			// return c.unwrap_assign_lhs_expr(c.resolve_expr(expr.expr))
 			return c.unwrap_assign_lhs_expr(c.resolve_call_or_cast_expr(expr))
 		}
-		ast.Modifier {
+		ast.ModifierExpr {
 			// TODO: actually do something with modifiers :)
 			return c.unwrap_assign_lhs_expr(expr.expr)
 		}
@@ -1463,7 +1463,7 @@ fn (mut c Checker) unwrap_assign_lhs_expr(expr ast.Expr) ast.Expr {
 // TODO:
 fn (mut c Checker) unwrap_lhs_expr(expr ast.Expr) ast.Expr {
 	match expr {
-		ast.Modifier {
+		ast.ModifierExpr {
 			// return expr.expr
 			return c.unwrap_lhs_expr(expr.expr)
 		}
