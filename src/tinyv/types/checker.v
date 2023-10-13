@@ -464,40 +464,44 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 				is_fixed := expr.len !is ast.EmptyExpr
 				// TODO: check all exprs
 				first_elem_type := c.expr(expr.exprs.first())
-				if expr.exprs.len == 1 {
-					if first_elem_type.is_number_literal() {
-						return Array{
-							elem_type: int_
-						}
-					}
-				}
+				// NOTE: why did I have this shortcut here?
+				// if expr.exprs.len == 1 {
+				// 	if first_elem_type.is_number_literal() {
+				// 		return Array{
+				// 			elem_type: int_
+				// 		}
+				// 	}
+				// }
 				// TODO: promote [0] - proper
-				expected_type := c.expected_type
-				if first_elem_type is Enum {
-					c.expected_type = first_elem_type
+				expected_type_prev := c.expected_type
+				expected_type := c.expected_type or {
+					// `[Type.value_a, .value_b]`
+					// set expected type for checking `.value_b`
+					if first_elem_type is Enum {
+						c.expected_type = first_elem_type
+					}
+					first_elem_type
 				}
-				for i, _ in expr.exprs {
+
+				for i, elem_expr in expr.exprs {
 					if i == 0 {
 						continue
 					}
-					elem_expr := expr.exprs[i]
 					mut elem_type := c.expr(elem_expr)
+					// TODO: best way to handle this?
 					if elem_type.is_number_literal() && first_elem_type.is_number() {
 						elem_type = first_elem_type
 					}
-					// if first_elem_type is Enum && elem_type.is_integer() {
-					// 	c.log('setting int to : $first_elem_type.name()')
-					// 	elem_type = first_elem_type
-					// }
-					// TOOD/FIXME: how to check if two vars are same sum type ?
-					// if elem_type.name() != first_elem_type.name() {
-					if elem_type != first_elem_type {
+					// sum type, check variants
+					if (expected_type is SumType && elem_type !in expected_type.variants)
+						&& elem_type != first_elem_type // everyting else
+					  {
 						// TOOD: add generl method for promotion/coersion
 						c.error_with_pos('expecting element of type: ${first_elem_type.name()}, got ${elem_type.name()}',
 							expr.pos)
 					}
 				}
-				c.expected_type = expected_type
+				c.expected_type = expected_type_prev
 				return if is_fixed {
 					ArrayFixed{
 						len: expr.exprs.len
@@ -509,14 +513,8 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 					}
 				}
 			}
-			// TOOD: check all expressions
-			// for expr in expr.exprs {
-			// 	c.expr(expr)
-			// }
 			// `[]int{}`
-			// return c.expr(expr.typ)
-			array_type := c.expr(expr.typ)
-			return array_type
+			return c.expr(expr.typ)
 		}
 		ast.AsCastExpr {
 			// TODO:
@@ -641,6 +639,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			return typ
 		}
 		ast.IfExpr {
+			// dump(expr)
 			c.open_scope()
 			// Danger! BIG MESS peanut head!
 			// TODO: this probably is not the best way to do this
@@ -737,6 +736,13 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			if lhs_type is Enum {
 				c.expected_type = lhs_type
 			}
+			if expr.lhs is ast.SelectorExpr && expr.lhs.name() == 'node.left' {
+				// println(lhs_type)
+				c.expected_type = lhs_type
+			}
+			// if lhs_type in [Enum, SumType] {
+			// 	c.expected_type = lhs_type
+			// }
 			c.expr(expr.rhs)
 			c.expected_type = expected_type
 			if expr.op.is_comparison() {
@@ -1246,7 +1252,7 @@ fn (mut c Checker) block(stmts []ast.Stmt) {
 fn (mut c Checker) apply_smartcast(sc_name_ ast.Expr, sc_type Type) {
 	sc_name := c.unwrap_ident(sc_name_)
 	if sc_name is ast.Ident {
-		println('added smartcast for ${sc_name.name} to ${sc_type.name()}')
+		// println('added smartcast for ${sc_name.name} to ${sc_type.name()}')
 		c.scope.insert(sc_name.name, sc_type)
 	} else if sc_name is ast.SelectorExpr {
 		// field := c.selector_expr(sc_name)
@@ -1255,7 +1261,7 @@ fn (mut c Checker) apply_smartcast(sc_name_ ast.Expr, sc_type Type) {
 		// 	c.scope.insert(sc_name.lhs.name, SmartCastSelector{origin: field, field: sc_name.rhs.name, cast_type: sc_type})
 		// }
 		// c.log('@@ selector smartcast: ${sc_name.name()} - ${field.type_name()}')
-		println('added smartcast for ${sc_name.name()} to ${sc_type.name()}')
+		// println('added smartcast for ${sc_name.name()} to ${sc_type.name()}')
 		c.scope.field_smartcasts[sc_name.name()] = sc_type
 	}
 }
@@ -1960,13 +1966,13 @@ fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
 	// TODO: check todo in scope.v
 	if expr.lhs in [ast.Ident, ast.SelectorExpr] {
 		if cast_type := c.scope.lookup_field_smartcast(expr.name()) {
-			println('## found smartcast for ${expr.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
+			// println('## found smartcast for ${expr.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
 			return c.find_field_or_method(cast_type, expr.rhs.name) or {
 				c.error_with_pos('## smartcast field lookup error ' + err.msg(), expr.pos)
 			}
 		}
 		if cast_type := c.scope.lookup_field_smartcast(expr.lhs.name()) {
-			println('## found smartcast for ${expr.lhs.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
+			// println('## found smartcast for ${expr.lhs.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
 			return c.find_field_or_method(cast_type, expr.rhs.name) or {
 				c.error_with_pos('## smartcast field lookup error ' + err.msg(), expr.pos)
 			}

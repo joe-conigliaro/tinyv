@@ -123,6 +123,7 @@ pub fn (t Type) name() string {
 	}
 }
 
+// TODO: fix this, shouldbe only what is needed
 pub fn (expr Expr) name() string {
 	return match expr {
 		AsCastExpr {
@@ -174,6 +175,10 @@ pub fn (expr Expr) name() string {
 		}
 		Type {
 			expr.name()
+		}
+		UnsafeExpr {
+			// TODO:
+			'UnsafeExpr'
 		}
 		else {
 			panic('Expr.name(): unsupported expr `${expr.type_name()}`, add it?')
