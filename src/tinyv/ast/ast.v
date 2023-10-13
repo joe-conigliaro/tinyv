@@ -132,6 +132,13 @@ pub fn (expr Expr) name() string {
 			// TODO:
 			'${expr.lhs.name()}()'
 		}
+		CallOrCastExpr {
+			'${expr.lhs.name()}(${expr.expr.name()})'
+		}
+		EmptyExpr {
+			// TODO:
+			'EmptyExpr'
+		}
 		GenericArgs {
 			'${expr.lhs.name()}[${expr.args.name_list()}]'
 		}
@@ -141,11 +148,26 @@ pub fn (expr Expr) name() string {
 		IndexExpr {
 			'${expr.lhs.name()}[${expr.expr.name()}]'
 		}
+		InfixExpr {
+			'${expr.lhs.name()} ${expr.op} ${expr.rhs.name()}'
+		}
 		Keyword {
 			expr.tok.str()
 		}
+		ModifierExpr {
+			'${expr.kind} ${expr.expr.name()}'
+		}
+		ParenExpr {
+			'(${expr.expr.name()})'
+		}
+		PrefixExpr {
+			'${expr.op}${expr.expr.name()}'
+		}
 		SelectorExpr {
 			expr.name()
+		}
+		StringLiteral {
+			"'${expr.value}'"
 		}
 		Type {
 			expr.name()

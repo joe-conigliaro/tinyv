@@ -38,6 +38,18 @@ pub fn new_scope(parent &Scope) &Scope {
 	}
 }
 
+// TODO: try implement the alternate method I was experimenting with (SmartCastSelector)
+// i'm not sure if it is actually possible though. need to explore it.
+pub fn (mut s Scope) lookup_field_smartcast(name string) ?Type {
+	mut scope := unsafe { s }
+	for ; scope != unsafe { nil }; scope = scope.parent {
+		if field_smartcast := scope.field_smartcasts[name] {
+			return field_smartcast
+		}
+	}
+	return none
+}
+
 pub fn (mut s Scope) lookup(name string) ?Object {
 	if obj := s.objects[name] {
 		return obj
