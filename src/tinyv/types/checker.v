@@ -518,6 +518,11 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			array_type := c.expr(expr.typ)
 			return array_type
 		}
+		ast.AsCastExpr {
+			// TODO:
+			c.expr(expr.expr)
+			return c.expr(expr.typ)
+		}
 		ast.BasicLiteral {
 			// c.log('ast.BasicLiteral: $expr.kind.str(): $expr.value')
 			match expr.kind {
@@ -708,9 +713,9 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			// TODO: check all branches types match
 		}
 		ast.IfGuardExpr {
-			c.stmt(expr.stmt)
+			c.assign_stmt(expr.stmt, true)
 			// TODO:
-			return int_
+			return bool_
 		}
 		ast.IndexExpr {
 			lhs_type := c.expr(expr.lhs)
@@ -1001,58 +1006,7 @@ fn (mut c Checker) stmt(stmt ast.Stmt) {
 			c.expr(stmt.expr)
 		}
 		ast.AssignStmt {
-			for i, lx in stmt.lhs {
-				// TODO: proper / tuple (handle multi return)
-				rx := stmt.rhs[i] or { stmt.rhs[0] }
-				// lhs_type := c.scope.lookup_parent
-				// TODO: ident field for blank ident?
-				mut is_blank_ident := false
-				if lx is ast.Ident {
-					is_blank_ident = lx.name == '_'
-				}
-				mut lhs_type := Type(void_)
-				if stmt.op != .decl_assign && !is_blank_ident {
-					lhs_type = c.expr(lx)
-				}
-				expected_type := c.expected_type
-				if lhs_type is Enum {
-					c.expected_type = lhs_type
-				}
-				rhs_type := c.expr(rx)
-				// if t := expected_type {
-				// 	c.log('AssignStmt: setting expected_type to: $t.name()')
-				// } else {
-				// 	c.log('AssignStmt: setting expected_type to: none')
-				// }
-				c.expected_type = expected_type
-				// c.expected_type = none
-				mut expr_type := rhs_type
-				if rhs_type is Tuple {
-					expr_type = rhs_type.types[i]
-				}
-				// TODO:
-				// if stmt.op != .decl_assign {
-				// 	c.assignment(expr_type, lhs_type) or {
-				// 		c.log('error!!')
-				// 		c.error_with_pos(err.msg(), stmt.pos)
-				// 	}
-				// }
-				// TODO: proper, this is naive
-				if expr_type.is_number_literal() {
-					if expr_type.is_float_literal() {
-						expr_type = f32_
-					} else {
-						expr_type = int_
-					}
-				}
-				// TODO: proper
-				// TODO: modifiers, lx_unwrapped := c.unwrap...
-				// or some method to use modifiers
-				lx_unwrapped := c.unwrap_assign_lhs_expr(lx)
-				if lx_unwrapped is ast.Ident {
-					c.scope.insert(lx_unwrapped.name, expr_type)
-				}
-			}
+			c.assign_stmt(stmt, false)
 		}
 		ast.BlockStmt {
 			c.stmt_list(stmt.stmts)
@@ -1155,6 +1109,64 @@ fn (mut c Checker) later(func fn (), kind DeferredKind) {
 		kind: kind
 		func: func
 		scope: c.scope
+	}
+}
+
+fn (mut c Checker) assign_stmt(stmt ast.AssignStmt, unwrap_optional bool) {
+	for i, lx in stmt.lhs {
+		// TODO: proper / tuple (handle multi return)
+		rx := stmt.rhs[i] or { stmt.rhs[0] }
+		// lhs_type := c.scope.lookup_parent
+		// TODO: ident field for blank ident?
+		mut is_blank_ident := false
+		if lx is ast.Ident {
+			is_blank_ident = lx.name == '_'
+		}
+		mut lhs_type := Type(void_)
+		if stmt.op != .decl_assign && !is_blank_ident {
+			lhs_type = c.expr(lx)
+		}
+		expected_type := c.expected_type
+		if lhs_type is Enum {
+			c.expected_type = lhs_type
+		}
+		rhs_type := c.expr(rx)
+		// if t := expected_type {
+		// 	c.log('AssignStmt: setting expected_type to: $t.name()')
+		// } else {
+		// 	c.log('AssignStmt: setting expected_type to: none')
+		// }
+		c.expected_type = expected_type
+		// c.expected_type = none
+		mut expr_type := rhs_type
+		if rhs_type is Tuple {
+			expr_type = rhs_type.types[i]
+		}
+		if unwrap_optional {
+			expr_type = expr_type.unwrap()
+		}
+		// TODO:
+		// if stmt.op != .decl_assign {
+		// 	c.assignment(expr_type, lhs_type) or {
+		// 		c.log('error!!')
+		// 		c.error_with_pos(err.msg(), stmt.pos)
+		// 	}
+		// }
+		// TODO: proper, this is naive
+		if expr_type.is_number_literal() {
+			if expr_type.is_float_literal() {
+				expr_type = f32_
+			} else {
+				expr_type = int_
+			}
+		}
+		// TODO: proper
+		// TODO: modifiers, lx_unwrapped := c.unwrap...
+		// or some method to use modifiers
+		lx_unwrapped := c.unwrap_assign_lhs_expr(lx)
+		if lx_unwrapped is ast.Ident {
+			c.scope.insert(lx_unwrapped.name, expr_type)
+		}
 	}
 }
 

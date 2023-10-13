@@ -125,6 +125,9 @@ pub fn (t Type) name() string {
 
 pub fn (expr Expr) name() string {
 	return match expr {
+		AsCastExpr {
+			'${expr.expr.name()} as ${expr.typ.name()}'
+		}
 		BasicLiteral {
 			expr.value
 		}
