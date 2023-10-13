@@ -639,7 +639,6 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			return typ
 		}
 		ast.IfExpr {
-			// dump(expr)
 			c.open_scope()
 			// Danger! BIG MESS peanut head!
 			// TODO: this probably is not the best way to do this
@@ -729,22 +728,14 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			return value_type
 		}
 		ast.InfixExpr {
-			// TODO: trace error
-			// // dump(expr)
 			lhs_type := c.expr(expr.lhs)
-			expected_type := c.expected_type
-			if lhs_type is Enum {
-				c.expected_type = lhs_type
-			}
-			if expr.lhs is ast.SelectorExpr && expr.lhs.name() == 'node.left' {
-				// println(lhs_type)
-				c.expected_type = lhs_type
-			}
-			// if lhs_type in [Enum, SumType] {
+			// TODO: why was I setting expected type for enum here?
+			// expected_type := c.expected_type
+			// if lhs_type is Enum {
 			// 	c.expected_type = lhs_type
 			// }
 			c.expr(expr.rhs)
-			c.expected_type = expected_type
+			// c.expected_type = expected_type
 			if expr.op.is_comparison() {
 				return bool_
 			}
