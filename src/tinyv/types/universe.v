@@ -20,7 +20,11 @@ const (
 		props: .integer
 		size: 16
 	}
-	// i32_ = Primitive{props: .integer, size: 32}
+	i32_ = Primitive{
+		props: .integer,
+		size: 32
+	}
+	// TODO: represent platform specific size
 	int_ = Primitive{
 		props: .integer
 		size: 32
@@ -104,7 +108,7 @@ pub fn init_universe() &Scope {
 	universe_.insert('bool', Type(types.bool_))
 	universe_.insert('i8', Type(types.i8_))
 	universe_.insert('i16', Type(types.i16_))
-	// universe_.insert('i32', Type(i32_))
+	universe_.insert('i32', Type(i32_))
 	universe_.insert('int', Type(types.int_))
 	universe_.insert('i64', Type(types.i64_))
 	universe_.insert('u8', Type(types.u8_))

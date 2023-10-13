@@ -1050,7 +1050,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		// SelectorExpr
-		else if p.tok == .dot && p.line == p.expr_line {
+		// else if p.tok == .dot && p.line == p.expr_line {
+		// TODO: add some rules about this behaviour, like auto_semi
+		// with those ruels this behaviour will probably change
+		else if p.tok == .dot {
 			p.expr_line = p.line
 			p.next()
 			// p.log('ast.SelectorExpr')
@@ -2265,6 +2268,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 
 [inline]
 fn (mut p Parser) ident() ast.Ident {
+	p.expr_line = p.line
 	return ast.Ident{
 		pos: p.pos
 		name: p.expect_name()
