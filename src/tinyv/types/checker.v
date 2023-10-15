@@ -248,7 +248,7 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 					const_type := c.expr(field.value)
 					if mut cd := c.scope.lookup(field.name) {
 						if mut cd is Const {
-							cd.typ = const_type
+							cd.typ = const_type.promote()
 						}
 					}
 				}, .const_decl)
@@ -1142,6 +1142,8 @@ fn (mut c Checker) assign_stmt(stmt ast.AssignStmt, unwrap_optional bool) {
 		if unwrap_optional {
 			expr_type = expr_type.unwrap()
 		}
+		// promote untyped literals
+		expr_type = expr_type.promote()
 		// TODO:
 		// if stmt.op != .decl_assign {
 		// 	c.assignment(expr_type, lhs_type) or {
@@ -1149,14 +1151,6 @@ fn (mut c Checker) assign_stmt(stmt ast.AssignStmt, unwrap_optional bool) {
 		// 		c.error_with_pos(err.msg(), stmt.pos)
 		// 	}
 		// }
-		// TODO: proper, this is naive
-		if expr_type.is_number_literal() {
-			if expr_type.is_float_literal() {
-				expr_type = f32_
-			} else {
-				expr_type = int_
-			}
-		}
 		// TODO: proper
 		// TODO: modifiers, lx_unwrapped := c.unwrap...
 		// or some method to use modifiers
@@ -1398,10 +1392,9 @@ fn (mut c Checker) match_expr(expr ast.MatchExpr, used_as_expr bool) Type {
 			expr_unwrapped := c.unwrap_ident(expr.expr)
 			cond_type := c.expr(cond)
 			if cond in [ast.Ident, ast.SelectorExpr] {
-				if cond is ast.SelectorExpr {
-					if cond.lhs is ast.EmptyExpr {
-						continue
-					}
+				// `.value` enum value (without type)
+				if cond is ast.SelectorExpr && cond.lhs is ast.EmptyExpr {
+					continue
 				}
 				c.apply_smartcast(expr_unwrapped, cond_type)
 			}
@@ -1427,7 +1420,7 @@ fn (mut c Checker) match_expr(expr ast.MatchExpr, used_as_expr bool) Type {
 					if i > 0 && (i < expr.branches.len - 1 && t !is Void) {
 						if t != last_stmt_type {
 							c.error_with_pos('${i} all branches must return same type (exp ${last_stmt_type.name()} got ${t.name()})',
-								expr.pos)
+								last_stmt.expr.pos())
 						}
 					}
 					last_stmt_type = t

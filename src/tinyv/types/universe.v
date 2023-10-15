@@ -25,9 +25,10 @@ const (
 		size: 32
 	}
 	// TODO: represent platform specific size
+	// will this be calculated at compile time?
 	int_ = Primitive{
 		props: .integer
-		size: 32
+		// size: 32
 	}
 	i64_ = Primitive{
 		props: .integer

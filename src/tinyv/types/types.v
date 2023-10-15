@@ -279,6 +279,20 @@ fn (t Type) value_type() Type {
 	}
 }
 
+fn (t Type) promote() Type {
+	// this handles int & float + signed & unsigned
+	if t is Primitive && t.is_number_literal() {
+		mut concrete_props := t.props
+		concrete_props.clear(.untyped)
+		// TODO: size
+		return Primitive{
+			...t
+			props: concrete_props
+		}
+	}
+	return t
+}
+
 fn (t Type) is_float() bool {
 	if t is Primitive {
 		return t.is_float()
@@ -374,7 +388,8 @@ fn (t Primitive) name() string {
 		if t.props.has(.unsigned) {
 			return 'u${t.size}'
 		} else {
-			if t.size == 32 {
+			// TODO:
+			if t.size == 0 {
 				return 'int'
 			}
 			return 'i${t.size}'
@@ -385,7 +400,8 @@ fn (t Primitive) name() string {
 	println(t)
 	panic(t.props.str())
 	return 'malformed primitive' // lol
-	// TOOD: match seems broke when multuple flags are set
+	// TODO: match seems broke when multuple flags are set
+	// actually it was not broken, it matches the bits for flags
 	// matches single only, if multiple are set it will not match.
 	//
 	// match t.props {
