@@ -280,14 +280,16 @@ fn (t Type) value_type() Type {
 }
 
 fn (t Type) promote() Type {
-	// this handles int & float + signed & unsigned
+	// this handles int & float
 	if t is Primitive && t.is_number_literal() {
 		mut concrete_props := t.props
 		concrete_props.clear(.untyped)
-		// TODO: size
+		// TODO: platform dependant size - see universe
+		size := u8(if t.props.has(.float) { 32 } else { 0 })
 		return Primitive{
 			...t
 			props: concrete_props
+			size: size
 		}
 	}
 	return t
