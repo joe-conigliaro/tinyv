@@ -640,7 +640,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.IfExpr {
 			c.open_scope()
-			// Danger! BIG MESS peanut head!
+			// BIG MESS peanut head! Fix this :)
 			// TODO: this probably is not the best way to do this
 			// need to think about this some more. also should this only
 			// work for the top level? how complicated can this get? eiip
@@ -658,18 +658,18 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 					if left_node.op == .and && left_node_rhs is ast.InfixExpr {
 						if left_node_rhs.op == .key_is {
 							is_inline_smartcast = true
-							c.expr(left_node.rhs)
+							// c.expr(left_node.rhs)
 							sc_names, sc_types := c.extract_smartcasts(left_node.rhs)
 							c.apply_smartcasts(sc_names, sc_types)
-							c.expr(left_node.lhs)
+							// c.expr(left_node.lhs)
 						}
 					}
 					if left_node.op == .key_is {
 						is_inline_smartcast = true
-						c.expr(left_node.lhs)
-						sc_names, sc_types := c.extract_smartcasts(left_node.lhs)
+						// c.expr(left_node.lhs)
+						sc_names, sc_types := c.extract_smartcasts(left_node)
 						c.apply_smartcasts(sc_names, sc_types)
-						c.expr(left_node.rhs)
+						// c.expr(left_node.rhs)
 						break
 					} else if left_node.op == .and {
 						left_node = c.unwrap_expr(left_node.lhs)
@@ -677,20 +677,15 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 						break
 					}
 				}
+				right_node := c.unwrap_expr(cond.rhs)
+				if right_node is ast.InfixExpr && right_node.op == .key_is {
+					is_inline_smartcast = true
+					// c.expr(right_node.lhs)
+					sc_names, sc_types := c.extract_smartcasts(right_node)
+					c.apply_smartcasts(sc_names, sc_types)
+					// c.expr(right_node.rhs)
+				}
 			}
-			// if expr.cond is ast.InfixExpr {
-			// 	if expr.cond.lhs is ast.InfixExpr && expr.cond.lhs.op == .key_is {
-			// 		println('## is_inline_smartcast')
-			// 		is_inline_smartcast = true
-			// 		c.expr(expr.cond.lhs)
-			// 		sc_names, sc_types := c.extract_smartcasts(expr.cond.lhs)
-			// 		println(sc_names)
-			// 		println(sc_types)
-			// 		c.apply_smartcasts(sc_names, sc_types)
-			// 		c.expr(expr.cond.rhs)
-			// 		println('GOT HERE')
-			// 	}
-			// }
 			if !is_inline_smartcast {
 				// println('## not is_inline_smartcast')
 				cond_type = c.expr(expr.cond)
@@ -904,6 +899,15 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 		}
 		ast.StringLiteral {
 			return string_
+		}
+		ast.Tuple {
+			mut types := []Type{}
+			for x in expr.exprs {
+				types << c.expr(x)
+			}
+			return Tuple{
+				types: types
+			}
 		}
 		ast.Type {
 			match expr {
@@ -1260,31 +1264,33 @@ fn (mut c Checker) apply_smartcasts(sc_names []ast.Expr, sc_types []Type) {
 	}
 }
 
-fn (mut c Checker) extract_smartcasts(cond ast.Expr) ([]ast.Expr, []Type) {
+fn (mut c Checker) extract_smartcasts(expr ast.Expr) ([]ast.Expr, []Type) {
 	mut names := []ast.Expr{}
 	mut types := []Type{}
-	if cond is ast.InfixExpr {
-		if cond.op == .key_is {
+	expr_u := c.unwrap_expr(expr)
+	if expr_u is ast.InfixExpr {
+		if expr_u.op == .key_is {
 			// eprintln('adding smartcast')
-			names << cond.lhs
-			types << c.expr(cond.rhs)
-			// typ := c.expr(cond.rhs)
+			names << expr_u.lhs
+			types << c.expr(c.unwrap_expr(expr_u.rhs))
+			// typ := c.expr(expr_u.rhs)
 			// types << typ
 		}
 		// TODO: is this just needed for && ?
 		else {
-			lhs_names, lhs_types := c.extract_smartcasts(cond.lhs)
-			rhs_names, rhs_types := c.extract_smartcasts(cond.rhs)
+			lhs_names, lhs_types := c.extract_smartcasts(c.unwrap_expr(expr_u.lhs))
+			rhs_names, rhs_types := c.extract_smartcasts(c.unwrap_expr(expr_u.rhs))
 			names << lhs_names
 			types << lhs_types
 			names << rhs_names
 			types << rhs_types
 		}
-	} else if cond is ast.ParenExpr {
-		names2, types2 := c.extract_smartcasts(cond.expr)
-		names << names2
-		types << types2
 	}
+	// else if cond is ast.ParenExpr {
+	// 	names2, types2 := c.extract_smartcasts(cond.expr)
+	// 	names << names2
+	// 	types << types2
+	// }
 	return names, types
 }
 
@@ -1511,9 +1517,9 @@ fn (mut c Checker) unwrap_ident(expr ast.Expr) ast.Expr {
 // TODO:
 fn (mut c Checker) unwrap_expr(expr ast.Expr) ast.Expr {
 	match expr {
-		ast.Ident, ast.IndexExpr, ast.SelectorExpr {
-			return expr
-		}
+		// ast.Ident, ast.IndexExpr, ast.SelectorExpr {
+		// 	return expr
+		// }
 		ast.CallOrCastExpr {
 			// return c.unwrap_expr(c.resolve_expr(expr.expr))
 			return c.unwrap_expr(c.resolve_call_or_cast_expr(expr))
@@ -1958,14 +1964,13 @@ fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
 
 	// TODO: check todo in scope.v
 	if expr.lhs in [ast.Ident, ast.SelectorExpr] {
+		// println('looking for smartcast $expr.name()')
 		if cast_type := c.scope.lookup_field_smartcast(expr.name()) {
-			// println('## found smartcast for ${expr.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
-			return c.find_field_or_method(cast_type, expr.rhs.name) or {
-				c.error_with_pos('## smartcast field lookup error ' + err.msg(), expr.pos)
-			}
+			// println('## 1 found smartcast for ${expr.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
+			return cast_type
 		}
 		if cast_type := c.scope.lookup_field_smartcast(expr.lhs.name()) {
-			// println('## found smartcast for ${expr.lhs.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
+			// println('## 2 found smartcast for ${expr.lhs.name()} - ${cast_type.type_name()} - ${cast_type.name()} - ${expr.rhs.name}')
 			return c.find_field_or_method(cast_type, expr.rhs.name) or {
 				c.error_with_pos('## smartcast field lookup error ' + err.msg(), expr.pos)
 			}

@@ -550,7 +550,9 @@ fn (t Thread) name() string {
 }
 
 fn (t Tuple) name() string {
-	return 'tuple'
+	// TODO: use faster method
+	types_str := t.types.map(|typ| typ.name()).join(', ')
+	return 'tuple (${types_str})'
 }
 
 fn (t ISize) name() string {
