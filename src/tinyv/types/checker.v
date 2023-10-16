@@ -639,73 +639,24 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			return typ
 		}
 		ast.IfExpr {
-			c.open_scope()
-			// BIG MESS peanut head! Fix this :)
-			// TODO: this probably is not the best way to do this
-			// need to think about this some more. also should this only
-			// work for the top level? how complicated can this get? eiip
-			// NOTE: in the current compiler there are smartcasts and then there
-			// are explicit auto casts. I have inplemeted this just using smartcasts
-			// for now, however I will come back to this, and work out what is most appropriate
-			mut cond_type := Type(void_)
-			mut is_inline_smartcast := false
-			cond := c.unwrap_expr(expr.cond)
-			if cond is ast.InfixExpr {
-				cond_type = Type(bool_)
-				mut left_node := c.unwrap_expr(cond.lhs)
-				for mut left_node is ast.InfixExpr {
-					left_node_rhs := c.unwrap_expr(left_node.rhs)
-					if left_node.op == .and && left_node_rhs is ast.InfixExpr {
-						if left_node_rhs.op == .key_is {
-							is_inline_smartcast = true
-							// c.expr(left_node.rhs)
-							sc_names, sc_types := c.extract_smartcasts(left_node.rhs)
-							c.apply_smartcasts(sc_names, sc_types)
-							// c.expr(left_node.lhs)
-						}
-					}
-					if left_node.op == .key_is {
-						is_inline_smartcast = true
-						// c.expr(left_node.lhs)
-						sc_names, sc_types := c.extract_smartcasts(left_node)
-						c.apply_smartcasts(sc_names, sc_types)
-						// c.expr(left_node.rhs)
-						break
-					} else if left_node.op == .and {
-						left_node = c.unwrap_expr(left_node.lhs)
-					} else {
-						break
-					}
+			// if guard
+			if expr.cond is ast.IfGuardExpr {
+				c.open_scope()
+				c.assign_stmt(expr.cond.stmt, true)
+				c.stmt_list(expr.stmts)
+				c.close_scope()
+				if expr.else_expr is ast.IfExpr {
+					c.open_scope()
+					c.scope.insert('err', Type(Struct{ name: 'Error' }))
+					c.stmt_list(expr.else_expr.stmts)
+					c.close_scope()
 				}
-				right_node := c.unwrap_expr(cond.rhs)
-				if right_node is ast.InfixExpr && right_node.op == .key_is {
-					is_inline_smartcast = true
-					// c.expr(right_node.lhs)
-					sc_names, sc_types := c.extract_smartcasts(right_node)
-					c.apply_smartcasts(sc_names, sc_types)
-					// c.expr(right_node.rhs)
-				}
+				// TODO: never used, add a special type?
+				return void_
 			}
-			if !is_inline_smartcast {
-				// println('## not is_inline_smartcast')
-				cond_type = c.expr(expr.cond)
-				sc_names, sc_types := c.extract_smartcasts(expr.cond)
-				c.apply_smartcasts(sc_names, sc_types)
-			}
-			_ = cond_type
-			c.stmt_list(expr.stmts)
-			mut typ := Type(void_)
-			if expr.stmts.len > 0 {
-				last_stmt := expr.stmts.last()
-				if last_stmt is ast.ExprStmt {
-					typ = c.expr(last_stmt.expr)
-				}
-			}
-			c.close_scope()
-			// return typ
-			else_type := if expr.else_expr !is ast.EmptyExpr { c.expr(expr.else_expr) } else { typ }
-			return else_type
-			// TODO: check all branches types match
+
+			// normal if
+			return c.if_expr(expr)
 		}
 		ast.IfGuardExpr {
 			c.assign_stmt(expr.stmt, true)
@@ -1390,6 +1341,76 @@ fn (mut c Checker) fn_decl(decl ast.FnDecl) {
 	}, deferred_kind)
 	// }
 	c.close_scope()
+}
+
+fn (mut c Checker) if_expr(expr ast.IfExpr) Type {
+	c.open_scope()
+	// BIG MESS peanut head! Fix this :)
+	// TODO: this probably is not the best way to do this
+	// need to think about this some more. also should this only
+	// work for the top level? how complicated can this get? eiip
+	// NOTE: in the current compiler there are smartcasts and then there
+	// are explicit auto casts. I have inplemeted this just using smartcasts
+	// for now, however I will come back to this, and work out what is most appropriate
+	mut cond_type := Type(void_)
+	mut is_inline_smartcast := false
+	cond := c.unwrap_expr(expr.cond)
+	if cond is ast.InfixExpr {
+		cond_type = Type(bool_)
+		mut left_node := c.unwrap_expr(cond.lhs)
+		for mut left_node is ast.InfixExpr {
+			left_node_rhs := c.unwrap_expr(left_node.rhs)
+			if left_node.op == .and && left_node_rhs is ast.InfixExpr {
+				if left_node_rhs.op == .key_is {
+					is_inline_smartcast = true
+					// c.expr(left_node.rhs)
+					sc_names, sc_types := c.extract_smartcasts(left_node.rhs)
+					c.apply_smartcasts(sc_names, sc_types)
+					// c.expr(left_node.lhs)
+				}
+			}
+			if left_node.op == .key_is {
+				is_inline_smartcast = true
+				// c.expr(left_node.lhs)
+				sc_names, sc_types := c.extract_smartcasts(left_node)
+				c.apply_smartcasts(sc_names, sc_types)
+				// c.expr(left_node.rhs)
+				break
+			} else if left_node.op == .and {
+				left_node = c.unwrap_expr(left_node.lhs)
+			} else {
+				break
+			}
+		}
+		right_node := c.unwrap_expr(cond.rhs)
+		if right_node is ast.InfixExpr && right_node.op == .key_is {
+			is_inline_smartcast = true
+			// c.expr(right_node.lhs)
+			sc_names, sc_types := c.extract_smartcasts(right_node)
+			c.apply_smartcasts(sc_names, sc_types)
+			// c.expr(right_node.rhs)
+		}
+	}
+	if !is_inline_smartcast {
+		// println('## not is_inline_smartcast')
+		cond_type = c.expr(expr.cond)
+		sc_names, sc_types := c.extract_smartcasts(expr.cond)
+		c.apply_smartcasts(sc_names, sc_types)
+	}
+	_ = cond_type
+	c.stmt_list(expr.stmts)
+	mut typ := Type(void_)
+	if expr.stmts.len > 0 {
+		last_stmt := expr.stmts.last()
+		if last_stmt is ast.ExprStmt {
+			typ = c.expr(last_stmt.expr)
+		}
+	}
+	c.close_scope()
+	// return typ
+	else_type := if expr.else_expr !is ast.EmptyExpr { c.expr(expr.else_expr) } else { typ }
+	return else_type
+	// TODO: check all branches types match
 }
 
 fn (mut c Checker) match_expr(expr ast.MatchExpr, used_as_expr bool) Type {
