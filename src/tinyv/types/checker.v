@@ -1058,14 +1058,15 @@ fn (mut c Checker) stmt(stmt ast.Stmt) {
 					key_type := expr_type.key_type()
 					c.scope.insert(stmt.init.key.name, key_type)
 				}
-				value_type := expr_type.value_type()
+				mut value_type := expr_type.value_type()
 				if stmt.init.value is ast.ModifierExpr {
+					if stmt.init.value.kind == .key_mut {
+						value_type = value_type.ref()
+					}
 					if stmt.init.value.expr is ast.Ident {
-						// println('setting for value var $stmt.init.value.expr.name to $value_type.name()')
 						c.scope.insert(stmt.init.value.expr.name, value_type)
 					}
 				} else if stmt.init.value is ast.Ident {
-					// println('setting for value var $stmt.init.value.name to $value_type.name()')
 					c.scope.insert(stmt.init.value.name, value_type)
 				}
 			} else {

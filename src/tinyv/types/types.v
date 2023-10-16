@@ -298,6 +298,19 @@ fn (t Type) unwrap() Type {
 	}
 }
 
+fn (t Type) ref() Pointer {
+	return Pointer{
+		base_type: t
+	}
+}
+
+fn (t Type) deref() Type {
+	if t is Pointer {
+		return t.base_type
+	}
+	panic('Type.deref(): ${t.name()} is not a pointer')
+}
+
 // TODO:
 fn (t Type) is_compatible_with(t2 Type) bool {
 	if t == t2 {
