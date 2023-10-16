@@ -41,7 +41,7 @@ const (
 	// byte_ = Primitive{props: .integer | .unsigned, size: 8}
 	byte_ = Alias{
 		name: 'byte'
-		parent_type: u8_
+		base_type: u8_
 	}
 	u16_ = Primitive{
 		props: .integer | .unsigned
@@ -75,19 +75,19 @@ const (
 	none_    = None(0)
 	byteptr_ = Alias{
 		name: 'byteptr'
-		parent_type: Pointer{
+		base_type: Pointer{
 			base_type: byte_
 		}
 	}
 	charptr_ = Alias{
 		name: 'charptr'
-		parent_type: Pointer{
+		base_type: Pointer{
 			base_type: char_
 		}
 	}
 	voidptr_ = Alias{
 		name: 'voidptr'
-		parent_type: Pointer{
+		base_type: Pointer{
 			base_type: void_
 		}
 	}

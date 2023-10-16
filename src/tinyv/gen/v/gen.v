@@ -380,7 +380,7 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.expr_list(stmt.variants, ' | ')
 			} else {
 				g.write(' ')
-				g.expr(stmt.parent_type)
+				g.expr(stmt.base_type)
 			}
 			g.writeln('')
 		}

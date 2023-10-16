@@ -2247,7 +2247,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 			is_public: is_public
 			name: name
 			generic_params: generic_params
-			parent_type: typ
+			base_type: typ
 		}
 	}
 	// sum type `type MyType = int | string`

@@ -386,7 +386,7 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 				alias_type := Alias{
 					name: decl.name
 					// TODO: defer
-					// parent: c.expr(decl.parent_type)
+					// parent: c.expr(decl.base_type)
 				}
 				mut typ := Type(alias_type)
 				c.scope.insert(decl.name, typ)
@@ -394,12 +394,12 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 					// mut obj := c.scope.lookup(type_decl.name) or { panic(err.msg()) }
 					// mut typ := obj.typ()
 					// if mut typ is Alias {
-					// 	typ.parent_type = c.expr(type_decl.parent_type)
+					// 	typ.base_type = c.expr(type_decl.base_type)
 					// }
 					if mut obj := c.scope.lookup(type_decl.name) {
 						if mut obj is Type {
 							if mut obj is Alias {
-								obj.parent_type = c.expr(type_decl.parent_type)
+								obj.base_type = c.expr(type_decl.base_type)
 							}
 						}
 					}
@@ -649,12 +649,14 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			// for now, however I will come back to this, and work out what is most appropriate
 			mut cond_type := Type(void_)
 			mut is_inline_smartcast := false
-			if expr.cond is ast.InfixExpr {
+			cond := c.unwrap_expr(expr.cond)
+			if cond is ast.InfixExpr {
 				cond_type = Type(bool_)
-				mut left_node := expr.cond.lhs
+				mut left_node := c.unwrap_expr(cond.lhs)
 				for mut left_node is ast.InfixExpr {
-					if left_node.op == .and && left_node.rhs is ast.InfixExpr {
-						if left_node.rhs.op == .key_is {
+					left_node_rhs := c.unwrap_expr(left_node.rhs)
+					if left_node.op == .and && left_node_rhs is ast.InfixExpr {
+						if left_node_rhs.op == .key_is {
 							is_inline_smartcast = true
 							c.expr(left_node.rhs)
 							sc_names, sc_types := c.extract_smartcasts(left_node.rhs)
@@ -670,7 +672,7 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 						c.expr(left_node.rhs)
 						break
 					} else if left_node.op == .and {
-						left_node = left_node.lhs
+						left_node = c.unwrap_expr(left_node.lhs)
 					} else {
 						break
 					}
@@ -704,9 +706,9 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 					typ = c.expr(last_stmt.expr)
 				}
 			}
+			c.close_scope()
 			// return typ
 			else_type := if expr.else_expr !is ast.EmptyExpr { c.expr(expr.else_expr) } else { typ }
-			c.close_scope()
 			return else_type
 			// TODO: check all branches types match
 		}
@@ -1154,7 +1156,7 @@ fn (mut c Checker) assign_stmt(stmt ast.AssignStmt, unwrap_optional bool) {
 		// TODO: proper
 		// TODO: modifiers, lx_unwrapped := c.unwrap...
 		// or some method to use modifiers
-		lx_unwrapped := c.unwrap_assign_lhs_expr(lx)
+		lx_unwrapped := c.unwrap_expr(lx)
 		if lx_unwrapped is ast.Ident {
 			c.scope.insert(lx_unwrapped.name, expr_type)
 		}
@@ -1174,10 +1176,10 @@ fn (mut c Checker) assignment(from_type Type, to_type Type) ! {
 	}
 	// aliases
 	if from_type is Alias {
-		return c.assignment(from_type.parent_type, to_type)
+		return c.assignment(from_type.base_type, to_type)
 	}
 	if to_type is Alias {
-		return c.assignment(from_type, to_type.parent_type)
+		return c.assignment(from_type, to_type.base_type)
 	}
 	// TODO: provide context about if inside unsafe
 	if to_type is FnType {
@@ -1277,6 +1279,10 @@ fn (mut c Checker) extract_smartcasts(cond ast.Expr) ([]ast.Expr, []Type) {
 			names << rhs_names
 			types << rhs_types
 		}
+	} else if cond is ast.ParenExpr {
+		names2, types2 := c.extract_smartcasts(cond.expr)
+		names << names2
+		types << types2
 	}
 	return names, types
 }
@@ -1418,7 +1424,9 @@ fn (mut c Checker) match_expr(expr ast.MatchExpr, used_as_expr bool) Type {
 				// actually make sure its an else branch
 				if _ := expected_type {
 					if i > 0 && (i < expr.branches.len - 1 && t !is Void) {
-						if t != last_stmt_type {
+						// if t != last_stmt_type {
+						if !t.is_compatible_with(last_stmt_type) {
+							// TODO: better error message
 							c.error_with_pos('${i} all branches must return same type (exp ${last_stmt_type.name()} got ${t.name()})',
 								last_stmt.expr.pos())
 						}
@@ -1500,28 +1508,28 @@ fn (mut c Checker) unwrap_ident(expr ast.Expr) ast.Expr {
 }
 
 // TODO:
-fn (mut c Checker) unwrap_assign_lhs_expr(expr ast.Expr) ast.Expr {
+fn (mut c Checker) unwrap_expr(expr ast.Expr) ast.Expr {
 	match expr {
 		ast.Ident, ast.IndexExpr, ast.SelectorExpr {
 			return expr
 		}
 		ast.CallOrCastExpr {
-			// return c.unwrap_assign_lhs_expr(c.resolve_expr(expr.expr))
-			return c.unwrap_assign_lhs_expr(c.resolve_call_or_cast_expr(expr))
+			// return c.unwrap_expr(c.resolve_expr(expr.expr))
+			return c.unwrap_expr(c.resolve_call_or_cast_expr(expr))
 		}
 		ast.ModifierExpr {
 			// TODO: actually do something with modifiers :)
-			return c.unwrap_assign_lhs_expr(expr.expr)
+			return c.unwrap_expr(expr.expr)
 		}
 		ast.ParenExpr {
-			return c.unwrap_assign_lhs_expr(expr.expr)
+			return c.unwrap_expr(expr.expr)
 		}
 		ast.PrefixExpr {
-			return c.unwrap_assign_lhs_expr(expr.expr)
+			return c.unwrap_expr(expr.expr)
 		}
 		else {
 			// TODO: expr.pos()
-			// c.error_with_pos('unwrap_assign_lhs_expr: missing impl for expr ${expr.type_name()}', 2)
+			// c.error_with_pos('unwrap_expr: missing impl for expr ${expr.type_name()}', 2)
 			// no unwrap needed
 			return expr
 		}
@@ -1664,7 +1672,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 			fn_ = FnType{
 				return_type: Type(Alias{
 					name: 'Duration'
-					parent_type: i64_
+					base_type: i64_
 				})
 			}
 		}
@@ -1675,7 +1683,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 
 	// }
 	if mut fn_ is Alias {
-		fn_ = fn_.parent_type
+		fn_ = fn_.base_type
 	}
 	if mut fn_ is FnType {
 		if fn_.generic_params.len > 0 {
@@ -2042,7 +2050,7 @@ fn (mut c Checker) find_field_or_method(t Type, name string) !Type {
 			// if field_or_method_type := c.find_field_or_method(t, name) {
 			// 	return field_or_method_type
 			// }
-			if field_or_method_type := c.find_field_or_method(t.parent_type, name) {
+			if field_or_method_type := c.find_field_or_method(t.base_type, name) {
 				return field_or_method_type
 			}
 		}
@@ -2218,7 +2226,7 @@ fn (mut c Checker) find_method(t Type, name string) !Type {
 	c.log('looking for method `${name}` on type `${t.name()}`')
 	// TODO: do we need to look for methods on the non base type first?
 	// I think we will for aliases, probably not other types. we might
-	// need to differentiate then for base_type / parent_type in this case
+	// need to differentiate then for base_type / base_type in this case
 	mut base_type := t.base_type()
 	// TODO: interface methods
 	// if base_type is Interface { base_type = t }

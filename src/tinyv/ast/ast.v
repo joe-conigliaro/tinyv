@@ -804,7 +804,7 @@ pub:
 	is_public      bool
 	name           string
 	generic_params []Expr
-	parent_type    Expr = ast.empty_expr
+	base_type      Expr = ast.empty_expr
 	variants       []Expr
 }
 

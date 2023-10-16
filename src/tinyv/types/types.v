@@ -67,7 +67,7 @@ struct Primitive {
 struct Alias {
 	name string
 mut:
-	parent_type Type
+	base_type Type
 }
 
 struct Array {
@@ -225,34 +225,25 @@ type Void = u8
 type Nil = u8
 type None = u8
 
-// unwraps option or result
-fn (t Type) unwrap() Type {
-	match t {
-		OptionType, ResultType {
-			return t.base_type
-		}
-		else {
-			return t
-		}
-	}
-}
-
 fn (t Type) base_type() Type {
 	match t {
 		// TOOD: add base_type method
 		Alias {
-			// TODO: should this ba renamed to base_type?
-			return t.parent_type
+			return t.base_type
 			// should we fully resolve all aliases, or just one level here?
-			// return t.parent_type.base_type()
+			// return t.base_type.base_type()
 		}
 		OptionType, ResultType, Pointer {
 			return t.base_type
 		}
+		// TODO: why as I doing this instead of else? to make it easy to find unhandled cases?
 		Primitive, Array, ArrayFixed, Channel, Char, Enum, FnType, Interface, ISize, Map, Rune,
 		String, Struct, SumType, Thread, Tuple, USize, Void, Nil, None, NamedType {
 			return t
 		}
+		// else {
+		// 	return t
+		// }
 	}
 }
 
@@ -293,6 +284,30 @@ fn (t Type) promote() Type {
 		}
 	}
 	return t
+}
+
+// unwraps option or result
+fn (t Type) unwrap() Type {
+	match t {
+		OptionType, ResultType {
+			return t.base_type
+		}
+		else {
+			return t
+		}
+	}
+}
+
+// TODO:
+fn (t Type) is_compatible_with(t2 Type) bool {
+	if t == t2 {
+		return true
+	} else if t is Alias {
+		return t.base_type.is_compatible_with(t2)
+	} else if t2 is Alias {
+		return t.is_compatible_with(t2.base_type)
+	}
+	return false
 }
 
 fn (t Type) is_float() bool {
