@@ -248,7 +248,7 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 					const_type := c.expr(field.value)
 					if mut cd := c.scope.lookup(field.name) {
 						if mut cd is Const {
-							cd.typ = const_type.promote()
+							cd.typ = const_type.typed_default()
 						}
 					}
 				}, .const_decl)
@@ -427,9 +427,6 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 		}
 		else {}
 	}
-}
-
-fn (mut c Checker) promote_type(from Type, to Type) {
 }
 
 fn (mut c Checker) check_types(exp_type Type, got_type Type) bool {
@@ -1006,9 +1003,9 @@ fn (mut c Checker) stmt(stmt ast.Stmt) {
 				if stmt.init.key is ast.Ident {
 					// TODO: remove
 					if expr_type is Void {
-						c.log('## expr_type is Void!')
 						c.scope.print(false)
 						// dump(stmt)
+						panic('## expr_type is Void!')
 					}
 					key_type := expr_type.key_type()
 					c.scope.insert(stmt.init.key.name, key_type)
@@ -1034,8 +1031,7 @@ fn (mut c Checker) stmt(stmt ast.Stmt) {
 			// sc_names, sc_types := c.extract_smartcasts(stmt.cond)
 			// c.apply_smartcasts(sc_names, sc_types)
 			c.stmt(stmt.init)
-			// TODO: fix parser eating of mut in `for mut x is type`
-			// c.expr(stmt.cond)
+			c.expr(stmt.cond)
 			c.stmt(stmt.post)
 			c.stmt_list(stmt.stmts)
 			c.close_scope()
@@ -1094,15 +1090,15 @@ fn (mut c Checker) assign_stmt(stmt ast.AssignStmt, unwrap_optional bool) {
 		c.expected_type = expected_type
 		// c.expected_type = none
 		mut expr_type := rhs_type
-		if rhs_type is Tuple {
-			expr_type = rhs_type.types[i]
-		}
 		if unwrap_optional {
 			expr_type = expr_type.unwrap()
 		}
+		if rhs_type is Tuple {
+			expr_type = rhs_type.types[i]
+		}
 		// promote untyped literals
-		expr_type = expr_type.promote()
-		// TODO:
+		expr_type = expr_type.typed_default()
+		// TODO: assignment check
 		// if stmt.op != .decl_assign {
 		// 	c.assignment(expr_type, lhs_type) or {
 		// 		c.log('error!!')
@@ -1671,9 +1667,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 	// TODO: remove, see comment at field decl
 	expecting_method := c.expecting_method
 	if lhs_expr is ast.SelectorExpr {
-		if lhs_expr.lhs !is ast.SelectorExpr {
-			c.expecting_method = true
-		}
+		c.expecting_method = true
 	}
 	mut fn_ := c.expr(lhs_expr)
 	// fn_ := c.expr(expr.lhs)
@@ -1740,15 +1734,7 @@ fn (mut c Checker) call_expr(expr ast.CallExpr) Type {
 				// eprintln('INFERRED GENERIC TYPES: $expr.lhs.name()')
 				for i, arg in expr.args {
 					param := fn_.params[i]
-					mut arg_type := c.expr(arg)
-					// TODO: proper, this should all be handled in one place
-					// either at the same time as param/arg checking, or possibly
-					// directly after?
-					if arg_type.is_int_literal() {
-						arg_type = int_
-					} else if arg_type.is_float_literal() {
-						arg_type = f32_
-					}
+					arg_type := c.expr(arg).typed_default()
 					arg_types << arg_type
 					// eprintln('call arg: ${param.typ.type_name()} - ${arg_type.type_name()}')
 
@@ -1999,24 +1985,15 @@ fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
 	}
 
 	if expr.lhs is ast.Ident {
-		// if expr.lhs.name == 'it' {
-		// 	c.log('# GOT `it` variable')
-		// }
-		// c.scope.print(true)
 		lhs_obj := c.ident(expr.lhs)
 		// c.log('LHS.RHS: $expr.lhs.name . $expr.rhs.name - $lhs_obj.typ().name()')
 		match lhs_obj {
 			Const {
-				// c.log('const: $expr.lhs.name . $expr.rhs.name')
-				// return lhs_obj.typ
 				return c.find_field_or_method(lhs_obj.typ, expr.rhs.name) or {
 					c.error_with_pos(err.msg(), expr.pos)
 				}
 			}
 			Global {
-				if expr.lhs.name == 'g_timers' && expr.rhs.name == 'show' {
-					c.log('#### ${lhs_obj.typ.type_name()} - ${lhs_obj.typ.name()}')
-				}
 				return c.find_field_or_method(lhs_obj.typ, expr.rhs.name) or {
 					c.error_with_pos(err.msg(), expr.pos)
 				}
@@ -2057,7 +2034,12 @@ fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
 	// else {
 	// 	panic('unexpected expr.lhs: $expr.lhs.type_name()')
 	// }
+	// TODO: this will be removed
+	// unset when checking lhs, only needed for rightmost selector
+	expecting_method := c.expecting_method
+	c.expecting_method = false
 	lhs_type := c.expr(expr.lhs)
+	c.expecting_method = expecting_method
 	return c.find_field_or_method(lhs_type, expr.rhs.name) or {
 		c.error_with_pos(err.msg(), expr.pos)
 	}
@@ -2217,6 +2199,30 @@ fn (mut c Checker) find_field_or_method(t Type, name string) !Type {
 					return embedded_field_or_method_type
 				}
 			}
+		}
+		SumType {
+			// if !c.expecting_method {
+			mut prev_type := Type(nil_)
+			for i, variant in t.variants {
+				if variant is Struct {
+					mut has_field := false
+					for field in variant.fields {
+						if field.name == name {
+							has_field = true
+							if i > 0 && field.typ != prev_type {
+								return error('field ${name} must have the same type for all variants of ${t.name()}')
+							}
+							prev_type = field.typ
+							break
+						}
+					}
+					if !has_field {
+						return error('not all variants of ${t.name()} have the field ${name}')
+					}
+				}
+			}
+			return prev_type
+			// }
 		}
 		Thread {
 			// TODO:

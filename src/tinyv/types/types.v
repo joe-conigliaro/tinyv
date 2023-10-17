@@ -88,6 +88,7 @@ struct Enum {
 	is_flag bool
 	name    string
 	fields  []Field
+	// fields	map[string]Type
 }
 
 struct OptionType {
@@ -143,6 +144,7 @@ struct Interface {
 	name string
 mut:
 	fields []Field
+	// fields map[string]Type
 	// TODO:
 }
 
@@ -182,6 +184,7 @@ mut:
 	embedded []Struct
 	// embedded       []Type
 	fields []Field
+	// fields	 map[string]Type
 	// methods 	   []Method
 }
 
@@ -247,16 +250,20 @@ fn (t Type) base_type() Type {
 	}
 }
 
+// return the key type used with for in loops
 fn (t Type) key_type() Type {
 	match t {
 		Map { return t.key_type }
 		// TOOD: struct here is 'struct string', need to fix this.
 		// we could use an alias? remove once fixed.
-		Array, ArrayFixed, String, Struct { return int_ }
-		else { panic('TODO: should never be called on ${t.type_name()}') }
+		// Array, ArrayFixed, String, Struct { return int_ }
+		// else { panic('TODO: should never be called on ${t.type_name()}') }
+		// TODO: see checker ForStmt -> ForInStmt when value is pointer
+		else { return int_ }
 	}
 }
 
+// return the value type used with for in loops
 fn (t Type) value_type() Type {
 	match t {
 		Array, ArrayFixed { return t.elem_type }
@@ -270,7 +277,9 @@ fn (t Type) value_type() Type {
 	}
 }
 
-fn (t Type) promote() Type {
+// converts untyped constant / literal to its default type
+// if is already typed then it returns itself
+fn (t Type) typed_default() Type {
 	// this handles int & float
 	if t is Primitive && t.is_number_literal() {
 		mut concrete_props := t.props
