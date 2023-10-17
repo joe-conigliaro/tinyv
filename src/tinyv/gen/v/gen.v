@@ -371,6 +371,10 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 		}
 		ast.TypeDecl {
 			g.write('type ')
+			if stmt.language != .v {
+				g.write(stmt.language.str())
+				g.write('.')
+			}
 			g.write(stmt.name)
 			if stmt.generic_params.len > 0 {
 				g.generic_list(stmt.generic_params)

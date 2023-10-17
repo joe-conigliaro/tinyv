@@ -802,6 +802,7 @@ pub:
 pub struct TypeDecl {
 pub:
 	is_public      bool
+	language       Language
 	name           string
 	generic_params []Expr
 	base_type      Expr = ast.empty_expr

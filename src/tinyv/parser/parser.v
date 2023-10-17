@@ -2234,6 +2234,7 @@ fn (mut p Parser) decl_language() ast.Language {
 
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
+	language := p.decl_language()
 	name := p.expect_name()
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 
@@ -2245,6 +2246,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	if p.tok != .pipe {
 		return ast.TypeDecl{
 			is_public: is_public
+			language: language
 			name: name
 			generic_params: generic_params
 			base_type: typ
@@ -2260,6 +2262,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	// TODO: consider separate node for alias / sum type ?
 	return ast.TypeDecl{
 		is_public: is_public
+		language: language
 		name: name
 		generic_params: generic_params
 		variants: variants

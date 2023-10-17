@@ -38,6 +38,8 @@ pub type OptionalA = ?int
 
 pub type DatabasePool[T] = fn (tid int) T
 
+pub type C.BOOL = bool 
+
 // we don't want this to be parsed as:
 // `type FnA = fn() fn...`
 type FnA = fn()
