@@ -973,7 +973,7 @@ fn (mut g Gen) struct_decl_fields(embedded []ast.Expr, fields []ast.FieldDecl) {
 	g.writeln('}')
 }
 
-[inline]
+@[inline]
 fn (mut g Gen) expr_list(exprs []ast.Expr, separator string) {
 	for i, expr in exprs {
 		g.expr(expr)
@@ -983,14 +983,14 @@ fn (mut g Gen) expr_list(exprs []ast.Expr, separator string) {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut g Gen) generic_list(exprs []ast.Expr) {
 	g.write('[')
 	g.expr_list(exprs, ', ')
 	g.write(']')
 }
 
-[inline]
+@[inline]
 fn (mut g Gen) write(str string) {
 	if g.on_newline {
 		g.out.write_string(v.tabs[g.indent])
@@ -999,7 +999,7 @@ fn (mut g Gen) write(str string) {
 	g.on_newline = false
 }
 
-[inline]
+@[inline]
 fn (mut g Gen) writeln(str string) {
 	if g.on_newline {
 		g.out.write_string(v.tabs[g.indent])

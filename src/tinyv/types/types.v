@@ -32,7 +32,7 @@ pub type Type = Alias
 	| USize
 	| Void
 
-[flag]
+@[flag]
 enum Properties {
 	boolean
 	float
@@ -105,7 +105,7 @@ struct ResultType {
 	base_type Type
 }
 
-[flag]
+@[flag]
 enum FnTypeAttribute {
 	empty
 	noreturn

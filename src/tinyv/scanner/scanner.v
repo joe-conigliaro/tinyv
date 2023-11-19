@@ -6,7 +6,7 @@ module scanner
 import tinyv.token
 import tinyv.pref
 
-[flag]
+@[flag]
 pub enum Mode {
 	normal
 	scan_comments
@@ -54,7 +54,7 @@ pub fn (mut s Scanner) init(file &token.File, src string) {
 	s.src = src
 }
 
-[direct_array_access]
+@[direct_array_access]
 pub fn (mut s Scanner) scan() token.Token {
 	// before whitespace call to keep whitepsaces in string
 	// NOTE: before start: simply for a little more efficiency
@@ -380,7 +380,7 @@ pub fn (mut s Scanner) scan() token.Token {
 }
 
 // skip whitespace
-[direct_array_access]
+@[direct_array_access]
 fn (mut s Scanner) whitespace() {
 	for s.offset < s.src.len {
 		c := s.src[s.offset]
@@ -396,7 +396,7 @@ fn (mut s Scanner) whitespace() {
 	}
 }
 
-[direct_array_access]
+@[direct_array_access]
 fn (mut s Scanner) line() {
 	// a newline reached here will get recorded by next whitespace call
 	// we could add them manually here, but whitespace is called anyway
@@ -408,7 +408,7 @@ fn (mut s Scanner) line() {
 	}
 }
 
-[direct_array_access]
+@[direct_array_access]
 fn (mut s Scanner) comment() {
 	s.offset++
 	c := s.src[s.offset]
@@ -442,7 +442,7 @@ fn (mut s Scanner) comment() {
 	}
 }
 
-[direct_array_access]
+@[direct_array_access]
 fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 	// shortcut, scan whole string
 	if scan_as_raw {
@@ -489,7 +489,7 @@ fn (mut s Scanner) string_literal(scan_as_raw bool, c_quote u8) {
 	}
 }
 
-[direct_array_access]
+@[direct_array_access]
 fn (mut s Scanner) number() {
 	if s.src[s.offset] == `0` {
 		s.offset++

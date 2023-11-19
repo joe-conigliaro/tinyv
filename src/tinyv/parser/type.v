@@ -5,7 +5,7 @@ module parser
 
 import tinyv.ast
 
-[inline]
+@[inline]
 fn (mut p Parser) expect_type() ast.Expr {
 	// return p.try_type() or {
 	// 	p.error(err.msg())
@@ -190,7 +190,7 @@ fn (mut p Parser) fn_type() ast.FnType {
 }
 
 // `ident` | `map[type]type | `(`chan`|`chan type`) | (`thread`|`thread type`)
-[direct_array_access]
+@[direct_array_access]
 fn (mut p Parser) ident_or_named_type() ast.Expr {
 	pos := p.pos
 	p.expr_line = p.line

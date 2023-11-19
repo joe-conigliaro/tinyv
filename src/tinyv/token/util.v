@@ -3,7 +3,7 @@ module token
 // NOTE: add keyword tokens here
 // TODO: allow overriding this method in main v compiler
 // that is why this method was renamed from `from_string`
-[direct_array_access]
+@[direct_array_access]
 pub fn Token.from_string_tinyv(name string) Token {
 	match name.len {
 		2 {

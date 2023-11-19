@@ -319,7 +319,7 @@ fn (mut p Parser) attribute_stmt() ast.Stmt {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) simple_stmt() ast.Stmt {
 	return p.complete_simple_stmt(p.expr(.lowest))
 }
@@ -1125,7 +1125,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 }
 
 // parse and return `ast.RangeExpr` if found, otherwise return `lhs_expr`
-[inline]
+@[inline]
 fn (mut p Parser) range_expr(lhs_expr ast.Expr) ast.Expr {
 	if p.tok in [.dotdot, .ellipsis] {
 		return ast.RangeExpr{
@@ -1138,7 +1138,7 @@ fn (mut p Parser) range_expr(lhs_expr ast.Expr) ast.Expr {
 }
 
 // parse type or expr, eg. `typeof(expr|type)` | `array_or_generic_call[expr|type]()`
-[inline]
+@[inline]
 fn (mut p Parser) expr_or_type(min_bp token.BindingPower) ast.Expr {
 	// TODO: is there a better way to do this? see uses of `p.exp_pt`
 	exp_pt := p.exp_pt
@@ -1153,7 +1153,7 @@ fn (mut p Parser) expr_or_type(min_bp token.BindingPower) ast.Expr {
 // this simplifies getting any extra information from scanner
 // as I can retrieve it directly, no need to store somewhere.
 // this also help enforce the hard 1 token look ahead limit.
-[inline]
+@[inline]
 fn (mut p Parser) peek() token.Token {
 	if p.tok_next_ == .unknown {
 		p.tok_next_ = p.scanner.scan()
@@ -1161,7 +1161,7 @@ fn (mut p Parser) peek() token.Token {
 	return p.tok_next_
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) next() {
 	if p.tok_next_ != .unknown {
 		p.tok = p.tok_next_
@@ -1175,7 +1175,7 @@ fn (mut p Parser) next() {
 }
 
 // expect `tok` & go to next token
-[inline]
+@[inline]
 fn (mut p Parser) expect(tok token.Token) {
 	if p.tok != tok {
 		p.error_expected(tok, p.tok)
@@ -1184,7 +1184,7 @@ fn (mut p Parser) expect(tok token.Token) {
 }
 
 // expect `.name` & return `p.lit` & go to next token
-[inline]
+@[inline]
 fn (mut p Parser) expect_name() string {
 	if p.tok != .name {
 		p.error_expected(.name, p.tok)
@@ -1195,7 +1195,7 @@ fn (mut p Parser) expect_name() string {
 }
 
 // return `p.lit` & go to next token
-[inline]
+@[inline]
 fn (mut p Parser) lit() string {
 	// TODO: check if there is a better way to handle this?
 	// we should never use lit() in cases where p.lit is empty anyway
@@ -1206,14 +1206,14 @@ fn (mut p Parser) lit() string {
 }
 
 // return `p.tok` & go to next token
-[inline]
+@[inline]
 fn (mut p Parser) tok() token.Token {
 	tok := p.tok
 	p.next()
 	return tok
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) block() []ast.Stmt {
 	mut stmts := []ast.Stmt{}
 	p.expect(.lcbr)
@@ -1232,7 +1232,7 @@ fn (mut p Parser) block() []ast.Stmt {
 	return stmts
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) expr_list() []ast.Expr {
 	mut exprs := []ast.Expr{}
 	for {
@@ -1346,7 +1346,7 @@ fn (mut p Parser) asm_stmt() ast.AsmStmt {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) assign_stmt(lhs []ast.Expr) ast.AssignStmt {
 	return ast.AssignStmt{
 		pos: p.pos
@@ -1356,7 +1356,7 @@ fn (mut p Parser) assign_stmt(lhs []ast.Expr) ast.AssignStmt {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) comptime_expr() ast.Expr {
 	pos := p.pos
 	match p.tok {
@@ -1375,7 +1375,7 @@ fn (mut p Parser) comptime_expr() ast.Expr {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) comptime_stmt() ast.Stmt {
 	p.next()
 	match p.tok {
@@ -2205,7 +2205,7 @@ fn (mut p Parser) string_inter() ast.StringInter {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) generic_list() []ast.Expr {
 	p.next()
 	mut generic_list := [p.expect_type()]
@@ -2217,7 +2217,7 @@ fn (mut p Parser) generic_list() []ast.Expr {
 	return generic_list
 }
 
-[direct_array_access]
+@[direct_array_access]
 fn (mut p Parser) decl_language() ast.Language {
 	mut language := ast.Language.v
 	if p.lit.len == 1 && p.lit[0] == `C` {
@@ -2269,7 +2269,7 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) ident() ast.Ident {
 	p.expr_line = p.line
 	return ast.Ident{
@@ -2278,7 +2278,7 @@ fn (mut p Parser) ident() ast.Ident {
 	}
 }
 
-[inline]
+@[inline]
 fn (mut p Parser) ident_or_selector_expr() ast.Expr {
 	p.expr_line = p.line
 	ident := p.ident()
@@ -2337,18 +2337,18 @@ fn (mut p Parser) warn(msg string) {
 	p.error_message(msg, .warning, p.current_position())
 }
 
-[noreturn]
+@[noreturn]
 fn (mut p Parser) error(msg string) {
 	p.error_with_position(msg, p.current_position())
 	// p.error_with_position(msg, p.file.position(p.pos))
 }
 
-[noreturn]
+@[noreturn]
 fn (mut p Parser) error_with_pos(msg string, pos token.Pos) {
 	p.error_with_position(msg, p.file.position(pos))
 }
 
-[noreturn]
+@[noreturn]
 fn (mut p Parser) error_with_position(msg string, pos token.Position) {
 	p.error_message(msg, .error, pos)
 	exit(1)

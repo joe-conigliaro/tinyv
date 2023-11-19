@@ -2304,24 +2304,24 @@ fn (mut c Checker) error_message(msg string, kind errors.Kind, pos token.Positio
 // 	c.error_with_position(msg, p.current_position())
 // }
 
-[noreturn]
+@[noreturn]
 fn (mut c Checker) error_with_pos(msg string, pos token.Pos) {
 	file := c.file_set.file(pos)
 	c.error_with_position(msg, file.position(pos), file)
 }
 
-[noreturn]
+@[noreturn]
 fn (mut c Checker) error_with_position(msg string, pos token.Position, file &token.File) {
 	c.error_message(msg, .error, pos, file)
 	exit(1)
 }
 
-[if verbose ?]
+@[if verbose ?]
 fn (c Checker) log[T](s T) {
 	println(s)
 }
 
-[if verbose ?]
+@[if verbose ?]
 fn (c Checker) elog[T](s T) {
 	eprintln(s)
 }

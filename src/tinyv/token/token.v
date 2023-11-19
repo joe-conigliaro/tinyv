@@ -127,7 +127,7 @@ pub enum BindingPower {
 	highest
 }
 
-[inline]
+@[inline]
 pub fn (t Token) left_binding_power() BindingPower {
 	return match t {
 		// `||`
@@ -145,17 +145,17 @@ pub fn (t Token) left_binding_power() BindingPower {
 }
 
 // TODO: double check / fix this. just use what is needed instead of this
-[inline]
+@[inline]
 pub fn (t Token) right_binding_power() BindingPower {
 	return unsafe { BindingPower((int(t.left_binding_power()) + 1)) }
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_prefix() bool {
 	return t in [.minus, .amp, .mul, .not, .bit_not, .arrow]
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_infix() bool {
 	return t in [
 		.amp,
@@ -187,13 +187,13 @@ pub fn (t Token) is_infix() bool {
 	]
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_postfix() bool {
 	return t in [.dec, .inc]
 	// return t in [.dec, .inc, .not, .question]
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_assignment() bool {
 	return t in [
 		.and_assign,
@@ -212,13 +212,13 @@ pub fn (t Token) is_assignment() bool {
 	]
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_overloadable() bool {
 	// `/` | `==` | `>=` | `>` | `<=` | `<` | `-` | `%` | `*` | `!=` | `|` | `+` | `^`
 	return t in [.div, .eq, .ge, .gt, .le, .lt, .minus, .mod, .mul, .ne, .pipe, .plus, .xor]
 }
 
-[inline]
+@[inline]
 pub fn (t Token) is_comparison() bool {
 	// `==` | `>=` | `>` | `in` | `is` | `<=` | `<` | `!=` | `!in` | `!is`
 	return t in [.eq, .ge, .gt, .key_in, .key_is, .le, .lt, .ne, .not_in, .not_is]

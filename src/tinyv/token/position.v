@@ -142,12 +142,12 @@ pub fn (mut fs FileSet) file(pos Pos) &File {
 // 	}
 // }
 
-[inline]
+@[inline]
 pub fn (mut f File) add_line(offset int) {
 	f.line_offsets << offset
 }
 
-[inline]
+@[inline]
 pub fn (f &File) line_count() int {
 	return f.line_offsets.len
 }
