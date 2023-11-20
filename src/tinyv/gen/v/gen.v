@@ -375,10 +375,11 @@ fn (mut g Gen) stmt(stmt ast.Stmt) {
 				g.write(stmt.language.str())
 				g.write('.')
 			}
-			g.write(stmt.name)
-			if stmt.generic_params.len > 0 {
-				g.generic_list(stmt.generic_params)
-			}
+			g.expr(stmt.typ)
+			// g.write(stmt.name)
+			// if stmt.generic_params.len > 0 {
+			// 	g.generic_list(stmt.generic_params)
+			// }
 			if stmt.variants.len > 0 {
 				g.write(' = ')
 				g.expr_list(stmt.variants, ' | ')
@@ -936,10 +937,11 @@ fn (mut g Gen) struct_decl(stmt ast.StructDecl) {
 		g.write(stmt.language.str())
 		g.write('.')
 	}
-	g.write(stmt.name)
-	if stmt.generic_params.len > 0 {
-		g.generic_list(stmt.generic_params)
-	}
+	// g.write(stmt.name)
+	// if stmt.generic_params.len > 0 {
+	// 	g.generic_list(stmt.generic_params)
+	// }
+	g.expr(stmt.typ)
 	g.struct_decl_fields(stmt.embedded, stmt.fields)
 }
 

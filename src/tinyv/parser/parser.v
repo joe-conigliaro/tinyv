@@ -1972,10 +1972,12 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 	// is_union := p.tok == .key_union
 	pos := p.pos
 	p.next()
-	language := p.decl_language()
-	name := p.expect_name()
+	// language := p.decl_language()
+	// name := p.expect_name()
 	// p.log('ast.StructDecl: $name')
-	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
+	// generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
+	typ := p.ident_or_type()
+	language := typ.language()
 	// probably C struct decl with no body or {}
 	if p.tok != .lcbr {
 		if language == .v {
@@ -1984,8 +1986,9 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		return ast.StructDecl{
 			is_public: is_public
 			language: language
-			name: name
-			generic_params: generic_params
+			// name: name
+			// generic_params: generic_params
+			typ: typ
 			pos: pos
 		}
 	}
@@ -1995,8 +1998,9 @@ fn (mut p Parser) struct_decl(is_public bool, attributes []ast.Attribute) ast.St
 		is_public: is_public
 		embedded: embedded
 		language: language
-		name: name
-		generic_params: generic_params
+		// name: name
+		// generic_params: generic_params
+		typ: typ
 		fields: fields
 		pos: pos
 	}
@@ -2234,27 +2238,31 @@ fn (mut p Parser) decl_language() ast.Language {
 
 fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	p.next()
-	language := p.decl_language()
-	name := p.expect_name()
-	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
+	// language := p.decl_language()
+	// name := p.expect_name()
+	// name := ''
+	typ := p.ident_or_type()
+	language := typ.language()
+	// generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 
 	// p.log('ast.TypeDecl: $name')
 	p.expect(.assign)
-	typ := p.expect_type()
+	base_type := p.expect_type()
 
 	// alias `type MyType = int`
 	if p.tok != .pipe {
 		return ast.TypeDecl{
 			is_public: is_public
 			language: language
-			name: name
-			generic_params: generic_params
-			base_type: typ
+			// name: name
+			typ: typ
+			// generic_params: generic_params
+			base_type: base_type
 		}
 	}
 	// sum type `type MyType = int | string`
 	p.next()
-	mut variants := [typ, p.expect_type()]
+	mut variants := [base_type, p.expect_type()]
 	for p.tok == .pipe {
 		p.next()
 		variants << p.expect_type()
@@ -2263,8 +2271,9 @@ fn (mut p Parser) type_decl(is_public bool) ast.TypeDecl {
 	return ast.TypeDecl{
 		is_public: is_public
 		language: language
-		name: name
-		generic_params: generic_params
+		// name: name
+		typ: typ
+		// generic_params: generic_params
 		variants: variants
 	}
 }

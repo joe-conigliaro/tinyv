@@ -187,6 +187,20 @@ pub fn (expr Expr) name() string {
 	}
 }
 
+@[direct_array_access]
+pub fn (expr Expr) language() Language {
+	if expr is SelectorExpr {
+		if expr.lhs is Ident {
+			if expr.lhs.name.len == 1 && expr.lhs.name[0] == `C` {
+				return .c
+			} else if expr.lhs.name.len == 2 && expr.lhs.name[0] == `J` && expr.lhs.name[1] == `S` {
+				return .js
+			}
+		}
+	}
+	return .v
+}
+
 pub fn (expr Expr) pos() token.Pos {
 	return match expr {
 		Ident {
@@ -789,24 +803,26 @@ pub:
 
 pub struct StructDecl {
 pub:
-	attributes     []Attribute
-	is_public      bool
-	embedded       []Expr
-	language       Language = .v
-	name           string
-	generic_params []Expr
-	fields         []FieldDecl
-	pos            token.Pos
+	attributes []Attribute
+	is_public  bool
+	embedded   []Expr
+	language   Language = .v
+	typ        Expr
+	// name           string
+	// generic_params []Expr
+	fields []FieldDecl
+	pos    token.Pos
 }
 
 pub struct TypeDecl {
 pub:
-	is_public      bool
-	language       Language
-	name           string
-	generic_params []Expr
-	base_type      Expr = ast.empty_expr
-	variants       []Expr
+	is_public bool
+	language  Language
+	// name           string
+	// generic_params []Expr
+	typ       Expr
+	base_type Expr = ast.empty_expr
+	variants  []Expr
 }
 
 // Type Nodes

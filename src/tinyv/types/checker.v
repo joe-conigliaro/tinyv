@@ -326,8 +326,10 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 		ast.StructDecl {
 			// c.log(' # StructDecl: $decl.name')
 			// TODO: clean this up
+			type_name := decl.typ.name()
+			println('## ${type_name}')
 			struct_decl := decl
-			c.later(fn [mut c, struct_decl] () {
+			c.later(fn [mut c, struct_decl, type_name] () {
 				// c.log('add fields: $struct_decl.name')
 				mut fields := []Field{}
 				for field in struct_decl.fields {
@@ -346,11 +348,19 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 							struct_decl.pos)
 					}
 				}
-				mut update_scope := if struct_decl.language == .c { c.c_scope } else { c.scope }
+				// mut update_scope := if struct_decl.language == .c { c.c_scope } else { c.scope }
+				// mut update_scope := if struct_decl.typ is ast.SelectorExpr { c.expr(struct_decl.typ.lhs) } else { c.scope }
+				mut update_scope := if struct_decl.typ is ast.SelectorExpr {
+					c.lookup_scope(struct_decl.typ)
+				} else {
+					c.scope
+				}
+				// println('## ${struct_decl.typ.name()}')
+				// mut update_scope := c.scope
 				// TODO: work best way to do this?
 				// modify the original type since, that is
 				// the one every Type will be pointing to
-				if mut sd := update_scope.lookup(struct_decl.name) {
+				if mut sd := update_scope.lookup(type_name) {
 					if mut sd is Type {
 						if mut sd is Struct {
 							sd.fields = fields
@@ -367,36 +377,45 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 			}, .struct_decl)
 			// c.log('struct decl: $decl.name')
 			obj := Struct{
-				name: decl.name
+				name: type_name
 				// fields: [Field{name: 'len', typ: ast.Ident{name: 'int'}}]
 				// fields: [Field{name: 'len'}]
 			}
 			mut typ := Type(obj)
 			// TODO: proper
 			if decl.language == .c {
-				c.c_scope.insert(decl.name, typ)
+				c.c_scope.insert(type_name, typ)
 			} else {
-				c.scope.insert(decl.name, typ)
+				c.scope.insert(type_name, typ)
 			}
 		}
 		ast.TypeDecl {
 			type_decl := decl
+			type_name := decl.typ.name()
+			println('## TYPE DECL: ${type_name}')
 			// alias
 			if decl.variants.len == 0 {
 				alias_type := Alias{
-					name: decl.name
+					name: type_name
 					// TODO: defer
 					// parent: c.expr(decl.base_type)
 				}
 				mut typ := Type(alias_type)
-				c.scope.insert(decl.name, typ)
-				c.later(fn [mut c, type_decl] () {
+				// c.scope.insert(type_name, typ)
+				// mut update_scope := if type_decl.typ is ast.SelectorExpr { c.expr(type_decl.typ.lhs) } else { c.scope }
+				mut update_scope := if type_decl.typ is ast.SelectorExpr {
+					c.lookup_scope(type_decl.typ)
+				} else {
+					c.scope
+				}
+				update_scope.insert(type_name, typ)
+				c.later(fn [mut c, type_decl, type_name] () {
 					// mut obj := c.scope.lookup(type_decl.name) or { panic(err.msg()) }
 					// mut typ := obj.typ()
 					// if mut typ is Alias {
 					// 	typ.base_type = c.expr(type_decl.base_type)
 					// }
-					if mut obj := c.scope.lookup(type_decl.name) {
+					if mut obj := c.scope.lookup(type_name) {
 						if mut obj is Type {
 							if mut obj is Alias {
 								obj.base_type = c.expr(type_decl.base_type)
@@ -408,13 +427,20 @@ fn (mut c Checker) decl(decl ast.Stmt) {
 			// sum type
 			else {
 				sum_type := SumType{
-					name: decl.name
+					name: type_name
 					// variants: decl.variants
 				}
 				mut typ := Type(sum_type)
-				c.scope.insert(decl.name, typ)
-				c.later(fn [mut c, type_decl] () {
-					mut obj := c.scope.lookup(type_decl.name) or { panic(err.msg()) }
+				// c.scope.insert(type_name, typ)
+				// mut update_scope := if type_decl.typ is ast.SelectorExpr { c.expr(type_decl.typ.lhs) } else { c.scope }
+				mut update_scope := if type_decl.typ is ast.SelectorExpr {
+					c.lookup_scope(type_decl.typ)
+				} else {
+					c.scope
+				}
+				update_scope.insert(type_name, typ)
+				c.later(fn [mut c, type_decl, type_name] () {
+					mut obj := c.scope.lookup(type_name) or { panic(err.msg()) }
 					mut typ := obj.typ()
 					// mut typ := c.expr(ast.Ident{name: type_decl.name})
 					if mut typ is SumType {
@@ -1960,6 +1986,19 @@ fn (mut c Checker) ident(ident ast.Ident) Object {
 	}
 	c.log('ident: ${ident.name} - ${obj.typ().name()}')
 	return obj
+}
+
+fn (mut c Checker) lookup_scope(expr ast.SelectorExpr) &Scope {
+	if expr.lhs is ast.Ident {
+		lhs_obj := c.ident(expr.lhs)
+		if lhs_obj is Module {
+			return lhs_obj.scope
+		}
+		// c.error_with_pos('expecting module', expr.pos)
+	} else if expr.lhs is ast.SelectorExpr {
+		return c.lookup_scope(expr.lhs)
+	}
+	c.error_with_pos('expecting module', expr.pos)
 }
 
 fn (mut c Checker) selector_expr(expr ast.SelectorExpr) Type {
