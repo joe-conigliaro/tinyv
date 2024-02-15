@@ -8,10 +8,8 @@ import tinyv.pref
 import strings
 import time
 
-const (
-	// tabs = build_tabs(16)
-	tabs = build_tabs(24)
-)
+// tabs = build_tabs(16)
+const tabs = build_tabs(24)
 
 struct Gen {
 	pref &pref.Preferences
@@ -572,16 +570,6 @@ fn (mut g Gen) expr(expr ast.Expr) {
 		ast.Keyword {
 			g.write(expr.tok.str())
 		}
-		ast.KeywordOperator {
-			g.write(expr.op.str())
-			if expr.op in [.key_go, .key_spawn] {
-				g.expr(expr.exprs[0])
-			} else {
-				g.write('(')
-				g.expr_list(expr.exprs, ', ')
-				g.write(')')
-			}
-		}
 		ast.LambdaExpr {
 			g.write('|')
 			for i, arg in expr.args {
@@ -706,6 +694,10 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.lhs)
 			g.write('.')
 			g.expr(expr.rhs)
+		}
+		ast.SpawnExpr {
+			g.write(expr.op.str())
+			g.expr(expr.expr)
 		}
 		ast.StringInterLiteral {
 			if expr.kind != .v {
