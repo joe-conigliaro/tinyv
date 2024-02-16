@@ -275,6 +275,13 @@ fn main_a() {
 			field_a: 1
 		}
 	}
+	map_string_string_index_a := map_init_short_string_string['key_a']
+	map_string_string_index_or_a := map_init_short_string_string['key_a'] or {
+		panic('`key_a` does not exist')
+	}
+	map_string_array_string_index_or_append_a := map_init_short_string_array_string['key_a'] or {
+		['value_e', 'value_d']
+	} << 'value_c'
 	struct_init_a := StructA{field_a: 1, field_b: 'v'}
 	struct_init_b := foo.StructA{field_a: 1, field_b: 'v'}
 	struct_init_c := StructA{1, 'v'}

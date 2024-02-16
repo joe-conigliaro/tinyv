@@ -657,7 +657,7 @@ fn (mut g Gen) expr(expr ast.Expr) {
 			g.expr(expr.expr)
 			g.writeln(' or {')
 			g.stmt_list(expr.stmts)
-			g.writeln('}')
+			g.write('}')
 			// g.writeln('==== DeSugared OrExpr ====')
 			// g.expr(expr.desugar())
 		}
