@@ -136,6 +136,7 @@ fn (mut p Parser) try_type() ast.Expr {
 			// TODO: cleam this up
 			name := p.ident_or_named_type()
 			if p.tok == .lsbr && name !is ast.Type && p.line == p.expr_line {
+				// TODO: stacking TODO's so I remember todo :D
 				// TODO: is there a better solution than this. maybe it should be the
 				// concern of p.fn_parameters() & p.struct_decl() rather than this?
 				// `fn(param_a []type)` | `struct { field_a []type }`

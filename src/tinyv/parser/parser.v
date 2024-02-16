@@ -1927,23 +1927,21 @@ fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast
 			p.next()
 			p.expect(.colon)
 		}
-		mut field_name := ''
-		mut field_type := p.expect_type()
-		// `field type`
-		if p.line == p.expr_line {
-			if mut field_type is ast.Ident {
-				field_name = field_type.name
-			} else {
-				p.error('expecting field name')
-			}
-			fields << ast.FieldDecl{
-				name: field_name
-				typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
-			}
-		}
+		// NOTE: if we ever need to embed complex type like generic
+		// embed_or_name := p.expect_type()
+		embed_or_name := p.ident_or_selector_expr()
 		// embedded interface
-		else {
-			embedded << field_type
+		if p.line != p.expr_line {
+			embedded << embed_or_name
+			continue
+		}
+		// field
+		fields << ast.FieldDecl{
+			name: match embed_or_name {
+				ast.Ident { embed_or_name.name }
+				else { p.error('expecting field name') }
+			}
+			typ: if p.tok == .lpar { ast.Type(p.fn_type()) } else { p.expect_type() }
 		}
 	}
 	// rcbr
@@ -2011,8 +2009,10 @@ fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.F
 		if is_pub || is_mut {
 			p.expect(.colon)
 		}
-		// NOTE: case documented in `p.try_type()` todo
-		embed_or_name := p.expect_type()
+		// NOTE: see todo in `p.try_type()` under .name re parsing type
+		// NOTE: if we ever need to embed complex type like generic
+		// embed_or_name := p.expect_type()
+		embed_or_name := p.ident_or_selector_expr()
 		// embedded struct
 		if p.line != p.expr_line {
 			if language != .v {
