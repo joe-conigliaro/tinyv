@@ -6,7 +6,7 @@
 /*// nested comment a */
 /* // nested comment b */
 /*/* nested comment c */*/
-[has_globals]
+@[has_globals]
 module main
 
 import mod_a
@@ -28,7 +28,7 @@ const (
 // we don't want this parsed as `TypeA[unsafe]`
 __global global_before_fn_with_attr_a TypeA
 
-[unsafe]
+@[unsafe]
 pub fn fn_with_attr_after_global_a() {}
 
 type AliasA = int
@@ -50,15 +50,14 @@ type FnB = fn() ?
 fn fn_after_type_fn_b() int {}
 
 pub const const_array_followed_by_attribute_a = ['a', 'b']
-[attribute_after_array_init]
+@[attribute_after_array_init]
 fn fn_with_attribute_after_array_init() { println('v') }
 
-[attribute_a]
+@[attribute_a]
 @[attribute_b]
 enum EnumA {
-	value_a     [json: 'ValueA']
+	value_a     @[json: 'ValueA']
 	value_b     @[json: 'ValueB']
-	// NOTE: will not work with old attribute syntax due to ambiguity
 	value_c = 2 @[json: 'ValueC']
 }
 
@@ -67,17 +66,16 @@ enum EnumB as u16 {
 	value_b
 }
 
-[attribute_a: 'attribute_a_val'; attribute_b]
+@[attribute_a: 'attribute_a_val'; attribute_b]
 @[attribute_c: 'attribute_c_val']
 @[attribute_d]
-['/product/edit'; post]
+@['/product/edit'; post]
 struct StructA {
 	field_a int
 	field_b string
 	field_c fn(int) int
 	field_d string = 'foo'
 	field_e int = 1 + 2 + (4*4)
-	// NOTE: will not work with old attribute syntax due to ambiguity
 	field_f string = 'bar' @[attribute_a; attribute_b]
 	field_g int = 111 @[attribute_a; attribute_b]
 	field_h int = field_h_default() @[attribute_a]
@@ -91,9 +89,11 @@ fn StructA.static_method_a() int {
 struct StructB {
 	StructA // embedded
 mut:
-	field_a int    [attribute_a: 'value_a']
-	field_b string @[attribute_b: 'value_b']
-	field_c struct {
+	field_a int    @[attribute_a: 'value_a']
+	field_b string @[attribute_a: 'value_a']
+	field_c fn() ! @[attribute_a]
+	field_d fn() ![const_a]u8 @[attribute_a]
+	field_e struct {
 		field_a string
 		field_b int = 1
 	}
@@ -129,9 +129,9 @@ interface InterfaceGenericA[T] {
 
 fn C.external_fn_a(arg_a int) int
 
-[attribute_a: 'attribute_a_val'; attribute_b]
-[attribute_c: 'attribute_c_val']
-[attribute_d]
+@[attribute_a: 'attribute_a_val'; attribute_b]
+@[attribute_c: 'attribute_c_val']
+@[attribute_d]
 fn fn_a(arg_a string, arg_b int) int {
 	println('fn_a($arg_a, $arg_b)')
 	return 1

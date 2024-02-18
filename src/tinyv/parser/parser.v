@@ -81,7 +81,7 @@ pub fn (mut p Parser) parse_file(filename string, mut file_set token.FileSet) as
 	// file level attributes
 	// or we are missing a stmt which supports attributes in this match
 	mut attributes := []ast.Attribute{}
-	if p.tok in [.attribute, .lsbr] {
+	if p.tok == .attribute {
 		attribute_stmt := p.attribute_stmt()
 		top_stmts << attribute_stmt
 		if attribute_stmt is []ast.Attribute {
@@ -195,7 +195,7 @@ fn (mut p Parser) top_stmt() ast.Stmt {
 		.key_type {
 			return p.type_decl(false)
 		}
-		.attribute, .lsbr {
+		.attribute {
 			return p.attribute_stmt()
 		}
 		else {
@@ -608,10 +608,8 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			if exprs.len > 0 && p.tok == .lsbr {
 				// collect exprs in all the following `[x][x]`
 				mut exprs_arr := [exprs]
-				// NOTE: checking line here for this case:
-				// `pub const const_a = ['a', 'b', 'c', 'd']`
-				// '[attribute_a; attribute_b]''
-				for p.tok == .lsbr && p.line == p.expr_line {
+				// for p.tok == .lsbr && p.line == p.expr_line {
+				for p.tok == .lsbr {
 					p.next()
 					mut exprs2 := []ast.Expr{}
 					for p.tok != .rsbr {
@@ -1243,7 +1241,7 @@ fn (mut p Parser) expr_list() []ast.Expr {
 	return exprs
 }
 
-// @[attribute] | [attribute]
+// @[attribute]
 fn (mut p Parser) attributes() []ast.Attribute {
 	p.next()
 	mut attributes := []ast.Attribute{}
@@ -1306,8 +1304,7 @@ fn (mut p Parser) attributes() []ast.Attribute {
 		}
 		p.expect(.rsbr)
 		// @[attribute_a]
-		// [attribute_b]
-		if p.tok in [.attribute, .lsbr] {
+		if p.tok == .attribute {
 			p.next()
 			continue
 		}
@@ -1850,7 +1847,7 @@ fn (mut p Parser) enum_decl(is_public bool, attributes []ast.Attribute) ast.Enum
 			p.next()
 			value = p.expr(.lowest)
 		}
-		field_attributes := if p.tok in [.attribute, .lsbr] {
+		field_attributes := if p.tok == .attribute {
 			p.attributes()
 		} else {
 			[]ast.Attribute{}
@@ -2034,7 +2031,7 @@ fn (mut p Parser) struct_decl_fields(language ast.Language) ([]ast.Expr, []ast.F
 		} else {
 			ast.empty_expr
 		}
-		field_attributes := if p.tok in [.attribute, .lsbr] {
+		field_attributes := if p.tok == .attribute {
 			p.attributes()
 		} else {
 			[]ast.Attribute{}
