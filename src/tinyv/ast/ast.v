@@ -5,8 +5,10 @@ module ast
 
 import tinyv.token
 
-pub const empty_expr = Expr(EmptyExpr(0))
-pub const empty_stmt = Stmt(EmptyStmt(0))
+pub const (
+	empty_expr = Expr(EmptyExpr(0))
+	empty_stmt = Stmt(EmptyStmt(0))
+)
 
 type EmptyExpr = u8
 type EmptyStmt = u8
@@ -31,6 +33,7 @@ pub type Expr = ArrayInitExpr
 	| InfixExpr
 	| InitExpr
 	| Keyword
+	| KeywordOperator
 	| LambdaExpr
 	| LockExpr
 	| MapInitExpr
@@ -43,7 +46,6 @@ pub type Expr = ArrayInitExpr
 	| RangeExpr
 	| SelectExpr
 	| SelectorExpr
-	| SpawnExpr
 	| SqlExpr
 	| StringInterLiteral
 	| StringLiteral
@@ -360,7 +362,12 @@ pub:
 pub struct Keyword {
 pub:
 	tok token.Token
-	pos token.Pos
+}
+
+pub struct KeywordOperator {
+pub:
+	op    token.Token
+	exprs []Expr
 }
 
 pub struct Tuple {
@@ -495,12 +502,6 @@ pub fn (se SelectorExpr) leftmost() Expr {
 
 pub fn (se SelectorExpr) name() string {
 	return se.lhs.name() + '.' + se.rhs.name
-}
-
-pub struct SpawnExpr {
-pub:
-	op   token.Token
-	expr Expr
 }
 
 pub enum StringLiteralKind {

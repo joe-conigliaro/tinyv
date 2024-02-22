@@ -710,6 +710,18 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			// }
 			return typ
 		}
+		ast.KeywordOperator {
+			// TODO:
+			typ := c.expr(expr.exprs[0])
+			match expr.op {
+				.key_go, .key_spawn {
+					return Thread{}
+				}
+				else {
+					return typ
+				}
+			}
+		}
 		ast.MapInitExpr {
 			// TOOD: type check keys/vals
 			// `map[type]type{}`
@@ -828,10 +840,6 @@ fn (mut c Checker) expr(expr ast.Expr) Type {
 			}
 			// normal selector
 			return c.selector_expr(expr)
-		}
-		ast.SpawnExpr {
-			// TODO:
-			return Thread{}
 		}
 		ast.StringInterLiteral {
 			// TODO:

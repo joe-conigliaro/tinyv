@@ -393,8 +393,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 				generic_params = p.generic_list()
 			}
 			// if we had one or the other determine what it is
-			// TODO: find a better way. ideally change the
-			// syntax to eliminate this issue all together
 			else if captured_vars.len > 0 {
 				expr_0 := captured_vars[0]
 				if expr_0 is ast.Ident {
@@ -424,38 +422,54 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			lhs = p.if_expr(false)
 		}
-		// NOTE: It would be nice if dump, likely, and unlikely were
+		// NOTE: I would much rather dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
-		.key_isreftype, .key_sizeof, .key_typeof, .key_dump, .key_likely, .key_unlikely,
-		.key_offsetof {
-			pos := p.pos
-			tok := p.tok()
-			lhs = ast.Keyword{
-				tok: tok
-				pos: pos
-			}
-			// NOTE: we could build call in chaining loop,
-			// but I just did it here so I dont need to
-			// check if we need possible type later (may decide to move)
+		// TODO: should these be replaced with something
+		// like `CallExpr{lhs: KeywordOperator}` ?
+		.key_isreftype, .key_sizeof, .key_typeof {
+			op := p.tok()
+			// p.expect(.lpar)
 			if p.tok == .lpar {
-				exp_pt := p.exp_pt
-				p.exp_pt = tok in [.key_isreftype, .key_sizeof, .key_typeof]
-				args := p.fn_arguments()
-				p.exp_pt = exp_pt
-				lhs = ast.CallExpr{
-					lhs: lhs
-					args: args
-					pos: pos
+				p.next()
+				lhs = ast.KeywordOperator{
+					op: op
+					exprs: [p.expr_or_type(.lowest)]
+				}
+				p.expect(.rpar)
+			} else {
+				// TODO: is this the best way to handle this? (prob not :D)
+				// this allows `typeof[type]()` to work
+				lhs = ast.Ident{
+					name: op.str()
 				}
 			}
 		}
+		.key_dump, .key_likely, .key_unlikely {
+			op := p.tok()
+			p.expect(.lpar)
+			lhs = ast.KeywordOperator{
+				op: op
+				exprs: [p.expr(.lowest)]
+			}
+			p.expect(.rpar)
+		}
+		.key_offsetof {
+			op := p.tok()
+			p.expect(.lpar)
+			expr := p.expr(.lowest)
+			p.expect(.comma)
+			lhs = ast.KeywordOperator{
+				op: op
+				exprs: [expr, p.expr(.lowest)]
+			}
+			p.expect(.rpar)
+		}
 		.key_go, .key_spawn {
-			// NOTE: these behave as expressions in V,
-			// should they be as statements instead?
-			lhs = ast.SpawnExpr{
-				op: p.tok()
-				expr: p.expr(.lowest)
+			op := p.tok()
+			lhs = ast.KeywordOperator{
+				op: op
+				exprs: [p.expr(.lowest)]
 			}
 		}
 		.key_nil {
@@ -502,11 +516,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 			}
 		}
 		.key_struct {
+			p.next()
 			typ := ast.Keyword{
 				tok: .key_struct
-				pos: p.pos
 			}
-			p.next()
 			if p.exp_pt && p.tok != .lcbr {
 				return typ
 			}
@@ -1110,10 +1123,6 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 }
 
 // parse and return `ast.RangeExpr` if found, otherwise return `lhs_expr`
-// use as `p.range_expr(p.expr(bp))` instead of `p.expr(bp)` where range is supported
-// NOTE: to make `p.expr()` support range 'properly' on it's own would require some
-// refactoring of the expression chaining & pratt loop. currently the cons outweigh
-// the pros of doing this. I may revisit this in the future.
 @[inline]
 fn (mut p Parser) range_expr(lhs_expr ast.Expr) ast.Expr {
 	if p.tok in [.dotdot, .ellipsis] {
