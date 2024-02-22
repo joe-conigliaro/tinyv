@@ -422,7 +422,7 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 		.key_if {
 			lhs = p.if_expr(false)
 		}
-		// NOTE: I would much rather dump, likely, and unlikely were
+		// NOTE: It would be nice if dump, likely, and unlikely were
 		// some type of comptime fn/macro's which come as part of the
 		// v stdlib, as apposed to being language keywords.
 		// TODO: should these be replaced with something
@@ -1123,6 +1123,10 @@ fn (mut p Parser) expr(min_bp token.BindingPower) ast.Expr {
 }
 
 // parse and return `ast.RangeExpr` if found, otherwise return `lhs_expr`
+// use as `p.range_expr(p.expr(bp))` instead of `p.expr(bp)` where range is supported
+// NOTE: to make `p.expr()` support range 'properly' on it's own would require some
+// refactoring of the expression chaining & pratt loop. currently the cons outweigh
+// the pros of doing this. I may revisit this in the future.
 @[inline]
 fn (mut p Parser) range_expr(lhs_expr ast.Expr) ast.Expr {
 	if p.tok in [.dotdot, .ellipsis] {
