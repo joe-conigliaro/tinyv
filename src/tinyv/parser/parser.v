@@ -1922,11 +1922,7 @@ fn (mut p Parser) global_decl(attributes []ast.Attribute) ast.GlobalDecl {
 
 fn (mut p Parser) interface_decl(is_public bool, attributes []ast.Attribute) ast.InterfaceDecl {
 	p.next()
-	mut name := p.expect_name()
-	for p.tok == .dot {
-		p.next()
-		name += p.expect_name()
-	}
+	name := p.expect_name()
 	generic_params := if p.tok == .lsbr { p.generic_list() } else { []ast.Expr{} }
 	p.expect(.lcbr)
 	mut fields := []ast.FieldDecl{}
@@ -2184,7 +2180,8 @@ fn (mut p Parser) string_inter() ast.StringInter {
 		if p.tok in [.number, .minus, .plus] {
 			format_expr = p.expr(.lowest)
 		}
-		// TODO
+		// TODO: should this be done like so?
+		// or just use format_expr and check that later?
 		// if p.tok == .minus {
 		// 	p.next()
 		// }
